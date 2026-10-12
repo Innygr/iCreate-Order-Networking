@@ -34,7 +34,7 @@ public final class DeliveryService {
 
         Order order = data.find(orderId);
         DeliveryResult validation = validateOrder(order, claimantId, count);
-        if (validation != DeliveryResult.ACCEPTED) return validation;
+        if (validation != DeliveryResult.SUCCESS) return validation;
         if (cargo.getCount() < count) return DeliveryResult.INSUFFICIENT_CARGO;
 
         Item item = resolveItem(order.itemId());
@@ -50,7 +50,7 @@ public final class DeliveryService {
         cargo.shrink(count);
         order.fulfil(count);
         data.changed();
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     /** Manual handoff consumes matching items across the player's inventory as one shipment. */
@@ -65,7 +65,7 @@ public final class DeliveryService {
         if (data.hasProcessedDelivery(deliveryId)) return DeliveryResult.DUPLICATE;
         Order order = data.find(orderId);
         DeliveryResult validation = validateOrder(order, player.getUUID(), count);
-        if (validation != DeliveryResult.ACCEPTED) return validation;
+        if (validation != DeliveryResult.SUCCESS) return validation;
 
         Item item = resolveItem(order.itemId());
         if (item == null) return DeliveryResult.WRONG_ITEM;
@@ -100,7 +100,7 @@ public final class DeliveryService {
         inventory.setChanged();
         order.fulfil(count);
         data.changed();
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     private static DeliveryResult validateOrder(Order order, UUID claimantId, int count) {
@@ -112,7 +112,7 @@ public final class DeliveryService {
         if (count > order.remainingCount() || count > OrderService.MAX_ORDER_COUNT) {
             return DeliveryResult.INVALID_REQUEST;
         }
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     public static ResourceLocation itemId(ItemStack stack) {
