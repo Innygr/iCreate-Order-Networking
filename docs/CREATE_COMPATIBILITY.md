@@ -17,18 +17,19 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 ## Delivery routes (required design constraint)
 
-Every order must support all four delivery paths:
+Every order must support the four core delivery paths plus belt-based local routing:
 
 1. **Manual delivery** — a player physically brings the requested items to the order handoff/terminal and submits them for server validation.
 2. **Train delivery** — items arrive through a Create train logistics workflow.
 3. **Airship delivery** — items arrive aboard an Aeronautics airship or moving contraption.
-4. **Frogport delivery** — items arrive through Create's package/Frogport logistics network. Frogport is part of base Create 6.x package logistics; it must not be treated as an Aeronautics API or assumed to require a separate Frogport mod.
+4. **Frogport delivery** — items arrive through Create's built-in package/Frogport logistics network. Frogport is base Create, not Aeronautics and not a separate mod.
+5. **Belt delivery** — items arrive through Create belts into a Terminal Logger input face; the logger records the actual item transfer before the shared order service fulfils the order.
 
 The order lifecycle and escrow ledger must be transport-agnostic. Each route should submit a delivery request to one shared server-side fulfilment service; that service validates the order, claimant/route permissions, item identity and count, consumes or transfers the actual items, updates order progress, and pays from escrow exactly once. Route adapters must never directly edit order counts or issue currency.
 
 Delivery requests should carry an order ID, item ID, quantity, route type, and a server-verifiable source/transfer context. Do not trust client-supplied counts, vehicle IDs, or claimed arrival events. Make repeated callbacks idempotent so a train/airship/frogport event cannot pay twice after retries or chunk unloads.
 
-Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train route detection targets Create's Portable Storage Interface (`create:portable_storage_interface`); airship route detection targets Aeronautics Docking Connectors; belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
+Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train adapters should use Create Portable Storage Interfaces (`create:portable_storage_interface`) as the train handoff boundary; airship adapters should use Aeronautics Docking Connectors as the airship handoff boundary. Belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
 
 ## Aeronautics support boundary
 
