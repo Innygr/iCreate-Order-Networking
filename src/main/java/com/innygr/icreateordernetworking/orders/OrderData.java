@@ -19,7 +19,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 public final class OrderData extends SavedData {
     private static final String DATA_NAME = "icreate_order_networking_orders";
     private final Map<UUID, Order> orders = new LinkedHashMap<>();
-    private final Set<UUID> processedDeliveryIds = new LinkedHashSet<>();
+    private final Map<UUID, DeliveryReceipt> processedDeliveries = new LinkedHashMap<>();
 
     public OrderData() {}
 
@@ -54,7 +54,7 @@ public final class OrderData extends SavedData {
         ListTag receipts = tag.getList("ProcessedDeliveries", Tag.TAG_COMPOUND);
         for (int i = 0; i < receipts.size(); i++) {
             try {
-                data.processedDeliveryIds.add(UUID.fromString(receipts.getCompound(i).getString("Id")));
+                CompoundTag receipt = receipts.getCompound(i);\n                UUID id = UUID.fromString(receipt.getString("Id"));\n                UUID orderId = receipt.contains("Order") ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);\n                DeliveryRoute route = receipt.contains("Route") ? DeliveryRoute.valueOf(receipt.getString("Route")) : DeliveryRoute.MANUAL;\n                data.processedDeliveries.put(id, new DeliveryReceipt(orderId, route));
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed receipt IDs.
             }
