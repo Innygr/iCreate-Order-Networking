@@ -54,7 +54,9 @@ public final class DeliveryService {
         if (order == null || !order.itemId().equals(request.itemId())
                 || request.count() > order.remainingCount()) return DeliveryResult.ORDER_REJECTED;
 
-        if (BuiltInRegistries.ITEM.get(request.itemId()) == BuiltInRegistries.ITEM.getDefaultKey()) {
+        var requestedItem = BuiltInRegistries.ITEM.get(request.itemId());
+        if (requestedItem == null
+                || BuiltInRegistries.ITEM.getKey(requestedItem).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
             return DeliveryResult.INVALID_REQUEST;
         }
 
