@@ -4,8 +4,9 @@ This document records the initial design for the factory logistics layer in iCre
 
 ## Terminal first-use binding
 
-- The first player to right-click an unconfigured terminal claims/configures it. Store that player's UUID and their FTB Team identity (if they currently belong to a team) in the terminal block entity's persistent data.
-- The terminal must not silently rebind when another player right-clicks it. Configuration and use actions must be authorized server-side.
+- **Implemented foundation:** the first server-side right-click on an unconfigured Terminal Logger binds the player's UUID and their current FTB party-team UUID (when available) into the block entity's persistent data. The first click claims the logger rather than also changing its settings.
+- The owner always retains access. Other party members are allowed only while both they and the owner currently resolve to the bound FTB party. If the owner leaves or changes parties, teammate access pauses; it can resume if the owner rejoins the original party. Without a usable FTB Teams API or party membership, the logger remains owner-only.
+- The terminal must not silently rebind when another player right-clicks it. Current logger setting interactions are server-authorized against this binding; broader network actions still need their own server-side permission checks.
 - Access checks should account for the bound owner and team. Team membership grants access only according to the terminal/network permission policy; being near the terminal must not expose private stock or orders.
 - Persist binding across chunk unloads and server restarts. Do not store ownership only in a static/in-memory map.
 - If the owner changes or leaves a team, re-evaluate team access against current membership rather than trusting a stale team roster. Define a deliberate recovery/admin path for owner departure; do not automatically make a private terminal public.
@@ -94,7 +95,7 @@ The satellite should be moderately expensive but available early enough to be us
 
 ## Ownership and permissions
 
-- Network membership and private factory access should follow FTB Teams where the integration is available. Detect it by its declared mod ID (`ftbteams`), not by the installed jar filename. `FTBTeamsCompat` now resolves a player's live party-team UUID through the public FTB Teams API using reflection, without hard-linking optional classes. Missing API, startup races, personal teams, and incompatible versions fail closed. This is a membership primitive only: terminal/network ownership binding and permission checks must still call it and enforce policy server-side.
+- Network membership and private factory access should follow FTB Teams where the integration is available. Detect it by its declared mod ID (`ftbteams`), not by the installed jar filename. `FTBTeamsCompat` resolves a player's live party-team UUID through the public FTB Teams API using reflection, without hard-linking optional classes. Missing API, startup races, personal teams, and incompatible versions fail closed. Terminal Logger first-use ownership now consumes this helper; the wider network, inventory, and shipment authorization paths still need their own policy checks.
 - Public/shared endpoints must be an explicit choice. Divine Land may host a deliberately public satellite, but that should not make every nearby private factory public.
 - Validate permissions server-side for every inventory reservation, transfer, configuration change, and shared-network connection.
 
