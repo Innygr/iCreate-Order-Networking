@@ -50,9 +50,17 @@ public final class DeliveryService {
         if (level == null || request == null || !request.isWellFormed()
                 || request.route() == DeliveryRoute.MANUAL) return DeliveryResult.INVALID_REQUEST;
 
-        Order order = OrderData.get(level).find(request.orderId());
-        if (order == null || !order.itemId().equals(request.itemId())
+        OrderData data = OrderData.get(level);
+        if (data.hasProcessedDelivery(request.transactionId())) return DeliveryResult.ORDER_REJECTED;
+
+        Order order = data.find(request.orderId());
+        if (order == null || (order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.OPEN
+                && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
+                || !order.itemId().equals(request.itemId())
                 || request.count() > order.remainingCount()) return DeliveryResult.ORDER_REJECTED;
+        if (order.claimedBy() == null || !order.claimedBy().equals(request.actorId())) {
+            return DeliveryResult.ROUTE_NOT_AUTHORIZED;
+        }
 
         var requestedItem = BuiltInRegistries.ITEM.get(request.itemId());
         if (requestedItem == null
@@ -63,7 +71,8 @@ public final class DeliveryService {
         AutomatedDeliveryAdapter adapter = ADAPTERS.get(request.route());
         if (adapter == null || !adapter.isAvailable()) return DeliveryResult.ROUTE_UNAVAILABLE;
 
-        if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN)
+        if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN
+                || request.route() == DeliveryRoute.FROGPORT)
                 && !CreateCompat.isCreateLoaded()) return DeliveryResult.ROUTE_UNAVAILABLE;
         if (request.route() == DeliveryRoute.AIRSHIP && !CreateCompat.isAeronauticsStackAvailable()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
