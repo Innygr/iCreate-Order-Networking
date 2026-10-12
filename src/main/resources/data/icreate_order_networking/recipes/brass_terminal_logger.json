@@ -1,13 +1,13 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "IRI",
+    "IFI",
     "B B",
-    "IRI"
+    "IFI"
   ],
   "key": {
     "I": { "item": "minecraft:iron_nugget" },
-    "R": { "item": "minecraft:redstone" },
+    "F": { "item": "create:filter" },
     "B": { "item": "create:brass_casing" }
   },
   "result": {
