@@ -15,7 +15,7 @@ public final class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TerminalLoggerBlockEntity>> TERMINAL_LOGGER =
             BLOCK_ENTITIES.register("terminal_logger",
                     () -> BlockEntityType.Builder.of(TerminalLoggerBlockEntity::new,
-                            ModBlocks.TERMINAL_LOGGER.get()).build(null));
+                            ModBlocks.TERMINAL_LOGGER.get(), ModBlocks.BRASS_TERMINAL_LOGGER.get()).build(null));
 
     private ModBlockEntities() {}
 
