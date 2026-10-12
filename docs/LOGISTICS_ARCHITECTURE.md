@@ -94,7 +94,7 @@ The satellite should be moderately expensive but available early enough to be us
 
 ## Ownership and permissions
 
-- Network membership and private factory access should follow FTB Teams where the integration is available. Detect it by its declared mod ID (`ftbteams`), not by the installed jar filename. `FTBTeamsCompat` provides safe optional-mod/API-presence gating; it does not yet resolve team membership or authorize access.
+- Network membership and private factory access should follow FTB Teams where the integration is available. Detect it by its declared mod ID (`ftbteams`), not by the installed jar filename. `FTBTeamsCompat` now resolves a player's live party-team UUID through the public FTB Teams API using reflection, without hard-linking optional classes. Missing API, startup races, personal teams, and incompatible versions fail closed. This is a membership primitive only: terminal/network ownership binding and permission checks must still call it and enforce policy server-side.
 - Public/shared endpoints must be an explicit choice. Divine Land may host a deliberately public satellite, but that should not make every nearby private factory public.
 - Validate permissions server-side for every inventory reservation, transfer, configuration change, and shared-network connection.
 
