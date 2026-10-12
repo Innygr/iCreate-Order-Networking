@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.registry;
 
 import com.innygr.icreateordernetworking.ICreateOrderNetworking;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
+import com.innygr.icreateordernetworking.blocks.ScrapperBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -29,6 +30,13 @@ public final class ModBlocks {
     public static final DeferredItem<BlockItem> BRASS_TERMINAL_LOGGER_ITEM =
             ITEMS.register("brass_terminal_logger",
                     () -> new BlockItem(BRASS_TERMINAL_LOGGER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<ScrapperBlock> SCRAPPER =
+            BLOCKS.register("scrapper",
+                    () -> new ScrapperBlock(BlockBehaviour.Properties.of().strength(2.5F)));
+    public static final DeferredItem<BlockItem> SCRAPPER_ITEM =
+            ITEMS.register("scrapper",
+                    () -> new BlockItem(SCRAPPER.get(), new Item.Properties()));
 
     private ModBlocks() {}
 
