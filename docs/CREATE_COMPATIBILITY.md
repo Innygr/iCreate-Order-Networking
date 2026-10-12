@@ -158,3 +158,15 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 - The andesite Terminal Logger recipe uses an andesite casing and andesite funnels rather than a shaft as its central component.
 - The brass Terminal Logger is an upgrade recipe using the andesite logger, brass sheet, Create filter, and brass funnel instead of requiring four filters and four iron ingots.
 - The logger persists its selected output face and transfer counters in block-entity NBT. It currently exposes the face/filter/diagnostic backend, but does not yet provide a live item-handler or real Create transfer hook; do not describe belt/train/airship/Frogport delivery as end-to-end working until those adapters are implemented and tested.
+
+## Release requirements: teams and early-game logistics
+
+Team support is a release requirement, not a post-launch update. Before the first public server launch, the release must include server-authoritative team identity and permissions, shared team order visibility/claiming, and payout rules that do not allow non-members to act on a team's orders. Prefer vanilla scoreboard teams as the initial source of team membership so this does not require another client mod; an optional FTB Teams bridge can be added only if its API/version is verified. Team identity must be stored with each order at creation time so renaming a scoreboard team cannot silently reassign old orders. If no team exists, personal orders continue to work.
+
+## Terminal Logger hardware and recipes
+
+- Andesite Terminal Logger: early-game, craftable with Create components and vanilla redstone/iron nuggets. It replaces the old shaft ingredient with an andesite-tier Create component; no brass or precision mechanism is required.
+- Brass Terminal Logger: shapeless upgrade from the Andesite Logger using brass, a filter, and a brass funnel. Brass supports an item filter; Andesite accepts any registered item.
+- The Logger exposes six faces, with one configurable output and the remaining five input faces. The selected output must be persisted and synchronized. A real transfer must be logged only after the server observes it; diagnostics alone are not delivery proof.
+- Recipes and item IDs must be checked against the exact pinned Create 6.x build before release. Do not use a shaft as a recipe ingredient for the base Logger.
+- Delivery route support is mandatory for manual, train (Portable Storage Interface), airship (Aeronautics Docking Connector), Create package Frogport, and belt transfers. A route that lacks a verified server-side adapter must visibly report unavailable rather than pretending the delivery succeeded.
