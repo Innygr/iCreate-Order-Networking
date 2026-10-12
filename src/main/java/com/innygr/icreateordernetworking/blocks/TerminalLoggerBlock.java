@@ -38,7 +38,7 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     private final boolean brass;
 
     public TerminalLoggerBlock(BlockBehaviour.Properties properties, boolean brass) {
-        super(properties);
+        super(properties.lightLevel(state -> 7));
         this.brass = brass;
 
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
