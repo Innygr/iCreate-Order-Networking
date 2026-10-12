@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IFI",
+    "B B",
+    "IFI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_nugget" },
+    "F": { "item": "create:filter" },
+    "B": { "item": "create:brass_casing" }
+  },
+  "result": {
+    "id": "icreate_order_networking:brass_terminal_logger",
+    "count": 1
+  }
+}

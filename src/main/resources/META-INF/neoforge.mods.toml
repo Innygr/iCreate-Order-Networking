@@ -22,3 +22,28 @@ type="required"
 versionRange="${minecraft_version_range}"
 ordering="NONE"
 side="BOTH"
+
+# Create is the core gameplay dependency for this Create-focused mod.
+[[dependencies.${mod_id}]]
+modId="create"
+type="required"
+versionRange="[6.0.0,6.1.0)"
+ordering="AFTER"
+side="BOTH"
+
+# Aeronautics is optional. Never load its API from common code unless present.
+[[dependencies.${mod_id}]]
+modId="aeronautics"
+type="optional"
+versionRange="[1.0.0,)"
+ordering="AFTER"
+side="BOTH"
+
+# Aeronautics requires Sable; declare it as optional as well so Create-only
+# installations remain valid.
+[[dependencies.${mod_id}]]
+modId="sable"
+type="optional"
+versionRange="[0,)"
+ordering="AFTER"
+side="BOTH"

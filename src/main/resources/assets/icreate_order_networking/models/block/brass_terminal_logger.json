@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "create:block/brass_casing",
+    "down": "create:block/brass_casing",
+    "up": "create:block/brass_casing",
+    "north": "minecraft:block/observer_front",
+    "south": "create:block/brass_casing",
+    "west": "create:block/brass_casing",
+    "east": "create:block/brass_casing"
+  }
+}

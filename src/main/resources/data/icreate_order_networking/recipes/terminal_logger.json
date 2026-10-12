@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IRI",
+    "A A",
+    "IRI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_nugget" },
+    "R": { "item": "minecraft:redstone" },
+    "A": { "item": "create:andesite_alloy" }
+  },
+  "result": {
+    "id": "icreate_order_networking:terminal_logger",
+    "count": 1
+  }
+}

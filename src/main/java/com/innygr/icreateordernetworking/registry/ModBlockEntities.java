@@ -1,0 +1,25 @@
+package com.innygr.icreateordernetworking.registry;
+
+import com.innygr.icreateordernetworking.ICreateOrderNetworking;
+import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
+
+public final class ModBlockEntities {
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE,
+                    ICreateOrderNetworking.MOD_ID);
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TerminalLoggerBlockEntity>> TERMINAL_LOGGER =
+            BLOCK_ENTITIES.register("terminal_logger",
+                    () -> BlockEntityType.Builder.of(TerminalLoggerBlockEntity::new,
+                            ModBlocks.TERMINAL_LOGGER.get(), ModBlocks.BRASS_TERMINAL_LOGGER.get()).build(null));
+
+    private ModBlockEntities() {}
+
+    public static void register(IEventBus modBus) {
+        BLOCK_ENTITIES.register(modBus);
+    }
+}
