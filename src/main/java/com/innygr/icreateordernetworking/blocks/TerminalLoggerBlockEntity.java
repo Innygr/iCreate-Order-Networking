@@ -32,8 +32,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public ResourceLocation getFilterItemId() { return filterItemId; }
 
     /** Five faces accept inbound logistics; the configured face is output-only. */
-    public boolean canInputFrom(Direction side) {
-        return side != null && side != outputDirection && acceptsItemFromSide(side);
+    public boolean canInputFrom(Direction side, ResourceLocation itemId) {
+        return side != null && side != outputDirection && acceptsItem(itemId)
+                && acceptsItemFromSide(side);
     }
 
     /** The configured face is the only permitted output face. */
