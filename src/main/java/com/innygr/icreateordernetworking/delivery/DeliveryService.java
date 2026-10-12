@@ -121,7 +121,7 @@ public final class DeliveryService {
         if (prepared == null) return DeliveryResult.ORDER_REJECTED;
 
         long reward = (long) request.count() * order.rewardPerItem();
-        if (reward > 0 && !EconomyService.canCredit(level, request.actorId(), reward)) {
+        if (reward > 0 && !EconomyService.canCreditOnce(level, request.actorId(), reward, request.transactionId())) {
             prepared.rollback();
             return DeliveryResult.ORDER_REJECTED;
         }
