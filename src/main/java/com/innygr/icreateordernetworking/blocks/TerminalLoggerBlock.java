@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemInteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
@@ -69,50 +70,67 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     }
 
     /**
-     * Vanilla 1.21.1 interaction hook. Holding an item on the brass variant
-     * selects the filter; empty-hand use cycles the output face.
+     * 1.21.1 item-use hook. A held item configures the brass filter; other item
+     * interactions pass through to the normal empty-hand block interaction.
      */
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                    InteractionHand hand, BlockHitResult hit) {
-        if (level.isClientSide) return InteractionResult.SUCCESS;
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
+                                               BlockPos pos, Player player, InteractionHand hand,
+                                               BlockHitResult hit) {
+        if (!(level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger)) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
+        if (!level.isClientSide && !logger.isConfigured()) {
+            if (logger.bindOwnerIfUnconfigured(player.getUUID())) {
+                player.displayClientMessage(Component.literal("Terminal Logger claimed; access is "
+                        + (logger.getOwnerPartyTeamId() == null
+                        ? "private to you." : "shared with your current FTB party.")), true);
+                return ItemInteractionResult.SUCCESS;
+            }
+        }
+        if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+        if (!logger.hasAccess(player.getUUID())) {
+            player.displayClientMessage(Component.literal("You do not have access to this Terminal Logger."), true);
+            return ItemInteractionResult.FAIL;
+        }
+        if (brass && !stack.isEmpty()) {
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (logger.setFilterItemId(itemId)) {
+                player.displayClientMessage(Component.literal("Brass Terminal Logger filter: " + itemId), true);
+                return ItemInteractionResult.SUCCESS;
+            }
+            return ItemInteractionResult.FAIL;
+        }
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    }
+
+    /**
+     * 1.21.1 empty-hand interaction hook for cycling the selected output face.
+     */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                                Player player, BlockHitResult hit) {
         if (!(level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger)) {
             return InteractionResult.PASS;
         }
-
+        if (level.isClientSide) return InteractionResult.SUCCESS;
         if (!logger.isConfigured()) {
             if (logger.bindOwnerIfUnconfigured(player.getUUID())) {
-                String scope = logger.getOwnerPartyTeamId() == null
-                        ? "private to you"
-                        : "shared with your current FTB party";
-                player.displayClientMessage(Component.literal("Terminal Logger claimed; access is " + scope + "."), true);
+                player.displayClientMessage(Component.literal("Terminal Logger claimed; access is "
+                        + (logger.getOwnerPartyTeamId() == null
+                        ? "private to you." : "shared with your current FTB party.")), true);
                 return InteractionResult.SUCCESS;
             }
-            // A failed claim can only happen if state changed or the caller is invalid.
-            if (!logger.isConfigured()) return InteractionResult.FAIL;
         }
-
         if (!logger.hasAccess(player.getUUID())) {
             player.displayClientMessage(Component.literal("You do not have access to this Terminal Logger."), true);
             return InteractionResult.FAIL;
         }
-
-        ItemStack held = player.getItemInHand(hand);
-        if (brass && !held.isEmpty()) {
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(held.getItem());
-            if (logger.setFilterItemId(itemId)) {
-                player.displayClientMessage(Component.literal("Brass Terminal Logger filter: " + itemId), true);
-                return InteractionResult.SUCCESS;
-            }
-            return InteractionResult.FAIL;
-        }
-
         if (brass && player.isShiftKeyDown()) {
             logger.setFilterItemId(null);
             player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
             return InteractionResult.SUCCESS;
         }
-
         Direction next = switch (logger.getOutputDirection()) {
             case NORTH -> Direction.EAST;
             case EAST -> Direction.SOUTH;
