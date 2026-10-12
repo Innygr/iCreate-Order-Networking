@@ -42,12 +42,13 @@ No Frogport adapter or mod dependency is enabled yet: the owning mod and a versi
 
 ## Implemented backend pieces (not yet build-verified)
 
-- `DeliveryRoute` defines MANUAL, TRAIN, AIRSHIP, and FROGPORT.
-- `DeliveryService` provides a shared server-side cargo handoff API with order, claimant, item, quantity, payout-cap, and duplicate-receipt checks.
-- `OrderData` persists delivery receipt IDs with the associated order and route.
-- `ManualDeliveryService` validates a player's selected inventory slot server-side and uses the shared delivery service.
+- `delivery/DeliveryRoute` defines MANUAL, TRAIN, AIRSHIP, and FROGPORT.
+- `delivery/DeliveryRequest` carries transport-neutral request metadata. It is not proof that cargo arrived.
+- `delivery/AutomatedDeliveryAdapter` defines the server-side adapter boundary and requires route authorization before cargo removal.
+- `delivery/DeliveryService` is the shared route entry point. Manual delivery currently delegates to `OrderService.fulfil`; automated routes deliberately fail closed with `NOT_IMPLEMENTED` until a safe transaction can consume real cargo, progress the order, pay escrow, and persist an idempotency receipt.
+- `orders/OrderData` persists delivery receipt IDs, order IDs, and route names for idempotency tracking.
 
-The transport-specific adapters for trains, airships, and Frogports still need to be connected to real, verified APIs. The current generic service is not proof that those integrations already work. The receipt ledger is idempotency protection, not a fully transactional journal across Minecraft's separate SavedData files; crash consistency and payout rollback need explicit testing.
+The transport-specific adapters for trains, airships, and Frogports are not implemented yet. The current generic service is not proof that those integrations already work. The receipt ledger is not yet connected to an atomic automated-delivery transaction, and crash consistency/payout rollback need explicit testing.
 
 ## Verification checklist
 
