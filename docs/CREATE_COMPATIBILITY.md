@@ -34,6 +34,12 @@ Manual delivery must always remain available even when optional Create-family lo
 
 This detection layer prevents optional-mod class-loading failures, but it is not yet a custom Aeronautics contraption capability or moving-terminal implementation. No Aeronautics API is called until its public API and lifecycle are verified. A terminal block attached to a moving contraption may need a dedicated interaction/storage design rather than assuming ordinary block-entity ticking and world positions remain stable.
 
+## Delivery abstraction added
+
+The `delivery` package now defines `DeliveryRoute`, `DeliveryRequest`, `DeliveryResult`, `AutomatedDeliveryAdapter`, and `DeliveryService`. Manual delivery delegates to the existing server-side inventory fulfilment. Train, airship, and Frogport requests are deliberately fail-closed and return `NOT_IMPLEMENTED` until their adapters can participate in one atomic cargo-consumption + order-progress + payout + persistent-receipt transaction. This avoids consuming cargo without paying, or paying twice on retries.
+
+No Frogport adapter or mod dependency is enabled yet: the owning mod and a version-matched public API still need confirmation. The adapter interface is only a boundary, not evidence of completed train/airship/Frogport support.
+
 ## Verification checklist
 
 - [ ] Build against NeoForge 21.1.251 / Java 21.
