@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.compat.CreateCompat;
+import com.innygr.icreateordernetworking.compat.CreateFrogportCompat;
 import com.innygr.icreateordernetworking.economy.EconomyService;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
@@ -103,6 +104,10 @@ public final class DeliveryService {
                 || request.route() == DeliveryRoute.FROGPORT)
                 && !CreateCompat.isCreateLoaded()) return DeliveryResult.ROUTE_UNAVAILABLE;
         if (request.route() == DeliveryRoute.AIRSHIP && !CreateCompat.isAeronauticsStackAvailable()) {
+            return DeliveryResult.ROUTE_UNAVAILABLE;
+        }
+        if (request.route() == DeliveryRoute.FROGPORT
+                && !CreateFrogportCompat.isPackageFrogportAvailable()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
         if (!adapter.isAuthorized(level, request)) return DeliveryResult.ROUTE_NOT_AUTHORIZED;
