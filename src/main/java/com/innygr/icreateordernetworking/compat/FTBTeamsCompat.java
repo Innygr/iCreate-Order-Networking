@@ -58,11 +58,12 @@ public final class FTBTeamsCompat {
             if (!isLoaded()) return false;
             try {
                 Class<?> api = apiClass();
-                Method apiMethod = api.getMethod("api");
-                Object instance = apiMethod.invoke(null);
+                Class<?> apiInterface = apiInterfaceClass();
+                Object instance = api.getMethod("api").invoke(null);
                 if (instance == null) return false;
-                instance.getClass().getMethod("isManagerLoaded");
-                return instance.getClass().getMethod("getManager") != null;
+                apiInterface.getMethod("isManagerLoaded");
+                apiInterface.getMethod("getManager");
+                return true;
             } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
                 return false;
             }
@@ -71,15 +72,18 @@ public final class FTBTeamsCompat {
         private static Optional<UUID> partyTeamId(UUID playerId) {
             try {
                 Object api = apiClass().getMethod("api").invoke(null);
-                if (api == null || !Boolean.TRUE.equals(api.getClass()
+                Class<?> apiInterface = apiInterfaceClass();
+                if (api == null || !Boolean.TRUE.equals(apiInterface
                         .getMethod("isManagerLoaded").invoke(api))) {
                     return Optional.empty();
                 }
 
-                Object manager = api.getClass().getMethod("getManager").invoke(api);
+                Object manager = apiInterface.getMethod("getManager").invoke(api);
                 if (manager == null) return Optional.empty();
 
-                Object result = manager.getClass()
+                Class<?> managerInterface = Class.forName(
+                        "dev.ftb.mods.ftbteams.api.TeamManager", false, FTBTeamsCompat.class.getClassLoader());
+                Object result = managerInterface
                         .getMethod("getTeamForPlayerID", UUID.class)
                         .invoke(manager, playerId);
                 if (!(result instanceof Optional<?> optional) || optional.isEmpty()) {
@@ -87,12 +91,14 @@ public final class FTBTeamsCompat {
                 }
 
                 Object team = optional.get();
+                Class<?> teamInterface = Class.forName(
+                        "dev.ftb.mods.ftbteams.api.Team", false, FTBTeamsCompat.class.getClassLoader());
                 if (team == null || !Boolean.TRUE.equals(
-                        team.getClass().getMethod("isPartyTeam").invoke(team))) {
+                        teamInterface.getMethod("isPartyTeam").invoke(team))) {
                     return Optional.empty();
                 }
 
-                Object id = team.getClass().getMethod("getTeamId").invoke(team);
+                Object id = teamInterface.getMethod("getTeamId").invoke(team);
                 return id instanceof UUID teamId ? Optional.of(teamId) : Optional.empty();
             } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
                 // Fail closed: API drift or team-manager startup races grant no access.
@@ -102,6 +108,10 @@ public final class FTBTeamsCompat {
 
         private static Class<?> apiClass() throws ClassNotFoundException {
             return Class.forName(API_CLASS, false, FTBTeamsCompat.class.getClassLoader());
+        }
+
+        private static Class<?> apiInterfaceClass() throws ClassNotFoundException {
+            return Class.forName(API_CLASS + "$API", false, FTBTeamsCompat.class.getClassLoader());
         }
     }
 }
