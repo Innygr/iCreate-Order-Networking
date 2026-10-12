@@ -4,6 +4,7 @@ import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import com.innygr.icreateordernetworking.compat.AeronauticsDockingCompat;
 import com.innygr.icreateordernetworking.compat.CreateBeltCompat;
 import com.innygr.icreateordernetworking.compat.CreateCompat;
+import com.innygr.icreateordernetworking.compat.CreateFrogportCompat;
 import com.innygr.icreateordernetworking.compat.CreateTrainCompat;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class TerminalLoggerConnectionDetector {
     private static final ResourceLocation PACKAGER =
             ResourceLocation.fromNamespaceAndPath("create", "packager");
+    private static final ResourceLocation FROGPORT =
+            ResourceLocation.fromNamespaceAndPath("create", "package_frogport");
 
     private TerminalLoggerConnectionDetector() {}
 
@@ -51,6 +54,7 @@ public final class TerminalLoggerConnectionDetector {
             boolean modAvailable = switch (kind) {
                 case PACKAGER -> CreateCompat.isCreateLoaded()
                         && BuiltInRegistries.BLOCK.containsKey(PACKAGER);
+                case FROGPORT -> CreateFrogportCompat.isPackageFrogportAvailable();
                 case BELT_CONNECTOR -> CreateBeltCompat.isBeltInfrastructureAvailable();
                 case PORTABLE_STORAGE_INTERFACE -> CreateTrainCompat.isPortableStorageInterfaceAvailable();
                 case DOCKING_CONNECTOR -> AeronauticsDockingCompat.isDockingConnectorAvailable();
@@ -71,6 +75,7 @@ public final class TerminalLoggerConnectionDetector {
 
     private static TerminalLoggerConnection.Kind classify(ResourceLocation id) {
         if (id.equals(PACKAGER)) return TerminalLoggerConnection.Kind.PACKAGER;
+        if (id.equals(FROGPORT)) return TerminalLoggerConnection.Kind.FROGPORT;
         if (id.equals(CreateBeltCompat.beltConnectorId())) {
             return TerminalLoggerConnection.Kind.BELT_CONNECTOR;
         }
