@@ -31,6 +31,38 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public String getLastStatus() { return lastStatus; }
     public ResourceLocation getFilterItemId() { return filterItemId; }
 
+    /** Five faces accept inbound logistics; the configured face is output-only. */
+    public boolean canInputFrom(Direction side) {
+        return side != null && side != outputDirection && acceptsItemFromSide(side);
+    }
+
+    /** The configured face is the only permitted output face. */
+    public boolean canOutputTo(Direction side) {
+        return side != null && side == outputDirection;
+    }
+
+    private boolean acceptsItemFromSide(Direction side) {
+        // Current routing is face-based. Future route adapters can apply stricter
+        // per-route rules without changing the persistent output configuration.
+        return side != outputDirection;
+    }
+
+    /**
+     * Called by a trusted server-side transfer adapter after it has observed an
+     * actual item movement. This method only records diagnostics; it never pays
+     * an order or changes order progress itself.
+     */
+    public void recordTransfer(boolean accepted, ResourceLocation itemId, int count, String reason) {
+        if (level == null || level.isClientSide || count < 1 || !acceptsItem(itemId)) {
+            if (level != null && !level.isClientSide) recordRejected("Rejected transfer: invalid item/filter/count");
+            return;
+        }
+        String detail = (reason == null || reason.isBlank() ? "Transfer" : reason)
+                + " " + count + "x " + itemId;
+        if (accepted) recordAccepted(detail);
+        else recordRejected(detail);
+    }
+
     /** Brass variant only. Null clears the filter. */
     public boolean setFilterItemId(ResourceLocation itemId) {
         if (level != null && level.getBlockState(worldPosition).getBlock()
