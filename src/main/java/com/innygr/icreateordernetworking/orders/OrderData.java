@@ -21,7 +21,9 @@ public final class OrderData extends SavedData {
     public OrderData() {}
 
     public static OrderData get(ServerLevel level) {
-        // Orders are a server-wide marketplace, so all dimensions share the overworld ledger.\n        ServerLevel overworld = level.getServer().overworld();\n        return overworld.getDataStorage().computeIfAbsent(
+        // Orders are a server-wide marketplace, so all dimensions share the overworld data.
+        ServerLevel overworld = level.getServer().overworld();
+        return overworld.getDataStorage().computeIfAbsent(
                 new SavedData.Factory<>(OrderData::new, OrderData::load), DATA_NAME);
     }
 
