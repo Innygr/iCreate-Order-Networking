@@ -60,11 +60,15 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger) {
-            Direction next = logger.getOutputDirection().getClockWise();
-            // Six-way output selector: each use rotates through all six faces.
-            if (logger.getOutputDirection() == Direction.WEST) next = Direction.DOWN;
-            else if (logger.getOutputDirection() == Direction.DOWN) next = Direction.UP;
-            else if (logger.getOutputDirection() == Direction.UP) next = Direction.NORTH;
+            // Explicit six-face cycle: Direction#getClockWise throws for UP/DOWN.
+            Direction next = switch (logger.getOutputDirection()) {
+                case NORTH -> Direction.EAST;
+                case EAST -> Direction.SOUTH;
+                case SOUTH -> Direction.WEST;
+                case WEST -> Direction.DOWN;
+                case DOWN -> Direction.UP;
+                case UP -> Direction.NORTH;
+            };
             logger.setOutputDirection(next);
             player.displayClientMessage(Component.literal("Terminal Logger output: " + next.getName()), true);
         }
