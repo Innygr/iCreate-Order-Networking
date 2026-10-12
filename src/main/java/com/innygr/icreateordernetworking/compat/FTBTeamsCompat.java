@@ -1,6 +1,5 @@
 package com.innygr.icreateordernetworking.compat;
 
-import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.UUID;
 import net.neoforged.fml.ModList;
