@@ -1,8 +1,8 @@
 {
   "variants": {
-    "facing=north": { "model": "icreate_order_networking:block/terminal_logger" },
-    "facing=east": { "model": "icreate_order_networking:block/terminal_logger" },
-    "facing=south": { "model": "icreate_order_networking:block/terminal_logger" },
-    "facing=west": { "model": "icreate_order_networking:block/terminal_logger" }
+    "facing=north": { "model": "icreate_order_networking:block/terminal_logger", "y": 0 },
+    "facing=east": { "model": "icreate_order_networking:block/terminal_logger", "y": 90 },
+    "facing=south": { "model": "icreate_order_networking:block/terminal_logger", "y": 180 },
+    "facing=west": { "model": "icreate_order_networking:block/terminal_logger", "y": 270 }
   }
 }
