@@ -41,8 +41,14 @@ public final class DeliveryService {
         if (item == null || !cargo.is(item)) return DeliveryResult.WRONG_ITEM;
 
         long reward = (long) count * order.rewardPerItem();
+        // Use the same durable transaction ID for the payout and delivery receipt.
+        // This protects the currency ledger against duplicate credits if a delivery
+        // is retried after an interrupted save or an adapter retry.
+        if (reward > 0 && !EconomyService.canCreditOnce(level, claimantId, reward, deliveryId)) {
+            return DeliveryResult.PAYOUT_LIMIT;
+        }
         if (!data.recordDelivery(deliveryId, orderId, route)) return DeliveryResult.DUPLICATE;
-        if (reward > 0 && !EconomyService.credit(level, claimantId, reward)) {
+        if (reward > 0 && !EconomyService.creditOnce(level, claimantId, reward, deliveryId)) {
             data.forgetDelivery(deliveryId);
             return DeliveryResult.PAYOUT_LIMIT;
         }
@@ -81,10 +87,16 @@ public final class DeliveryService {
         if (available < count) return DeliveryResult.INSUFFICIENT_CARGO;
 
         long reward = (long) count * order.rewardPerItem();
+        // Manual inventory handoffs use the same idempotent payout ledger as
+        // automated routes; the delivery UUID is the durable transaction key.
+        if (reward > 0 && !EconomyService.canCreditOnce(
+                level, player.getUUID(), reward, deliveryId)) {
+            return DeliveryResult.PAYOUT_LIMIT;
+        }
         if (!data.recordDelivery(deliveryId, orderId, DeliveryRoute.MANUAL)) {
             return DeliveryResult.DUPLICATE;
         }
-        if (reward > 0 && !EconomyService.credit(level, player.getUUID(), reward)) {
+        if (reward > 0 && !EconomyService.creditOnce(level, player.getUUID(), reward, deliveryId)) {
             data.forgetDelivery(deliveryId);
             return DeliveryResult.PAYOUT_LIMIT;
         }
