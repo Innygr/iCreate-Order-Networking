@@ -17,6 +17,10 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.network.chat.Component;
 
 /**
  * Six-port logistics terminal. Its block entity stores a configurable output
@@ -50,6 +54,21 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new TerminalLoggerBlockEntity(pos, state);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger) {
+            Direction next = logger.getOutputDirection().getClockWise();
+            // Six-way output selector: each use rotates through all six faces.
+            if (logger.getOutputDirection() == Direction.WEST) next = Direction.DOWN;
+            else if (logger.getOutputDirection() == Direction.DOWN) next = Direction.UP;
+            else if (logger.getOutputDirection() == Direction.UP) next = Direction.NORTH;
+            logger.setOutputDirection(next);
+            player.displayClientMessage(Component.literal("Terminal Logger output: " + next.getName()), true);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override
