@@ -19,6 +19,7 @@ public final class EconomyData extends SavedData {
     private static final long MAX_BALANCE = 9_000_000_000_000L;
 
     private final Map<UUID, Long> balances = new HashMap<>();
+    private final Map<UUID, CreditReceipt> creditReceipts = new HashMap<>();
 
     public EconomyData() {}
 
@@ -43,6 +44,20 @@ public final class EconomyData extends SavedData {
                 // Ignore malformed entries so they cannot prevent world loading.
             }
         }
+        ListTag receipts = tag.getList("CreditReceipts", Tag.TAG_COMPOUND);
+        for (int i = 0; i < receipts.size(); i++) {
+            CompoundTag receipt = receipts.getCompound(i);
+            try {
+                UUID transactionId = UUID.fromString(receipt.getString("Transaction"));
+                UUID playerId = UUID.fromString(receipt.getString("Player"));
+                long amount = receipt.getLong("Amount");
+                if (amount > 0 && amount <= MAX_BALANCE) {
+                    data.creditReceipts.put(transactionId, new CreditReceipt(playerId, amount));
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed transaction receipts.
+            }
+        }
         return data;
     }
 
@@ -56,6 +71,16 @@ public final class EconomyData extends SavedData {
             list.add(saved);
         }
         tag.put("Balances", list);
+
+        ListTag receipts = new ListTag();
+        for (Map.Entry<UUID, CreditReceipt> entry : creditReceipts.entrySet()) {
+            CompoundTag saved = new CompoundTag();
+            saved.putString("Transaction", entry.getKey().toString());
+            saved.putString("Player", entry.getValue().playerId().toString());
+            saved.putLong("Amount", entry.getValue().amount());
+            receipts.add(saved);
+        }
+        tag.put("CreditReceipts", receipts);
         return tag;
     }
 
@@ -78,6 +103,25 @@ public final class EconomyData extends SavedData {
         setDirty();
         return true;
     }
+
+    /**
+     * Idempotent credit keyed by a durable transaction ID. Replaying the same
+     * transaction succeeds without paying twice; reusing its ID for different
+     * parameters is rejected.
+     */
+    boolean creditOnce(UUID transactionId, UUID playerId, long amount) {
+        if (transactionId == null || playerId == null || amount <= 0 || amount > MAX_BALANCE) return false;
+        CreditReceipt existing = creditReceipts.get(transactionId);
+        if (existing != null) {
+            return existing.playerId().equals(playerId) && existing.amount() == amount;
+        }
+        if (!change(playerId, amount)) return false;
+        creditReceipts.put(transactionId, new CreditReceipt(playerId, amount));
+        setDirty();
+        return true;
+    }
+
+    private record CreditReceipt(UUID playerId, long amount) {}
 
     static long maxBalance() {
         return MAX_BALANCE;
