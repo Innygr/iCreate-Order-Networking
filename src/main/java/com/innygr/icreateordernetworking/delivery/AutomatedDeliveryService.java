@@ -25,7 +25,13 @@ public final class AutomatedDeliveryService {
                     "No verified adapter is registered for route " + request.route() + ".");
         }
 
-        if (!adapter.isAuthorized(level, request)) {
+        boolean authorized;
+        try {
+            authorized = adapter.isAuthorized(level, request);
+        } catch (RuntimeException | LinkageError exception) {
+            authorized = false;
+        }
+        if (!authorized) {
             return DeliveryPreparation.failure(
                     DeliveryPreparation.Status.NOT_AUTHORIZED,
                     "The transport source is not authorized for this request.");
@@ -34,7 +40,7 @@ public final class AutomatedDeliveryService {
         PreparedDelivery prepared;
         try {
             prepared = adapter.prepareCargo(level, request);
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException | LinkageError exception) {
             return DeliveryPreparation.failure(
                     DeliveryPreparation.Status.CARGO_UNAVAILABLE,
                     "The adapter could not reserve cargo safely.");

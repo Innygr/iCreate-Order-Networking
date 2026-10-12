@@ -21,7 +21,7 @@ public final class AutomatedDeliveryRegistry {
 
     /** Returns false if the adapter is null, unavailable, or its route is already registered. */
     public static synchronized boolean register(AutomatedDeliveryAdapter adapter) {
-        if (adapter == null || adapter.route() == null || !adapter.isAvailable()
+        if (adapter == null || adapter.route() == null || !isAvailable(adapter)
                 || ADAPTERS.containsKey(adapter.route())) {
             return false;
         }
@@ -39,7 +39,7 @@ public final class AutomatedDeliveryRegistry {
     public static synchronized Optional<AutomatedDeliveryAdapter> find(DeliveryRoute route) {
         if (route == null) return Optional.empty();
         AutomatedDeliveryAdapter adapter = ADAPTERS.get(route);
-        if (adapter == null || !adapter.isAvailable()) return Optional.empty();
+        if (adapter == null || !isAvailable(adapter)) return Optional.empty();
         return Optional.of(adapter);
     }
 
@@ -47,9 +47,18 @@ public final class AutomatedDeliveryRegistry {
         EnumMap<DeliveryRoute, AutomatedDeliveryAdapter> snapshot =
                 new EnumMap<>(DeliveryRoute.class);
         ADAPTERS.forEach((route, adapter) -> {
-            if (adapter.isAvailable()) snapshot.put(route, adapter);
+            if (isAvailable(adapter)) snapshot.put(route, adapter);
         });
         return Collections.unmodifiableSet(snapshot.keySet());
+    }
+
+    private static boolean isAvailable(AutomatedDeliveryAdapter adapter) {
+        try {
+            return adapter.isAvailable();
+        } catch (RuntimeException | LinkageError ignored) {
+            // A missing/incompatible optional API disables this route safely.
+            return false;
+        }
     }
 
     /** Clears optional integrations on lifecycle shutdown/reload. */
