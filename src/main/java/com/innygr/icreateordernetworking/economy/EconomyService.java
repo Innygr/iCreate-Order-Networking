@@ -13,6 +13,13 @@ public final class EconomyService {
         return EconomyData.get(level).balance(player.getUUID());
     }
 
+    /** Returns whether a credit can succeed without changing the ledger. */
+    public static boolean canCredit(ServerLevel level, UUID playerId, long amount) {
+        if (level == null || playerId == null || amount <= 0 || amount > EconomyData.maxBalance()) return false;
+        long current = EconomyData.get(level).balance(playerId);
+        return current <= EconomyData.maxBalance() - amount;
+    }
+
     /** Credit funds only from a trusted server-side rule or administrator action. */
     public static boolean credit(ServerLevel level, UUID playerId, long amount) {
         if (level == null || playerId == null || amount <= 0) return false;
