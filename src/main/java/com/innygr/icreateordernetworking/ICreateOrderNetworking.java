@@ -1,5 +1,6 @@
 package com.innygr.icreateordernetworking;
 
+import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.registry.ModBlocks;
 import net.neoforged.bus.api.IEventBus;
@@ -13,5 +14,6 @@ public final class ICreateOrderNetworking {
     public ICreateOrderNetworking(IEventBus modBus) {
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
+        modBus.addListener(ModNetwork::registerPayloads);
     }
 }
