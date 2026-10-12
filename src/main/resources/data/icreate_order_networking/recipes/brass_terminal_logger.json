@@ -1,17 +1,10 @@
 {
   "type": "minecraft:crafting_shaped",
-  "pattern": [
-    "IFI",
-    "B B",
-    "IFI"
-  ],
+  "pattern": [" B ", "ALA", " B "],
   "key": {
-    "I": { "item": "minecraft:iron_nugget" },
-    "F": { "item": "create:filter" },
-    "B": { "item": "create:brass_casing" }
+    "B": { "item": "create:brass_ingot" },
+    "A": { "item": "minecraft:andesite" },
+    "L": { "item": "icreate_order_networking:terminal_logger" }
   },
-  "result": {
-    "id": "icreate_order_networking:brass_terminal_logger",
-    "count": 1
-  }
+  "result": { "id": "icreate_order_networking:brass_terminal_logger", "count": 1 }
 }
