@@ -68,6 +68,11 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger) {
+            if (brass && player.isShiftKeyDown()) {
+                logger.setFilterItemId(null);
+                player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
+                return InteractionResult.SUCCESS;
+            }
             // Explicit six-face cycle: Direction#getClockWise throws for UP/DOWN.
             Direction next = switch (logger.getOutputDirection()) {
                 case NORTH -> Direction.EAST;
