@@ -2,14 +2,25 @@
 
 This document records the initial design for the factory logistics layer in iCreate: Order Networking. It is a design target, not a claim that every feature below is already implemented.
 
+## Terminal first-use binding
+
+- The first player to right-click an unconfigured terminal claims/configures it. Store that player's UUID and their FTB Team identity (if they currently belong to a team) in the terminal block entity's persistent data.
+- The terminal must not silently rebind when another player right-clicks it. Configuration and use actions must be authorized server-side.
+- Access checks should account for the bound owner and team. Team membership grants access only according to the terminal/network permission policy; being near the terminal must not expose private stock or orders.
+- Persist binding across chunk unloads and server restarts. Do not store ownership only in a static/in-memory map.
+- If the owner changes or leaves a team, re-evaluate team access against current membership rather than trusting a stale team roster. Define a deliberate recovery/admin path for owner departure; do not automatically make a private terminal public.
+- Destroying/removing the terminal clears the binding with the block entity. A replacement block starts unconfigured and must be claimed again. Ensure block removal also cleans up any terminal-owned jobs/tickets according to the job recovery policy.
+- Handle first-use races on the logical server so two players cannot claim the same terminal simultaneously.
+
 ## Core request flow
 
 1. A player submits an item request at a terminal.
-2. The terminal queries registered factory endpoints before requesting outside supply.
-3. Available stock is reserved before a shipment is dispatched.
-4. If local/connected factories cannot cover the full amount, the network seeks only the remaining shortfall.
-5. A request is complete only after the destination confirms receipt.
-6. The Terminal Logger records the job state and manages bounded chunk-loading tickets for active logistics work.
+2. The terminal verifies the player's access to the terminal and its network.
+3. The terminal queries registered factory endpoints before requesting outside supply.
+4. Available stock is reserved before a shipment is dispatched.
+5. If local/connected factories cannot cover the full amount, the network seeks only the remaining shortfall.
+6. A request is complete only after the destination confirms receipt.
+7. The Terminal Logger records the job state and manages bounded chunk-loading tickets for active logistics work.
 
 The registry must be explicit. Do not repeatedly scan every loaded or generated chunk to discover factories. Factory endpoints register/unregister as they load, unload, are placed, or are removed; live inventory is revalidated before reserving or extracting items.
 
@@ -72,12 +83,13 @@ The satellite should be moderately expensive but available early enough to be us
 ## Implementation milestones
 
 1. Define network identity, factory endpoint registration, and safe stock lookup/reservation APIs.
-2. Add terminal request sourcing that checks connected factory stock first and requests only the shortfall.
-3. Connect the Terminal Logger to durable job tracking and bounded chunk loading.
-4. Implement and test local delivery and receipt verification.
-5. Add satellite multiblock, coverage/config validation, and sequenced-assembly recipe.
-6. Add Portable Storage Interface train and Docking Connector airship adapters.
-7. Add FTB Teams permissions and explicitly shared/public networks.
-8. Consider cross-dimensional routing only after same-dimension delivery is reliable.
+2. Add terminal first-use binding and server-side owner/team access checks.
+3. Add terminal request sourcing that checks connected factory stock first and requests only the shortfall.
+4. Connect the Terminal Logger to durable job tracking and bounded chunk loading.
+5. Implement and test local delivery and receipt verification.
+6. Add satellite multiblock, coverage/config validation, and sequenced-assembly recipe.
+7. Add Portable Storage Interface train and Docking Connector airship adapters.
+8. Add FTB Teams permissions and explicitly shared/public networks.
+9. Consider cross-dimensional routing only after same-dimension delivery is reliable.
 
 Each milestone should be compiled and tested before the next one is layered on.
