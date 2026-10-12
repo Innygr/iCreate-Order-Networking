@@ -58,3 +58,12 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 - [ ] Launch without Aeronautics to verify optional classes are never loaded.
 - [ ] Create/claim/fulfil/cancel an order from normal terrain.
 - [ ] Repeat order interactions while riding/moving in an Aeronautics contraption once terminal interaction support is implemented.
+
+## Delivery backend implementation status
+
+- Manual handoff uses the shared order service and accepts a transaction UUID for retry deduplication.
+- The automated adapter contract is reservation-based: adapters must prepare real cargo, commit it idempotently by transaction ID, and support rollback.
+- Automated delivery validates the claimed order, expected item registry ID, route availability, actor/claimant, quantity, and payout capacity on the server.
+- Economy payouts have persistent transaction receipts, so a replay of the same transaction cannot grant the same reward twice.
+- Train, Aeronautics airship, and Create package-Frogport adapters are not implemented yet. Until a verified adapter is registered, automated routes fail closed and leave cargo untouched.
+- The cross-mod adapter must be tested against the exact Create/Aeronautics APIs before being marked available. The current branch has not yet had a verified successful build or in-game test.
