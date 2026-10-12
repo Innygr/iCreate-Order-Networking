@@ -4,11 +4,8 @@ import net.minecraft.server.level.ServerLevel;
 
 /**
  * Server-side bridge for train, airship, and Frogport cargo systems.
- *
- * Implementations are registered only when the owning mod and its verified API
- * are present. The adapter must validate the actual source cargo and authorize
- * the route before it may remove any items. Client-provided source references
- * are never sufficient proof of delivery.
+ * Implementations are only registered when the owning mod and API are verified.
+ * Client-supplied source references are never proof that cargo arrived.
  */
 public interface AutomatedDeliveryAdapter {
     DeliveryRoute route();
@@ -20,8 +17,8 @@ public interface AutomatedDeliveryAdapter {
     boolean isAuthorized(ServerLevel level, DeliveryRequest request);
 
     /**
-     * Transfers/removes the requested cargo from its real source.
-     * Must be server-thread-only and must not grant rewards or mutate order state.
+     * Reserves the requested cargo without permanently consuming it.
+     * Return null if cargo is absent, stale, or cannot be reserved.
      */
-    boolean consumeCargo(ServerLevel level, DeliveryRequest request);
+    PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request);
 }
