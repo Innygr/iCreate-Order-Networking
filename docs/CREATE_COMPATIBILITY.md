@@ -121,8 +121,8 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 
 ### Terminal Logger
 - **Purpose:** server-side delivery checkpoint and six-way item router/observer. It records actual item transfer into its inventory/connected logistics endpoint and associates that transfer with an order; it must never accept a client-only “arrived” message as proof.
-- **Shape:** a six-direction funnel-style block with a configurable output direction. The output direction must be saved in block state and persist across reloads.
-- **Output configuration:** use a wrench interaction or a small block UI to rotate/select the output. The brass tier additionally supports Create-style item filters (allow/deny item predicates); the andesite tier uses simple unfiltered routing.
+- **Shape:** a six-direction funnel-style block with a configurable output direction. The selected output direction must be persisted by the block entity and restored after chunk/world reloads.
+- **Output configuration:** use the current server-authoritative interaction to cycle through all six faces; a future wrench/UI can provide direct selection. The brass tier additionally supports Create-style item filters (allow/deny item predicates); the andesite tier uses simple unfiltered routing.
 - **Transfer safety:** only route items accepted by the active order/filter. Keep unaccepted items in the input buffer or return them to the source; never void them. Each transfer gets a stable shipment/transaction UUID, and a repeated callback for the same shipment cannot advance progress or pay twice.
 - **No light emission:** Terminal Logger has no glow/light emission. It should use ordinary block lighting.
 - **Early-game crafting:** andesite tier should be craftable from early-game materials, using andesite alloy/andesite casing and basic Create components rather than brass-only ingredients. Brass tier may require brass but should remain a modest, reachable upgrade. Keep recipes cheap; avoid recipes requiring late-game or addon-only parts.
@@ -150,3 +150,11 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 - **Belt:** belt compatibility is a separate Create route capability. A belt/logger interaction must verify actual server-side item transfer and must not treat a belt's presence as a shipment.
 - **Frogport:** use Create's built-in package Frogport workflow. Verify actual package contents and routing metadata before fulfilling the order.
 - All four user-facing delivery paths remain required: manual, train, airship, Frogport. Belt/logger infrastructure supports these routes and is not a replacement for any of them.
+
+## Compatibility and recipe updates
+
+- Frogport is Create's built-in package Frogport; it does not require Aeronautics. `CreateFrogportCompat` checks Create and the registered `create:package_frogport` item.
+- `CreateBeltCompat` separately detects Create belt infrastructure and both funnel tiers. This is capability detection only; the actual transfer still must be observed server-side.
+- The andesite Terminal Logger recipe uses an andesite casing and andesite funnels rather than a shaft as its central component.
+- The brass Terminal Logger is an upgrade recipe using the andesite logger, brass sheet, Create filter, and brass funnel instead of requiring four filters and four iron ingots.
+- The logger persists its selected output face and transfer counters in block-entity NBT. It currently exposes the face/filter/diagnostic backend, but does not yet provide a live item-handler or real Create transfer hook; do not describe belt/train/airship/Frogport delivery as end-to-end working until those adapters are implemented and tested.
