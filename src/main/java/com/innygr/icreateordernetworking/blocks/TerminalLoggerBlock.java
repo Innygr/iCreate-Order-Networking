@@ -31,8 +31,12 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     private static final VoxelShape SHAPE = Shapes.box(0.125, 0.0, 0.125, 0.875, 0.75, 0.875);
 
-    public TerminalLoggerBlock(BlockBehaviour.Properties properties) {
+    private final boolean brass;
+
+    public TerminalLoggerBlock(BlockBehaviour.Properties properties, boolean brass) {
         super(properties);
+        this.brass = brass;
+
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
     }
 
@@ -70,10 +74,13 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
                 case UP -> Direction.NORTH;
             };
             logger.setOutputDirection(next);
-            player.displayClientMessage(Component.literal("Terminal Logger output: " + next.getName()), true);
+            player.displayClientMessage(Component.literal((brass ? "Brass" : "Andesite")
+                    + " Terminal Logger output: " + next.getName()), true);
         }
         return InteractionResult.SUCCESS;
     }
+
+    public boolean supportsFiltering() { return brass; }
 
     @Override
     protected RenderShape getRenderShape(BlockState state) {
