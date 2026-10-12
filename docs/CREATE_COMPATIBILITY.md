@@ -92,3 +92,12 @@ Compatibility checks are separated by hardware:
 - `CreateFrogportCompat`: Create package Frogport detection.
 
 These are registry-presence checks only, not proof that an adapter is operational. Automated delivery remains unavailable until a real adapter is registered and validated.
+
+
+## Terminal Logger block variants
+
+- **Andesite Terminal Logger** is the low-cost early-game six-port routing block. Its output face cycles through all six directions; the other faces are available for route inputs.
+- **Brass Terminal Logger** uses brass casing and adds a persistent item filter. Right-click with an item to sample it as the filter; sneak-right-click with an empty hand to clear it.
+- Both variants share the same block entity, saved output direction, and accepted/rejected delivery diagnostics. The filter predicate is exposed to transport adapters; it is not a replacement for server-side cargo verification.
+- Create belt compatibility detection is isolated in `CreateBeltCompat`. Registry detection only reports that belt/funnel infrastructure exists; actual belt handoff must be wired through a server-side adapter and verified against the target Create API.
+- The recipes are intended to be early-game: the andesite variant uses andesite casing instead of a shaft; the brass variant uses brass casing. The optional portable device is not required for crafting either logger.
