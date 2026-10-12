@@ -66,18 +66,43 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 if (offered.isEmpty() || !acceptsItem(
                         net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offered.getItem()))) continue;
 
-                ItemStack remainder = offered.copy();
+                // First simulate insertion to learn how much buffer space exists.
+                ItemStack simulatedRemainder = offered.copy();
+                for (int targetSlot = 0; targetSlot < inventory.getSlots() && !simulatedRemainder.isEmpty(); targetSlot++) {
+                    simulatedRemainder = inventory.insertItem(targetSlot, simulatedRemainder, true);
+                }
+                int wanted = offered.getCount() - simulatedRemainder.getCount();
+                if (wanted <= 0) continue;
+
+                // Extract first, then insert only what the source actually gave us.
+                // This ordering prevents duplication if an endpoint changes state
+                // between simulation and extraction (e.g. a docking interface closes).
+                ItemStack extracted = source.extractItem(sourceSlot, wanted, false);
+                if (extracted.isEmpty()) continue;
+                ItemStack remainder = extracted;
                 for (int targetSlot = 0; targetSlot < inventory.getSlots() && !remainder.isEmpty(); targetSlot++) {
                     remainder = inventory.insertItem(targetSlot, remainder, false);
                 }
-                int accepted = offered.getCount() - remainder.getCount();
+
+                // The simulation and real insertion should agree on the server
+                // thread; if an unusual handler rejects part of it, return the
+                // remainder to the source instead of voiding it.
+                if (!remainder.isEmpty()) {
+                    ItemStack toReturn = remainder;
+                    for (int sourceTarget = 0; sourceTarget < source.getSlots() && !toReturn.isEmpty(); sourceTarget++) {
+                        toReturn = source.insertItem(sourceTarget, toReturn, false);
+                    }
+                    if (!toReturn.isEmpty() && level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        net.minecraft.world.Containers.dropItemStack(serverLevel,
+                                worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, toReturn);
+                    }
+                }
+                int accepted = extracted.getCount() - remainder.getCount();
                 if (accepted > 0) {
-                    // Re-extract exactly the amount successfully inserted. This
-                    // prevents voiding items when our buffer is nearly full.
-                    source.extractItem(sourceSlot, accepted, false);
-                    recordAccepted("Pulled " + accepted + "x " + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(offered.getItem())
+                    recordAccepted("Pulled " + accepted + "x "
+                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(extracted.getItem())
                             + " from " + side.getName());
-                    return; // One source slot per cycle avoids starving other sources.
+                    return;
                 }
             }
         }
