@@ -1,0 +1,83 @@
+# Gradle
+
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Java
+
+*.class
+hs_err_pid*
+replay_pid*
+
+# IDEs
+
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+.factorypath
+
+# Operating systems
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local configuration and secrets
+
+.env
+.env.*
+!.env.example
+secrets/
+private/
+**/secrets/
+**/private/
+
+# Credentials and private server settings
+
+**/config-local.toml
+**/config-private.toml
+**/server-secrets.properties
+
+# Logs
+
+*.log
+logs/
+crash-reports/
+
+# Temporary files
+
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# Local test worlds and server data
+
+run/
+runs/
+world/
+worlds/
+saves/
+server.properties
+eula.txt
+whitelist.json
+ops.json
+usercache.json
+banned-players.json
+banned-ips.json
+
+# Local exports and generated archives
+
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Local environment overrides
+
+local.properties
