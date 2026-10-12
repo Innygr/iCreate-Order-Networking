@@ -2,13 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "IFI",
-    "B B",
+    "FBF",
     "IFI"
   ],
   "key": {
-    "I": { "item": "minecraft:iron_nugget" },
+    "I": { "item": "minecraft:iron_ingot" },
     "F": { "item": "create:filter" },
-    "B": { "item": "create:brass_casing" }
+    "B": { "item": "create:brass_funnel" }
   },
   "result": {
     "id": "icreate_order_networking:brass_terminal_logger",
