@@ -3,9 +3,7 @@ package com.innygr.icreateordernetworking.orders;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -24,7 +22,6 @@ public final class OrderData extends SavedData {
     public OrderData() {}
 
     public static OrderData get(ServerLevel level) {
-        // Orders are a server-wide marketplace, so all dimensions share the overworld data.
         ServerLevel overworld = level.getServer().overworld();
         return overworld.getDataStorage().computeIfAbsent(
                 new SavedData.Factory<>(OrderData::new, OrderData::load), DATA_NAME);
@@ -39,7 +36,9 @@ public final class OrderData extends SavedData {
                 UUID id = UUID.fromString(n.getString("Id"));
                 UUID owner = UUID.fromString(n.getString("Owner"));
                 ResourceLocation item = ResourceLocation.parse(n.getString("Item"));
-                int requested = n.getInt("Requested"), fulfilled = n.getInt("Fulfilled"), reward = n.getInt("Reward");
+                int requested = n.getInt("Requested");
+                int fulfilled = n.getInt("Fulfilled");
+                int reward = n.getInt("Reward");
                 UUID claimant = n.contains("ClaimedBy") ? UUID.fromString(n.getString("ClaimedBy")) : null;
                 OrderStatus status = OrderStatus.valueOf(n.getString("Status"));
                 if (requested > 0 && fulfilled >= 0 && fulfilled <= requested && reward >= 0) {
@@ -53,10 +52,15 @@ public final class OrderData extends SavedData {
 
         ListTag receipts = tag.getList("ProcessedDeliveries", Tag.TAG_COMPOUND);
         for (int i = 0; i < receipts.size(); i++) {
+            CompoundTag receipt = receipts.getCompound(i);
             try {
-                CompoundTag receipt = receipts.getCompound(i);\n                UUID id = UUID.fromString(receipt.getString("Id"));\n                UUID orderId = receipt.contains("Order") ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);\n                DeliveryRoute route = receipt.contains("Route") ? DeliveryRoute.valueOf(receipt.getString("Route")) : DeliveryRoute.MANUAL;\n                data.processedDeliveries.put(id, new DeliveryReceipt(orderId, route));
+                UUID id = UUID.fromString(receipt.getString("Id"));
+                UUID orderId = receipt.contains("Order")
+                        ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);
+                String route = receipt.contains("Route") ? receipt.getString("Route") : "MANUAL";
+                data.processedDeliveries.put(id, new DeliveryReceipt(orderId, route));
             } catch (IllegalArgumentException ignored) {
-                // Ignore malformed receipt IDs.
+                // Ignore malformed receipt records.
             }
         }
         return data;
@@ -82,9 +86,11 @@ public final class OrderData extends SavedData {
         tag.put("Orders", list);
 
         ListTag receipts = new ListTag();
-        for (UUID id : processedDeliveryIds) {
+        for (Map.Entry<UUID, DeliveryReceipt> entry : processedDeliveries.entrySet()) {
             CompoundTag receipt = new CompoundTag();
-            receipt.putString("Id", id.toString());
+            receipt.putString("Id", entry.getKey().toString());
+            receipt.putString("Order", entry.getValue().orderId().toString());
+            receipt.putString("Route", entry.getValue().route());
             receipts.add(receipt);
         }
         tag.put("ProcessedDeliveries", receipts);
@@ -93,16 +99,18 @@ public final class OrderData extends SavedData {
 
     public Collection<Order> all() { return new ArrayList<>(orders.values()); }
     public Order find(UUID id) { return orders.get(id); }
-    public boolean hasProcessedDelivery(UUID deliveryId) { return processedDeliveryIds.contains(deliveryId); }
+    public boolean hasProcessedDelivery(UUID deliveryId) { return processedDeliveries.containsKey(deliveryId); }
 
-    void recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
-        if (deliveryId == null || processedDeliveryIds.contains(deliveryId)) {
+    void recordDelivery(UUID deliveryId, UUID orderId, String route) {
+        if (deliveryId == null || orderId == null || route == null || processedDeliveries.containsKey(deliveryId)) {
             throw new IllegalStateException("Delivery receipt already exists or is invalid");
         }
-        processedDeliveryIds.add(deliveryId);
+        processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
         setDirty();
     }
 
     void add(Order order) { orders.put(order.id(), order); setDirty(); }
     void changed() { setDirty(); }
+
+    public record DeliveryReceipt(UUID orderId, String route) {}
 }
