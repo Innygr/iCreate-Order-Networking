@@ -25,6 +25,8 @@ public interface EconomyProvider {
 
     boolean credit(ServerLevel level, UUID playerId, long amount);
 
+    boolean canCreditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId);
+
     boolean creditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId);
 
     boolean debit(ServerLevel level, UUID playerId, long amount);
