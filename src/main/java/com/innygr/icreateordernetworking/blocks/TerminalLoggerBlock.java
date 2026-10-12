@@ -32,8 +32,6 @@ import com.mojang.serialization.MapCodec;
  * face and delivery diagnostics; actual Create transport adapters are separate.
  */
 public final class TerminalLoggerBlock extends BaseEntityBlock {
-    public static final MapCodec<TerminalLoggerBlock> CODEC = MapCodec.unit(
-            new TerminalLoggerBlock(BlockBehaviour.Properties.of().strength(3.0F), false));
     public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
     private static final VoxelShape SHAPE = Shapes.box(0.125, 0.0, 0.125, 0.875, 0.75, 0.875);
 
@@ -47,7 +45,7 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
 
     @Override
     public MapCodec<TerminalLoggerBlock> codec() {
-        return CODEC;
+        return MapCodec.unit(this);
     }
 
     @Override
@@ -75,7 +73,7 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
      * selects the filter; empty-hand use cycles the output face.
      */
     @Override
-    protected InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
                                     InteractionHand hand, BlockHitResult hit) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (!(level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger)) {
