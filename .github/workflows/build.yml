@@ -6,6 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Avoid duplicate runs for rapid pushes to the same branch/PR.
 concurrency:
   group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -26,7 +27,8 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # The checked-in wrapper JAR is an empty placeholder, so install pinned Gradle directly.
+      # The repository's wrapper JAR is currently an empty placeholder.
+      # Install a pinned Gradle distribution directly until the wrapper is repaired.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
