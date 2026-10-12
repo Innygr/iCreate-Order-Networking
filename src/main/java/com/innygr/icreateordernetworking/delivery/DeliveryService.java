@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.compat.CreateCompat;
+import com.innygr.icreateordernetworking.economy.EconomyService;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
 import com.innygr.icreateordernetworking.orders.OrderService;
@@ -106,9 +107,56 @@ public final class DeliveryService {
         }
         if (!adapter.isAuthorized(level, request)) return DeliveryResult.ROUTE_NOT_AUTHORIZED;
 
-        // Do not call consumeCargo until the shared atomic fulfilment transaction
-        // can also pay and persist the receipt. Returning NOT_IMPLEMENTED preserves
-        // cargo rather than silently eating it or allowing an unpaid delivery.
-        return DeliveryResult.NOT_IMPLEMENTED;
+        PreparedDelivery prepared;
+        try {
+            prepared = adapter.prepareCargo(level, request);
+        } catch (RuntimeException exception) {
+            return DeliveryResult.ORDER_REJECTED;
+        }
+        if (prepared == null) return DeliveryResult.ORDER_REJECTED;
+
+        long reward = (long) request.count() * order.rewardPerItem();
+        if (reward > 0 && !EconomyService.canCredit(level, request.actorId(), reward)) {
+            prepared.rollback();
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        // Receipt reservation, payout, cargo commit, and progress finalization all
+        // execute on the server thread. Adapters must support rollback after commit
+        // and make commit idempotent for this transaction ID.
+        if (!data.recordDelivery(request.transactionId(), request.orderId(), request.route())) {
+            prepared.rollback();
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        boolean credited = reward == 0 || EconomyService.credit(level, request.actorId(), reward);
+        if (!credited) {
+            data.forgetDelivery(request.transactionId());
+            prepared.rollback();
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        boolean cargoCommitted;
+        try {
+            cargoCommitted = prepared.commit();
+        } catch (RuntimeException exception) {
+            cargoCommitted = false;
+        }
+        if (!cargoCommitted) {
+            if (reward > 0) EconomyService.debit(level, request.actorId(), reward);
+            data.forgetDelivery(request.transactionId());
+            prepared.rollback();
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        if (!OrderService.recordAutomatedFulfilment(
+                level, request.orderId(), request.actorId(), request.count())) {
+            if (reward > 0) EconomyService.debit(level, request.actorId(), reward);
+            data.forgetDelivery(request.transactionId());
+            prepared.rollback();
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        return DeliveryResult.SUCCESS;
     }
 }
