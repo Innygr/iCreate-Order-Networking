@@ -15,7 +15,8 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
-import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -69,10 +70,39 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
         return new TerminalLoggerBlockEntity(pos, state);
     }
 
-    /**
-     * 1.21.1 item-use hook. A held item configures the brass filter; other item
-     * interactions pass through to the normal empty-hand block interaction.
-     */
+    @Override
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide ? null
+                : createTickerHelper(type, ModBlockEntities.TERMINAL_LOGGER.get(),
+                        TerminalLoggerBlockEntity::serverTick);
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player) {
+        if (level.isClientSide) return InteractionResult.SUCCESS;
+        if (level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger) {
+            if (brass && player.isShiftKeyDown()) {
+                logger.setFilterItemId(null);
+                player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
+                return InteractionResult.SUCCESS;
+            }
+            // Explicit six-face cycle: Direction#getClockWise throws for UP/DOWN.
+            Direction next = switch (logger.getOutputDirection()) {
+                case NORTH -> Direction.EAST;
+                case EAST -> Direction.SOUTH;
+                case SOUTH -> Direction.WEST;
+                case WEST -> Direction.DOWN;
+                case DOWN -> Direction.UP;
+                case UP -> Direction.NORTH;
+            };
+            logger.setOutputDirection(next);
+            player.displayClientMessage(Component.literal((brass ? "Brass" : "Andesite")
+                    + " Terminal Logger output: " + next.getName()), true);
+        }
+        return InteractionResult.SUCCESS;
+    }
+
     @Override
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
                                                BlockPos pos, Player player, InteractionHand hand,

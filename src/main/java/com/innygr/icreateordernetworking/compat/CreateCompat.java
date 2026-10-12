@@ -46,6 +46,16 @@ public final class CreateCompat {
         return isCreateLoaded();
     }
 
+    /** Create's belt/funnel capability is provided by base Create, not Aeronautics. */
+    public static boolean isBeltInfrastructureAvailable() {
+        return isCreateLoaded() && CreateBeltCompat.isBeltInfrastructureAvailable();
+    }
+
+    /** Create's package Frogport is a base-Create capability. */
+    public static boolean isFrogportAvailable() {
+        return isCreateLoaded() && CreateFrogportCompat.isPackageFrogportAvailable();
+    }
+
     private static boolean isLoaded(String modId) {
         return ModList.get().isLoaded(modId);
     }

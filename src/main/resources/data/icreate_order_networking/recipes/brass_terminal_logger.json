@@ -1,10 +1,13 @@
 {
-  "type": "minecraft:crafting_shaped",
-  "pattern": [" B ", "ALA", " B "],
-  "key": {
-    "B": { "item": "create:brass_ingot" },
-    "A": { "item": "minecraft:andesite" },
-    "L": { "item": "icreate_order_networking:terminal_logger" }
-  },
-  "result": { "id": "icreate_order_networking:brass_terminal_logger", "count": 1 }
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "icreate_order_networking:terminal_logger" },
+    { "item": "create:brass_sheet" },
+    { "item": "create:filter" },
+    { "item": "create:brass_funnel" }
+  ],
+  "result": {
+    "id": "icreate_order_networking:brass_terminal_logger",
+    "count": 1
+  }
 }

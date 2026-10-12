@@ -13,23 +13,23 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 ## Runtime detection
 
-`compat/CreateCompat.java` detects Create, Aeronautics, and Sable by mod ID without importing their classes. `isAeronauticsStackAvailable()` returns true only when all three are loaded.
+`compat/CreateCompat.java` detects Create, Aeronautics, and Sable by mod ID without importing their classes. `isAeronauticsStackAvailable()` returns true only when all three are loaded. Belt/funnel and Frogport checks belong to base Create compatibility; neither should require Aeronautics or Sable. `CreateBeltCompat` checks Create belt/funnel registry entries, while `CreateFrogportCompat` checks the built-in package Frogport registry entry.
 
 ## Delivery routes (required design constraint)
 
-Every order must support the four primary delivery paths, with belts available as a local automation route:
+Every order must support the four core delivery paths plus belt-based local routing:
 
 1. **Manual delivery** — a player physically brings the requested items to the order handoff/terminal and submits them for server validation.
 2. **Train delivery** — items arrive through a Create train logistics workflow.
 3. **Airship delivery** — items arrive aboard an Aeronautics airship or moving contraption.
-4. **Frogport delivery** — items arrive through Create's built-in Package Frogport (`create:package_frogport`), using its package address and actual package contents.
-5. **Belt delivery** — local item flow can use Create belts and belt connectors to feed a Terminal Logger; endpoint discovery alone is not delivery proof.
+4. **Frogport delivery** — items arrive through Create's built-in package/Frogport logistics network. Frogport is base Create, not Aeronautics and not a separate mod.
+5. **Belt delivery** — items arrive through Create belts into a Terminal Logger input face; the logger records the actual item transfer before the shared order service fulfils the order.
 
 The order lifecycle and escrow ledger must be transport-agnostic. Each route should submit a delivery request to one shared server-side fulfilment service; that service validates the order, claimant/route permissions, item identity and count, consumes or transfers the actual items, updates order progress, and pays from escrow exactly once. Route adapters must never directly edit order counts or issue currency.
 
 Delivery requests should carry an order ID, item ID, quantity, route type, and a server-verifiable source/transfer context. Do not trust client-supplied counts, vehicle IDs, or claimed arrival events. Make repeated callbacks idempotent so a train/airship/frogport event cannot pay twice after retries or chunk unloads.
 
-Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train route detection targets Create's Portable Storage Interface (`create:portable_storage_interface`); airship route detection targets Aeronautics Docking Connectors; belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
+Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train adapters should use Create Portable Storage Interfaces (`create:portable_storage_interface`) as the train handoff boundary; airship adapters should use Aeronautics Docking Connectors as the airship handoff boundary. Belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
 
 ## Aeronautics support boundary
 
@@ -59,6 +59,14 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 - [ ] Launch without Aeronautics to verify optional classes are never loaded.
 - [ ] Create/claim/fulfil/cancel an order from normal terrain.
 - [ ] Repeat order interactions while riding/moving in an Aeronautics contraption once terminal interaction support is implemented.
+
+## Terminal Logger
+
+The Andesite Terminal Logger is intended as an early-game six-face logistics junction. Right-click cycles the selected output face through all six directions; the other five faces are input faces. It pulls from neighboring NeoForge item-handler capabilities into an 18-slot buffer, then pushes buffered stacks out through the selected face. This supports PSI and Docking Connector endpoints only when their docked state exposes a standard item-handler capability. A direct Create API adapter is still required if a specific endpoint does not expose that capability.
+
+The Brass Terminal Logger upgrades the same block with an optional item-ID filter. Right-clicking with an item sets the filter; sneaking with an empty hand clears it. Its recipe uses the base logger, brass sheet, Create filter, and brass funnel. The base recipe uses iron nuggets, redstone, an andesite funnel, and andesite alloy; it does not require a shaft. Both recipes are intended to stay early-game accessible.
+
+The buffer and output direction are saved with the block entity. The logger's accepted/rejected counters are diagnostics only: a transfer log entry does not by itself fulfil an order or issue a payout.
 
 ## Delivery backend implementation status
 
@@ -121,8 +129,8 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 
 ### Terminal Logger
 - **Purpose:** server-side delivery checkpoint and six-way item router/observer. It records actual item transfer into its inventory/connected logistics endpoint and associates that transfer with an order; it must never accept a client-only “arrived” message as proof.
-- **Shape:** a six-direction funnel-style block with a configurable output direction. The output direction must be saved in block state and persist across reloads.
-- **Output configuration:** use a wrench interaction or a small block UI to rotate/select the output. The brass tier additionally supports Create-style item filters (allow/deny item predicates); the andesite tier uses simple unfiltered routing.
+- **Shape:** a six-direction funnel-style block with a configurable output direction. The selected output direction must be persisted by the block entity and restored after chunk/world reloads.
+- **Output configuration:** use the current server-authoritative interaction to cycle through all six faces; a future wrench/UI can provide direct selection. The brass tier additionally supports Create-style item filters (allow/deny item predicates); the andesite tier uses simple unfiltered routing.
 - **Transfer safety:** only route items accepted by the active order/filter. Keep unaccepted items in the input buffer or return them to the source; never void them. Each transfer gets a stable shipment/transaction UUID, and a repeated callback for the same shipment cannot advance progress or pay twice.
 - **No light emission:** Terminal Logger has no glow/light emission. It should use ordinary block lighting.
 - **Early-game crafting:** andesite tier should be craftable from early-game materials, using andesite alloy/andesite casing and basic Create components rather than brass-only ingredients. Brass tier may require brass but should remain a modest, reachable upgrade. Keep recipes cheap; avoid recipes requiring late-game or addon-only parts.
@@ -150,3 +158,33 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 - **Belt:** belt compatibility is a separate Create route capability. A belt/logger interaction must verify actual server-side item transfer and must not treat a belt's presence as a shipment.
 - **Frogport:** use Create's built-in package Frogport workflow. Verify actual package contents and routing metadata before fulfilling the order.
 - All four user-facing delivery paths remain required: manual, train, airship, Frogport. Belt/logger infrastructure supports these routes and is not a replacement for any of them.
+
+## Compatibility and recipe updates
+
+- Frogport is Create's built-in package Frogport; it does not require Aeronautics. `CreateFrogportCompat` checks Create and the registered `create:package_frogport` item.
+- `CreateBeltCompat` separately detects Create belt infrastructure and both funnel tiers. This is capability detection only; the actual transfer still must be observed server-side.
+- The andesite Terminal Logger recipe uses an andesite casing and andesite funnels rather than a shaft as its central component.
+- The brass Terminal Logger is an upgrade recipe using the andesite logger, brass sheet, Create filter, and brass funnel instead of requiring four filters and four iron ingots.
+- The logger persists its selected output face and transfer counters in block-entity NBT. It currently exposes the face/filter/diagnostic backend, but does not yet provide a live item-handler or real Create transfer hook; do not describe belt/train/airship/Frogport delivery as end-to-end working until those adapters are implemented and tested.
+
+## Release requirements: teams and early-game logistics
+
+Team support is a release requirement, not a post-launch update. Before the first public server launch, the release must include server-authoritative team identity and permissions, shared team order visibility/claiming, and payout rules that do not allow non-members to act on a team's orders. Prefer vanilla scoreboard teams as the initial source of team membership so this does not require another client mod; an optional FTB Teams bridge can be added only if its API/version is verified. Team identity must be stored with each order at creation time so renaming a scoreboard team cannot silently reassign old orders. If no team exists, personal orders continue to work.
+
+## Terminal Logger hardware and recipes
+
+- Andesite Terminal Logger: early-game, craftable with Create components and vanilla redstone/iron nuggets. It replaces the old shaft ingredient with an andesite-tier Create component; no brass or precision mechanism is required.
+- Brass Terminal Logger: shapeless upgrade from the Andesite Logger using brass, a filter, and a brass funnel. Brass supports an item filter; Andesite accepts any registered item.
+- The Logger exposes six faces, with one configurable output and the remaining five input faces. The selected output must be persisted and synchronized. A real transfer must be logged only after the server observes it; diagnostics alone are not delivery proof.
+- Recipes and item IDs must be checked against the exact pinned Create 6.x build before release. Do not use a shaft as a recipe ingredient for the base Logger.
+- Delivery route support is mandatory for manual, train (Portable Storage Interface), airship (Aeronautics Docking Connector), Create package Frogport, and belt transfers. A route that lacks a verified server-side adapter must visibly report unavailable rather than pretending the delivery succeeded.
+
+## Currency/reward configuration and external economy compatibility
+
+- Each order stores an explicit integer `rewardPerItem`; order creation validates the configured amount and escrows `requestedCount × rewardPerItem` up front. A zero reward is allowed for non-paid/community orders.
+- The in-game order-creation UI should expose the reward-per-item field and show the calculated total escrow before confirmation. Never accept a client-calculated total as authoritative; recalculate and validate on the server.
+- Currency operations now go through the public `EconomyService` / `EconomyProvider` boundary. The built-in persistent integer ledger remains the default implementation; a verified third-party adapter can register a provider during initialization. Provider choice is first-registration-wins to avoid silently switching currencies while orders hold escrow.
+- Other economy mods can be supported through a small integration/bridge implementing `EconomyProvider`, mapping player UUIDs and integer currency units to that mod's server-side account API. No specific external economy mod is wired in yet; do not hard-depend on one until its API, licensing, and target Minecraft version are verified.
+- An external provider must support debit/refund and an idempotent `creditOnce(transactionId, playerId, amount)` operation, or provide an equivalent durable transaction key. Without idempotent payout support, automated routes must stay disabled rather than risk double-paying after retries.
+- Never silently switch currency providers for a world with active escrow. Provider choice must be stable per world, and the UI should display the currency/provider name so players understand what their reward represents.
+- Compatibility detection alone is not integration: no third-party economy provider is considered supported until an adapter is implemented and tested against that mod's real API.

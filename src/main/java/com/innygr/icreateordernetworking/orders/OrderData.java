@@ -44,7 +44,8 @@ public final class OrderData extends SavedData {
                 OrderStatus status = OrderStatus.valueOf(n.getString("Status"));
                 if (requested > 0 && fulfilled >= 0 && fulfilled <= requested && reward >= 0) {
                     data.orders.put(id, new Order(id, owner, n.getString("OwnerName"), item,
-                            requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt")));
+                            requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt"),
+                            n.contains("OwnerTeam") ? n.getString("OwnerTeam") : null));
                 }
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed records so one bad order cannot stop world loading.
@@ -83,6 +84,7 @@ public final class OrderData extends SavedData {
             if (order.claimedBy() != null) n.putString("ClaimedBy", order.claimedBy().toString());
             n.putString("Status", order.status().name());
             n.putLong("CreatedAt", order.createdAt());
+            if (order.ownerTeamKey() != null) n.putString("OwnerTeam", order.ownerTeamKey());
             list.add(n);
         }
         tag.put("Orders", list);
