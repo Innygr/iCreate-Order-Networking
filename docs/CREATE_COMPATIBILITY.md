@@ -28,7 +28,7 @@ The order lifecycle and escrow ledger must be transport-agnostic. Each route sho
 
 Delivery requests should carry an order ID, item ID, quantity, route type, and a server-verifiable source/transfer context. Do not trust client-supplied counts, vehicle IDs, or claimed arrival events. Make repeated callbacks idempotent so a train/airship/frogport event cannot pay twice after retries or chunk unloads.
 
-Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and frogport adapters should be optional, isolated, and only activated when their actual mod/API is detected. For Frogports, target Create's package/Frogport workflow and verify its package contents/address APIs against the exact Create 6.0.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
+Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train route detection targets Create's Portable Storage Interface; airship route detection targets Aeronautics Docking Connectors; belt infrastructure detection is isolated in `CreateBeltCompat`. For Frogports, target Create's package/Frogport workflow and verify its package contents/address APIs against the exact Create 6.0.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
 
 ## Aeronautics support boundary
 
@@ -38,7 +38,7 @@ This detection layer prevents optional-mod class-loading failures, but it is not
 
 The `delivery` package now defines `DeliveryRoute`, `DeliveryRequest`, `DeliveryResult`, `AutomatedDeliveryAdapter`, and `DeliveryService`. Manual delivery delegates to the existing server-side inventory fulfilment. Train, airship, and Frogport requests are deliberately fail-closed and return `NOT_IMPLEMENTED` until their adapters can participate in one atomic cargo-consumption + order-progress + payout + persistent-receipt transaction. This avoids consuming cargo without paying, or paying twice on retries.
 
-No Frogport adapter or mod dependency is enabled yet: the owning mod and a version-matched public API still need confirmation. The adapter interface is only a boundary, not evidence of completed train/airship/Frogport support.
+Frogport is treated as Create's built-in package Frogport, not a separate mod. Detection uses the Create registry item ID `create:package_frogport`; the actual package-address/routing API still needs validation against the selected Create release. The adapter interface is only a boundary, not evidence of completed train/airship/Frogport support.
 
 ## Implemented backend pieces (not yet build-verified)
 
@@ -75,3 +75,20 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 - **Terminal Logger:** planned as a six-sided funnel/router block. Each of the six faces can be enabled as an input, one face is selected as the configurable output, and the output face is never simultaneously an input. The block entity owns and persists this configuration.
 - Terminal Logger routing is not allowed to change order counts or pay rewards directly. It hands a verified cargo transfer to the shared delivery service and records a transaction UUID so repeated transfer callbacks cannot duplicate fulfilment.
 - The first backend step is the serializable routing configuration. A registered block, block entity, menu/screen, sided inventory transfer logic, and Create belt/frogport adapters are still required before the in-game block works.
+
+## Terminal Logger block
+
+The initial Terminal Logger block is registered as `icreate_order_networking:terminal_logger`. Its block entity persists:
+- a configurable output direction (six faces);
+- accepted/rejected delivery counters;
+- a bounded last-status message for diagnostics.
+
+Right-clicking cycles the output through all six faces. This first backend step provides the persistent settings/logging surface; it does **not** yet implement the full six-sided item funnel, menu/config screen, Create belt attachment, or a physical inventory transfer. Those need to be wired to verified server-side transfer endpoints.
+
+Compatibility checks are separated by hardware:
+- `CreateBeltCompat`: Create belt connector registry detection.
+- `CreateTrainCompat`: Create Portable Storage Interface registry detection.
+- `AeronauticsDockingCompat`: optional Aeronautics Docking Connector detection.
+- `CreateFrogportCompat`: Create package Frogport detection.
+
+These are registry-presence checks only, not proof that an adapter is operational. Automated delivery remains unavailable until a real adapter is registered and validated.
