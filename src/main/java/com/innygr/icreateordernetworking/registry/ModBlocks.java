@@ -4,7 +4,6 @@ import com.innygr.icreateordernetworking.ICreateOrderNetworking;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -19,10 +18,17 @@ public final class ModBlocks {
 
     public static final DeferredBlock<TerminalLoggerBlock> TERMINAL_LOGGER =
             BLOCKS.register("terminal_logger",
-                    () -> new TerminalLoggerBlock(BlockBehaviour.Properties.of().strength(3.0F)));
+                    () -> new TerminalLoggerBlock(BlockBehaviour.Properties.of().strength(3.0F), false));
     public static final DeferredItem<BlockItem> TERMINAL_LOGGER_ITEM =
             ITEMS.register("terminal_logger",
                     () -> new BlockItem(TERMINAL_LOGGER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<TerminalLoggerBlock> BRASS_TERMINAL_LOGGER =
+            BLOCKS.register("brass_terminal_logger",
+                    () -> new TerminalLoggerBlock(BlockBehaviour.Properties.of().strength(3.0F), true));
+    public static final DeferredItem<BlockItem> BRASS_TERMINAL_LOGGER_ITEM =
+            ITEMS.register("brass_terminal_logger",
+                    () -> new BlockItem(BRASS_TERMINAL_LOGGER.get(), new Item.Properties()));
 
     private ModBlocks() {}
 
