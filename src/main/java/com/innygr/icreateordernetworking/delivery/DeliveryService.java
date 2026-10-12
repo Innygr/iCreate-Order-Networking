@@ -34,10 +34,37 @@ public final class DeliveryService {
         ADAPTERS.put(adapter.route(), adapter);
     }
 
+    /**
+     * Manual handoff with a durable transaction ID. The caller must reuse the
+     * same ID if it retries the same submission (for example after a UI timeout).
+     */
+    public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId,
+                                                 int count, UUID transactionId) {
+        if (player == null || orderId == null || count < 1 || transactionId == null
+                || !(player.level() instanceof ServerLevel level)) {
+            return DeliveryResult.INVALID_REQUEST;
+        }
+
+        OrderData data = OrderData.get(level);
+        if (data.hasProcessedDelivery(transactionId)) return DeliveryResult.ORDER_REJECTED;
+        if (!data.recordDelivery(transactionId, orderId, DeliveryRoute.MANUAL)) {
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        if (!OrderService.fulfil(player, orderId, count)) {
+            // No fulfilment happened, so allow a legitimate retry with the same ID.
+            data.forgetDelivery(transactionId);
+            return DeliveryResult.ORDER_REJECTED;
+        }
+        return DeliveryResult.SUCCESS;
+    }
+
+    /**
+     * Convenience overload for one-shot callers. Network/UI code should use the
+     * transaction-ID overload to make retries idempotent.
+     */
     public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId, int count) {
-        if (player == null || orderId == null || count < 1) return DeliveryResult.INVALID_REQUEST;
-        return OrderService.fulfil(player, orderId, count)
-                ? DeliveryResult.SUCCESS : DeliveryResult.ORDER_REJECTED;
+        return deliverManually(player, orderId, count, UUID.randomUUID());
     }
 
     /**
