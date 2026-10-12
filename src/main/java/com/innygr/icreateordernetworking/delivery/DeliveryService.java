@@ -121,17 +121,10 @@ public final class DeliveryService {
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        // Receipt reservation, payout, cargo commit, and progress finalization all
-        // execute on the server thread. Adapters must support rollback after commit
-        // and make commit idempotent for this transaction ID.
+        // Reserve the id before committing cargo. Saved order progress and the
+        // receipt are persisted together; adapters must make commit idempotent
+        // for transactionId so a retry can safely recover a committed shipment.
         if (!data.recordDelivery(request.transactionId(), request.orderId(), request.route())) {
-            prepared.rollback();
-            return DeliveryResult.ORDER_REJECTED;
-        }
-
-        boolean credited = reward == 0 || EconomyService.credit(level, request.actorId(), reward);
-        if (!credited) {
-            data.forgetDelivery(request.transactionId());
             prepared.rollback();
             return DeliveryResult.ORDER_REJECTED;
         }
@@ -143,20 +136,26 @@ public final class DeliveryService {
             cargoCommitted = false;
         }
         if (!cargoCommitted) {
-            if (reward > 0) EconomyService.debit(level, request.actorId(), reward);
             data.forgetDelivery(request.transactionId());
             prepared.rollback();
             return DeliveryResult.ORDER_REJECTED;
         }
 
+        if (reward > 0 && !EconomyService.creditOnce(
+                level, request.actorId(), reward, request.transactionId())) {
+            prepared.rollback();
+            data.forgetDelivery(request.transactionId());
+            return DeliveryResult.ORDER_REJECTED;
+        }
+
+        // The order was validated above and all mutations run on the server
+        // thread, so no other action can invalidate this finalization mid-call.
         if (!OrderService.recordAutomatedFulfilment(
                 level, request.orderId(), request.actorId(), request.count())) {
-            if (reward > 0) EconomyService.debit(level, request.actorId(), reward);
-            data.forgetDelivery(request.transactionId());
-            prepared.rollback();
+            // Keep the transaction receipt and idempotent payout: a retry can
+            // complete progress without consuming or paying the same shipment twice.
             return DeliveryResult.ORDER_REJECTED;
         }
-
         return DeliveryResult.SUCCESS;
     }
 }
