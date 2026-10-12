@@ -95,3 +95,14 @@ Avoid exposing chunk tickets, raw internal IDs, or advanced recovery switches in
 - **Advanced**: visibility, priorities, limits, notifications, diagnostics.
 
 Keyboard/controller navigation and clear status text should accompany mouse interactions; right-click inspection is a shortcut, not the only way to inspect a link.
+
+## Terminal Logger direct-connection UI
+
+The Terminal Logger should not require Funnels attached to its input/output faces. Its connection status view should identify supported direct endpoints and their transfer state:
+
+- Docking Connector: connected/docked, waiting, or disconnected.
+- Packager: ready, processing, blocked, or disconnected.
+- Belt: valid belt connection, direction/transfer point, blocked, or disconnected.
+- Portable Storage Interface: connected/transfer-ready, waiting for train, or disconnected.
+
+Show each detected connection as a separate row with its type, direction (input/output/bidirectional where supported), and status. A test/refresh action should inspect the connection without moving cargo. Invalid adjacency must be reported as incompatible rather than treated as a connection. Direct adapters should use supported Create interfaces and safe optional-mod checks; no Funnels should be needed solely to make the logger exchange items.
