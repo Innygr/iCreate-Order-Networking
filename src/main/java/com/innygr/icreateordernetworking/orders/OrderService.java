@@ -116,6 +116,27 @@ public final class OrderService {
         return true;
     }
 
+
+    /**
+     * Finalizes progress after a trusted automated route has committed its reserved
+     * cargo and the shared delivery service has handled the payout/receipt.
+     * This deliberately does not inspect player inventory or credit currency.
+     */
+    public static boolean recordAutomatedFulfilment(ServerLevel level, UUID orderId,
+                                                     UUID claimantId, int count) {
+        if (level == null || orderId == null || claimantId == null || count < 1
+                || count > MAX_ORDER_COUNT) return false;
+        OrderData data = OrderData.get(level);
+        Order order = data.find(orderId);
+        if (order == null || (order.status() != OrderStatus.OPEN
+                && order.status() != OrderStatus.IN_PROGRESS)
+                || !claimantId.equals(order.claimedBy())
+                || count > order.remainingCount()) return false;
+        order.fulfil(count);
+        data.changed();
+        return true;
+    }
+
     /** Kept as a compatibility guard: counts alone are never trusted as delivery. */
     @Deprecated
     public static boolean recordFulfilment(ServerPlayer player, UUID orderId, int count) {
