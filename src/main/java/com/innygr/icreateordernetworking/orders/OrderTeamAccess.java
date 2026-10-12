@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.PlayerTeam;
-import net.minecraft.world.scores.Scoreboard;
 
 /**
  * Initial team-permission helper using vanilla scoreboard teams, avoiding a
