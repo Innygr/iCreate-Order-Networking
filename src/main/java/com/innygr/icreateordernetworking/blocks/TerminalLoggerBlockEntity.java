@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
 import net.minecraft.core.BlockPos;
@@ -10,6 +11,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Persistent settings and diagnostics for the six-direction Terminal Logger.
@@ -22,6 +25,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private long rejectedDeliveries;
     private String lastStatus = "Idle";
     private ResourceLocation filterItemId;
+    private UUID ownerId;
+    private UUID ownerPartyTeamId;
 
     public TerminalLoggerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TERMINAL_LOGGER.get(), pos, state);
@@ -32,6 +37,36 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public long getRejectedDeliveries() { return rejectedDeliveries; }
     public String getLastStatus() { return lastStatus; }
     public ResourceLocation getFilterItemId() { return filterItemId; }
+    public UUID getOwnerId() { return ownerId; }
+    public UUID getOwnerPartyTeamId() { return ownerPartyTeamId; }
+    public boolean isConfigured() { return ownerId != null; }
+
+    /**
+     * Atomically claims an unconfigured logger for the first interacting player.
+     * Minecraft invokes block interactions on the server thread, so a second
+     * player cannot overwrite a successful first-use binding.
+     */
+    public boolean bindOwnerIfUnconfigured(UUID playerId) {
+        if (level == null || level.isClientSide || playerId == null || ownerId != null) return false;
+        ownerId = playerId;
+        ownerPartyTeamId = FTBTeamsCompat.partyTeamId(playerId).orElse(null);
+        setChanged();
+        sync();
+        return true;
+    }
+
+    /**
+     * Owner access is permanent for this placed block. Teammate access is based
+     * on live membership, not a cached roster, and is only granted to the party
+     * team that owned the logger at first use.
+     */
+    public boolean hasAccess(UUID playerId) {
+        if (playerId == null || ownerId == null) return false;
+        if (ownerId.equals(playerId)) return true;
+        if (ownerPartyTeamId == null) return false;
+        Optional<UUID> currentTeam = FTBTeamsCompat.partyTeamId(playerId);
+        return currentTeam.isPresent() && ownerPartyTeamId.equals(currentTeam.get());
+    }
 
     /**
      * Read-only adjacent endpoint discovery for diagnostics. An empty list means
@@ -96,6 +131,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         tag.putLong("RejectedDeliveries", rejectedDeliveries);
         tag.putString("LastStatus", lastStatus);
         if (filterItemId != null) tag.putString("FilterItem", filterItemId.toString());
+        if (ownerId != null) tag.putString("OwnerId", ownerId.toString());
+        if (ownerPartyTeamId != null) tag.putString("OwnerPartyTeamId", ownerPartyTeamId.toString());
     }
 
     @Override
@@ -106,6 +143,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         acceptedDeliveries = Math.max(0, tag.getLong("AcceptedDeliveries"));
         rejectedDeliveries = Math.max(0, tag.getLong("RejectedDeliveries"));
         lastStatus = safeStatus(tag.getString("LastStatus"));
+        ownerId = parseUuid(tag, "OwnerId");
+        ownerPartyTeamId = parseUuid(tag, "OwnerPartyTeamId");
         filterItemId = null;
         if (tag.contains("FilterItem")) {
             try {
@@ -116,6 +155,15 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
             } catch (IllegalArgumentException ignored) {
                 filterItemId = null;
             }
+        }
+    }
+
+    private static UUID parseUuid(CompoundTag tag, String key) {
+        if (!tag.contains(key)) return null;
+        try {
+            return UUID.fromString(tag.getString(key));
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 
