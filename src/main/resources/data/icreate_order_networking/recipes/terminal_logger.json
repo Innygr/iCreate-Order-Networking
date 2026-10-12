@@ -2,13 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "IRI",
-    "A A",
+    "FAF",
     "IRI"
   ],
   "key": {
     "I": { "item": "minecraft:iron_nugget" },
     "R": { "item": "minecraft:redstone" },
-    "A": { "item": "create:andesite_alloy" }
+    "F": { "item": "create:andesite_funnel" },
+    "A": { "item": "create:andesite_casing" }
   },
   "result": {
     "id": "icreate_order_networking:terminal_logger",
