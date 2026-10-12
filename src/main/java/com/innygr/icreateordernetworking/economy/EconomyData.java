@@ -104,6 +104,16 @@ public final class EconomyData extends SavedData {
         return true;
     }
 
+    boolean canCreditOnce(UUID transactionId, UUID playerId, long amount) {
+        if (transactionId == null || playerId == null || amount <= 0 || amount > MAX_BALANCE) return false;
+        CreditReceipt existing = creditReceipts.get(transactionId);
+        if (existing != null) {
+            return existing.playerId().equals(playerId) && existing.amount() == amount;
+        }
+        long current = balance(playerId);
+        return current <= MAX_BALANCE - amount;
+    }
+
     /**
      * Idempotent credit keyed by a durable transaction ID. Replaying the same
      * transaction succeeds without paying twice; reusing its ID for different
