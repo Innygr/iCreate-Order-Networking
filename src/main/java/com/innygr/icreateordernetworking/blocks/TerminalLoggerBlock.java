@@ -8,6 +8,7 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -65,9 +66,22 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
     }
 
     @Override
+    public <T extends BlockEntity> net.minecraft.world.level.block.entity.BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide ? null
+                : createTickerHelper(type, ModBlockEntities.TERMINAL_LOGGER.get(),
+                        TerminalLoggerBlockEntity::serverTick);
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player) {
         if (level.isClientSide) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger) {
+            if (brass && player.isShiftKeyDown()) {
+                logger.setFilterItemId(null);
+                player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
+                return InteractionResult.SUCCESS;
+            }
             // Explicit six-face cycle: Direction#getClockWise throws for UP/DOWN.
             Direction next = switch (logger.getOutputDirection()) {
                 case NORTH -> Direction.EAST;
