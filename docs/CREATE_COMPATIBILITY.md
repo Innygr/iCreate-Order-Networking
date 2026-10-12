@@ -13,7 +13,7 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 ## Runtime detection
 
-`compat/CreateCompat.java` detects Create, Aeronautics, and Sable by mod ID without importing their classes. `isAeronauticsStackAvailable()` returns true only when all three are loaded.
+`compat/CreateCompat.java` detects Create, Aeronautics, and Sable by mod ID without importing their classes. `isAeronauticsStackAvailable()` returns true only when all three are loaded. Belt/funnel and Frogport checks belong to base Create compatibility; neither should require Aeronautics or Sable. `CreateBeltCompat` checks Create belt/funnel registry entries, while `CreateFrogportCompat` checks the built-in package Frogport registry entry.
 
 ## Delivery routes (required design constraint)
 
