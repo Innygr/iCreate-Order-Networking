@@ -26,6 +26,12 @@ public final class EconomyService {
         return EconomyData.get(level).change(playerId, amount);
     }
 
+    /** Credit a delivery payout exactly once across retries and world reloads. */
+    public static boolean creditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
+        if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
+        return EconomyData.get(level).creditOnce(transactionId, playerId, amount);
+    }
+
     /** Debit funds only when the player has enough balance. */
     public static boolean debit(ServerLevel level, UUID playerId, long amount) {
         if (level == null || playerId == null || amount <= 0) return false;
