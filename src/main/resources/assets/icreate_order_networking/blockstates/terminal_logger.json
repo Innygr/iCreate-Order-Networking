@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "icreate_order_networking:block/terminal_logger" },
+    "facing=east": { "model": "icreate_order_networking:block/terminal_logger" },
+    "facing=south": { "model": "icreate_order_networking:block/terminal_logger" },
+    "facing=west": { "model": "icreate_order_networking:block/terminal_logger" }
+  }
+}
