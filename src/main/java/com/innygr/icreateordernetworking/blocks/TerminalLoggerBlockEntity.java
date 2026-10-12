@@ -1,6 +1,8 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
+import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
@@ -30,6 +32,14 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public long getRejectedDeliveries() { return rejectedDeliveries; }
     public String getLastStatus() { return lastStatus; }
     public ResourceLocation getFilterItemId() { return filterItemId; }
+
+    /**
+     * Read-only adjacent endpoint discovery for diagnostics. An empty list means
+     * no candidate endpoint was found or this block entity is not on the server.
+     */
+    public java.util.List<TerminalLoggerConnection> getDetectedConnections() {
+        return TerminalLoggerConnectionDetector.detect(this);
+    }
 
     /** Brass variant only. Null clears the filter. */
     public boolean setFilterItemId(ResourceLocation itemId) {

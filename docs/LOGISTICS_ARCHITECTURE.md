@@ -94,7 +94,7 @@ The satellite should be moderately expensive but available early enough to be us
 
 ## Ownership and permissions
 
-- Network membership and private factory access should follow FTB Teams where the integration is available.
+- Network membership and private factory access should follow FTB Teams where the integration is available. Detect it by its declared mod ID (`ftbteams`), not by the installed jar filename. `FTBTeamsCompat` provides safe optional-mod/API-presence gating; it does not yet resolve team membership or authorize access.
 - Public/shared endpoints must be an explicit choice. Divine Land may host a deliberately public satellite, but that should not make every nearby private factory public.
 - Validate permissions server-side for every inventory reservation, transfer, configuration change, and shared-network connection.
 
@@ -107,7 +107,7 @@ The satellite should be moderately expensive but available early enough to be us
 5. Implement and test local delivery and receipt verification.
 6. Add satellite multiblock, coverage/config validation, and sequenced-assembly recipe.
 7. Add Portable Storage Interface train and Docking Connector airship adapters.
-8. Add FTB Teams permissions and explicitly shared/public networks.
+8. Resolve FTB Teams identities and enforce team permissions through the supported API, then add explicitly shared/public networks. The current `FTBTeamsCompat` is only a safe presence/API gate.
 9. Consider cross-dimensional routing only after same-dimension delivery is reliable.
 
 Each milestone should be compiled and tested before the next one is layered on.
