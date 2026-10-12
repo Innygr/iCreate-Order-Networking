@@ -22,7 +22,7 @@ public final class EconomyService {
             externalProvider = provider;
             return true;
         }
-        return externalProvider == provider || externalProvider.id().equals(provider.id());
+        return externalProvider == provider;
     }
 
     public static String providerId() {
