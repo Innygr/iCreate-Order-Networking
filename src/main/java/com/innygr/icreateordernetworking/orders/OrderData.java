@@ -46,7 +46,7 @@ public final class OrderData extends SavedData {
                             requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt")));
                 }
             } catch (IllegalArgumentException ignored) {
-                // Ignore malformed records so a bad order does not stop the world loading.
+                // Ignore malformed records so one bad order cannot stop world loading.
             }
         }
 
@@ -54,11 +54,12 @@ public final class OrderData extends SavedData {
         for (int i = 0; i < receipts.size(); i++) {
             CompoundTag receipt = receipts.getCompound(i);
             try {
-                UUID id = UUID.fromString(receipt.getString("Id"));
+                UUID deliveryId = UUID.fromString(receipt.getString("Id"));
                 UUID orderId = receipt.contains("Order")
                         ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);
-                String route = receipt.contains("Route") ? receipt.getString("Route") : "MANUAL";
-                data.processedDeliveries.put(id, new DeliveryReceipt(orderId, route));
+                DeliveryRoute route = receipt.contains("Route")
+                        ? DeliveryRoute.valueOf(receipt.getString("Route")) : DeliveryRoute.MANUAL;
+                data.processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed receipt records.
             }
@@ -90,7 +91,7 @@ public final class OrderData extends SavedData {
             CompoundTag receipt = new CompoundTag();
             receipt.putString("Id", entry.getKey().toString());
             receipt.putString("Order", entry.getValue().orderId().toString());
-            receipt.putString("Route", entry.getValue().route());
+            receipt.putString("Route", entry.getValue().route().name());
             receipts.add(receipt);
         }
         tag.put("ProcessedDeliveries", receipts);
@@ -99,18 +100,22 @@ public final class OrderData extends SavedData {
 
     public Collection<Order> all() { return new ArrayList<>(orders.values()); }
     public Order find(UUID id) { return orders.get(id); }
-    public boolean hasProcessedDelivery(UUID deliveryId) { return processedDeliveries.containsKey(deliveryId); }
+    public boolean hasProcessedDelivery(UUID deliveryId) {
+        return processedDeliveries.containsKey(deliveryId);
+    }
 
-    void recordDelivery(UUID deliveryId, UUID orderId, String route) {
-        if (deliveryId == null || orderId == null || route == null || processedDeliveries.containsKey(deliveryId)) {
-            throw new IllegalStateException("Delivery receipt already exists or is invalid");
-        }
+    boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
+        if (deliveryId == null || orderId == null || route == null
+                || processedDeliveries.containsKey(deliveryId)) return false;
         processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
         setDirty();
+        return true;
+    }
+
+    void forgetDelivery(UUID deliveryId) {
+        if (processedDeliveries.remove(deliveryId) != null) setDirty();
     }
 
     void add(Order order) { orders.put(order.id(), order); setDirty(); }
     void changed() { setDirty(); }
-
-    public record DeliveryReceipt(UUID orderId, String route) {}
 }
