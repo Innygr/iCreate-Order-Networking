@@ -20,6 +20,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemInteractionResult;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -78,6 +82,29 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
                     + " Terminal Logger output: " + next.getName()), true);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
+                                               BlockPos pos, Player player, InteractionHand hand,
+                                               BlockHitResult hit) {
+        if (!brass) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        if (level.isClientSide) return ItemInteractionResult.SUCCESS;
+        if (!(level.getBlockEntity(pos) instanceof TerminalLoggerBlockEntity logger)) {
+            return ItemInteractionResult.FAIL;
+        }
+        if (player.isShiftKeyDown() && stack.isEmpty()) {
+            logger.setFilterItemId(null);
+            player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
+            return ItemInteractionResult.SUCCESS;
+        }
+        if (stack.isEmpty()) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        var itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (logger.setFilterItemId(itemId)) {
+            player.displayClientMessage(Component.literal("Brass Terminal Logger filter: " + itemId), true);
+            return ItemInteractionResult.SUCCESS;
+        }
+        return ItemInteractionResult.FAIL;
     }
 
     public boolean supportsFiltering() { return brass; }
