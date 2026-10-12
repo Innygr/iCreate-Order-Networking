@@ -75,7 +75,7 @@ public final class OrderService {
                 || count > order.remainingCount()) return false;
 
         Item item = BuiltInRegistries.ITEM.get(order.itemId());
-        if (item == null || item == BuiltInRegistries.ITEM.getDefaultKey()) return false;
+        if (item == null || BuiltInRegistries.ITEM.getKey(item).equals(BuiltInRegistries.ITEM.getDefaultKey())) return false;
 
         long reward = (long) count * order.rewardPerItem();
         // Check the payout cap before touching inventory. Since all mutations run
