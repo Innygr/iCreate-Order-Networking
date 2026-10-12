@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "minecraft:block/brass_block",
+    "down": "minecraft:block/brass_block",
+    "up": "minecraft:block/brass_block",
+    "north": "minecraft:block/observer_front",
+    "south": "minecraft:block/brass_block",
+    "west": "minecraft:block/brass_block",
+    "east": "minecraft:block/brass_block"
+  }
+}
