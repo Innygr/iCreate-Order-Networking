@@ -37,7 +37,8 @@ public final class OrderService {
         if (totalReward > 0 && !EconomyService.debit(level, owner.getUUID(), totalReward)) return null;
 
         Order order = new Order(UUID.randomUUID(), owner.getUUID(), owner.getGameProfile().getName(),
-                itemId, count, 0, rewardPerItem, null, OrderStatus.OPEN, level.getGameTime());
+                itemId, count, 0, rewardPerItem, null, OrderStatus.OPEN, level.getGameTime(),
+                OrderTeamAccess.teamKey(owner));
         OrderData.get(level).add(order);
         return order;
     }
@@ -48,11 +49,19 @@ public final class OrderService {
                 .toList();
     }
 
+    /** Lists open orders visible to this player: personal orders and same-team orders. */
+    public static List<Order> listFor(ServerPlayer player) {
+        if (player == null || !(player.level() instanceof ServerLevel level)) return List.of();
+        return list(level).stream()
+                .filter(order -> OrderTeamAccess.canAccess(player, order.ownerId(), order.ownerTeamKey()))
+                .toList();
+    }
+
     public static boolean claim(ServerPlayer player, UUID orderId) {
         if (!(player.level() instanceof ServerLevel level)) return false;
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
-        if (order == null || order.ownerId().equals(player.getUUID())
+        if (order == null || !OrderTeamAccess.canClaim(player, order.ownerId(), order.ownerTeamKey())
                 || order.status() != OrderStatus.OPEN) return false;
         order.claim(player.getUUID());
         data.changed();
