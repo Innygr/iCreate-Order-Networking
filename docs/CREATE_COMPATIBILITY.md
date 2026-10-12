@@ -60,6 +60,14 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 - [ ] Create/claim/fulfil/cancel an order from normal terrain.
 - [ ] Repeat order interactions while riding/moving in an Aeronautics contraption once terminal interaction support is implemented.
 
+## Terminal Logger
+
+The Andesite Terminal Logger is intended as an early-game six-face logistics junction. Right-click cycles the selected output face through all six directions; the other five faces are input faces. It pulls from neighboring NeoForge item-handler capabilities into an 18-slot buffer, then pushes buffered stacks out through the selected face. This supports PSI and Docking Connector endpoints only when their docked state exposes a standard item-handler capability. A direct Create API adapter is still required if a specific endpoint does not expose that capability.
+
+The Brass Terminal Logger upgrades the same block with an optional item-ID filter. Right-clicking with an item sets the filter; sneaking with an empty hand clears it. Its recipe uses the base logger, brass sheet, Create filter, and brass funnel. The base recipe uses iron nuggets, redstone, an andesite funnel, and andesite alloy; it does not require a shaft. Both recipes are intended to stay early-game accessible.
+
+The buffer and output direction are saved with the block entity. The logger's accepted/rejected counters are diagnostics only: a transfer log entry does not by itself fulfil an order or issue a payout.
+
 ## Delivery backend implementation status
 
 - Manual handoff uses the shared order service and accepts a transaction UUID for retry deduplication.
