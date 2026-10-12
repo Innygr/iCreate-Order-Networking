@@ -5,5 +5,6 @@ public enum DeliveryRoute {
     MANUAL,
     TRAIN,
     AIRSHIP,
-    FROGPORT
+    FROGPORT,
+    BELT
 }
