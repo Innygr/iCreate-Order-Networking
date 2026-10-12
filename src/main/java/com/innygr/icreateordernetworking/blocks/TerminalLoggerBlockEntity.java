@@ -64,6 +64,12 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (playerId == null || ownerId == null) return false;
         if (ownerId.equals(playerId)) return true;
         if (ownerPartyTeamId == null) return false;
+        // Team sharing pauses if the owner leaves or changes parties. The owner
+        // keeps access and can restore sharing by rejoining the bound party.
+        Optional<UUID> currentOwnerTeam = FTBTeamsCompat.partyTeamId(ownerId);
+        if (currentOwnerTeam.isEmpty() || !ownerPartyTeamId.equals(currentOwnerTeam.get())) {
+            return false;
+        }
         Optional<UUID> currentTeam = FTBTeamsCompat.partyTeamId(playerId);
         return currentTeam.isPresent() && ownerPartyTeamId.equals(currentTeam.get());
     }
