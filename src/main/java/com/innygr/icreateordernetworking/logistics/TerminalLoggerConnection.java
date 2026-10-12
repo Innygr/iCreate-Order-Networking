@@ -21,6 +21,7 @@ public record TerminalLoggerConnection(
     public enum Kind {
         PACKAGER,
         FROGPORT,
+        BELT,
         BELT_CONNECTOR,
         PORTABLE_STORAGE_INTERFACE,
         DOCKING_CONNECTOR
