@@ -54,7 +54,7 @@ public final class DeliveryService {
         if (cargo.getCount() < count) return DeliveryResult.INSUFFICIENT_CARGO;
 
         Item item = BuiltInRegistries.ITEM.get(order.itemId());
-        if (item == null || item == BuiltInRegistries.ITEM.getDefaultKey()) {
+        if (item == null || BuiltInRegistries.ITEM.getKey(item).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
             return DeliveryResult.WRONG_ITEM;
         }
         if (!cargo.is(item)) return DeliveryResult.WRONG_ITEM;
@@ -92,6 +92,6 @@ public final class DeliveryService {
     public static Item resolveItem(ResourceLocation itemId) {
         if (itemId == null) return null;
         Item item = BuiltInRegistries.ITEM.get(itemId);
-        return item == BuiltInRegistries.ITEM.getDefaultKey() ? null : item;
+        return item == null || BuiltInRegistries.ITEM.getKey(item).equals(BuiltInRegistries.ITEM.getDefaultKey()) ? null : item;
     }
 }
