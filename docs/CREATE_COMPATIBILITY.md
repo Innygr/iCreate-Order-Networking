@@ -15,6 +15,21 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 `compat/CreateCompat.java` detects Create, Aeronautics, and Sable by mod ID without importing their classes. `isAeronauticsStackAvailable()` returns true only when all three are loaded.
 
+## Delivery routes (required design constraint)
+
+Every order must support all four delivery paths:
+
+1. **Manual delivery** — a player physically brings the requested items to the order handoff/terminal and submits them for server validation.
+2. **Train delivery** — items arrive through a Create train logistics workflow.
+3. **Airship delivery** — items arrive aboard an Aeronautics airship or moving contraption.
+4. **Frogport delivery** — items arrive through the frogport logistics system exposed by the installed mod stack.
+
+The order lifecycle and escrow ledger must be transport-agnostic. Each route should submit a delivery request to one shared server-side fulfilment service; that service validates the order, claimant/route permissions, item identity and count, consumes or transfers the actual items, updates order progress, and pays from escrow exactly once. Route adapters must never directly edit order counts or issue currency.
+
+Delivery requests should carry an order ID, item ID, quantity, route type, and a server-verifiable source/transfer context. Do not trust client-supplied counts, vehicle IDs, or claimed arrival events. Make repeated callbacks idempotent so a train/airship/frogport event cannot pay twice after retries or chunk unloads.
+
+Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and frogport adapters should be optional, isolated, and only activated when their actual mod/API is detected. Do not assume Frogport is an Aeronautics API; identify its owning mod and supported version before writing an adapter.
+
 ## Aeronautics support boundary
 
 This detection layer prevents optional-mod class-loading failures, but it is not yet a custom Aeronautics contraption capability or moving-terminal implementation. No Aeronautics API is called until its public API and lifecycle are verified. A terminal block attached to a moving contraption may need a dedicated interaction/storage design rather than assuming ordinary block-entity ticking and world positions remain stable.
