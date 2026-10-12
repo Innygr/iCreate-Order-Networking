@@ -178,3 +178,13 @@ Team support is a release requirement, not a post-launch update. Before the firs
 - The Logger exposes six faces, with one configurable output and the remaining five input faces. The selected output must be persisted and synchronized. A real transfer must be logged only after the server observes it; diagnostics alone are not delivery proof.
 - Recipes and item IDs must be checked against the exact pinned Create 6.x build before release. Do not use a shaft as a recipe ingredient for the base Logger.
 - Delivery route support is mandatory for manual, train (Portable Storage Interface), airship (Aeronautics Docking Connector), Create package Frogport, and belt transfers. A route that lacks a verified server-side adapter must visibly report unavailable rather than pretending the delivery succeeded.
+
+## Currency/reward configuration and external economy compatibility
+
+- Each order stores an explicit integer `rewardPerItem`; order creation validates the configured amount and escrows `requestedCount × rewardPerItem` up front. A zero reward is allowed for non-paid/community orders.
+- The in-game order-creation UI should expose the reward-per-item field and show the calculated total escrow before confirmation. Never accept a client-calculated total as authoritative; recalculate and validate on the server.
+- Currency operations go through the public `EconomyService` / `EconomyProvider` boundary. The built-in persistent integer ledger is the default implementation.
+- Other economy mods should be supported through a small integration/bridge that maps player UUIDs and integer currency units to that mod's server-side account API. Do not hard-depend on a specific economy mod until its API, licensing, and target Minecraft version are verified.
+- An external provider must support debit/refund and an idempotent `creditOnce(transactionId, playerId, amount)` operation, or provide an equivalent durable transaction key. Without idempotent payout support, automated routes must stay disabled rather than risk double-paying after retries.
+- Never silently switch currency providers for a world with active escrow. Provider choice must be stable per world, and the UI should display the currency/provider name so players understand what their reward represents.
+- Compatibility detection alone is not integration: no third-party economy provider is considered supported until an adapter is implemented and tested against that mod's real API.
