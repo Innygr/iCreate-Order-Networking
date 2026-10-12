@@ -80,6 +80,23 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
 
+        if (!logger.isConfigured()) {
+            if (logger.bindOwnerIfUnconfigured(player.getUUID())) {
+                String scope = logger.getOwnerPartyTeamId() == null
+                        ? "private to you"
+                        : "shared with your current FTB party";
+                player.displayClientMessage(Component.literal("Terminal Logger claimed; access is " + scope + "."), true);
+                return InteractionResult.SUCCESS;
+            }
+            // A failed claim can only happen if state changed or the caller is invalid.
+            if (!logger.isConfigured()) return InteractionResult.FAIL;
+        }
+
+        if (!logger.hasAccess(player.getUUID())) {
+            player.displayClientMessage(Component.literal("You do not have access to this Terminal Logger."), true);
+            return InteractionResult.FAIL;
+        }
+
         ItemStack held = player.getItemInHand(hand);
         if (brass && !held.isEmpty()) {
             ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(held.getItem());
