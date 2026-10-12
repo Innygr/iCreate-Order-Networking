@@ -89,7 +89,7 @@ The satellite should be moderately expensive but available early enough to be us
 - Trains: integrate through Create Portable Storage Interfaces.
 - Airships: integrate through Docking Connectors.
 - The Terminal Logger's direct-connection adapters should hand off cargo through these interfaces without requiring Funnels attached to the logger.
-- Adapters must report readiness, reserve/commit cargo safely, verify delivery, and return a clear failure result when disconnected or unable to complete a route.
+- Adapters must report readiness, reserve/commit cargo safely, verify delivery, and return a clear failure result when disconnected or unable to complete a route. The shared `AutomatedDeliveryRegistry` now holds only explicitly registered, available adapters, and `AutomatedDeliveryService.prepare` performs request validation, route lookup, authorization, and cargo reservation. Its `PREPARED` result is explicitly not delivery success: transport commit and destination receipt verification must still happen before order fulfillment or payout. No concrete Create/Aeronautics adapter is registered until its API and transfer semantics are verified.
 - Keep the core order/network model independent of optional Create-family classes; use safe optional-mod detection.
 
 ## Ownership and permissions
@@ -103,7 +103,7 @@ The satellite should be moderately expensive but available early enough to be us
 1. Define network identity, factory endpoint registration, and safe stock lookup/reservation APIs.
 2. Add terminal first-use binding and server-side owner/team access checks.
 3. Add terminal request sourcing that checks connected factory stock first and requests only the shortfall.
-4. Connect the Terminal Logger to durable job tracking, direct connection adapters, and bounded chunk loading.
+4. Connect the Terminal Logger to durable job tracking, direct connection adapters, and bounded chunk loading. The current endpoint detector and shared adapter-preparation pipeline are foundations only; concrete transfer and receipt confirmation remain required.
 5. Implement and test local delivery and receipt verification.
 6. Add satellite multiblock, coverage/config validation, and sequenced-assembly recipe.
 7. Add Portable Storage Interface train and Docking Connector airship adapters.
