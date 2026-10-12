@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -104,7 +105,7 @@ public final class OrderData extends SavedData {
         return processedDeliveries.containsKey(deliveryId);
     }
 
-    boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
+    public boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
         if (deliveryId == null || orderId == null || route == null
                 || processedDeliveries.containsKey(deliveryId)) return false;
         processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
@@ -112,7 +113,7 @@ public final class OrderData extends SavedData {
         return true;
     }
 
-    void forgetDelivery(UUID deliveryId) {
+    public void forgetDelivery(UUID deliveryId) {
         if (processedDeliveries.remove(deliveryId) != null) setDirty();
     }
 
