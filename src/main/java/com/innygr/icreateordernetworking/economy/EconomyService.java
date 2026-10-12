@@ -44,7 +44,7 @@ public final class EconomyService {
 
     /** Returns whether a credit can succeed without changing the ledger. */
     public static boolean canCredit(ServerLevel level, UUID playerId, long amount) {
-        if (level == null || playerId == null || amount <= 0 || amount > EconomyData.maxBalance()) return false;
+        if (level == null || playerId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
         if (provider != null) return provider.canCredit(level, playerId, amount);
         long current = EconomyData.get(level).balance(playerId);
@@ -91,7 +91,7 @@ public final class EconomyService {
      */
     public static boolean transfer(ServerLevel level, UUID sender, UUID recipient, long amount) {
         if (level == null || sender == null || recipient == null || sender.equals(recipient)
-                || amount <= 0 || amount > EconomyData.maxBalance()) return false;
+                || amount <= 0) return false;
 
         EconomyProvider provider = externalProvider;
         if (provider != null) return provider.transfer(level, sender, recipient, amount);
