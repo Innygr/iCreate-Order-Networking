@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IRI",
+    "B B",
+    "IRI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_nugget" },
+    "R": { "item": "minecraft:redstone" },
+    "B": { "item": "create:brass_casing" }
+  },
+  "result": {
+    "id": "icreate_order_networking:brass_terminal_logger",
+    "count": 1
+  }
+}
