@@ -26,6 +26,12 @@ public final class EconomyService {
         return EconomyData.get(level).change(playerId, amount);
     }
 
+    /** Preflights a payout while allowing a matching already-recorded transaction retry. */
+    public static boolean canCreditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
+        if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
+        return EconomyData.get(level).canCreditOnce(transactionId, playerId, amount);
+    }
+
     /** Credit a delivery payout exactly once across retries and world reloads. */
     public static boolean creditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
         if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
