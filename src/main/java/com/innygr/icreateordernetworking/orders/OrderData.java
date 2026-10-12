@@ -3,7 +3,9 @@ package com.innygr.icreateordernetworking.orders;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -13,10 +15,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
-/** World-persistent storage for orders. Mutate only from server-side code. */
+/** World-persistent storage for orders and delivery idempotency receipts. */
 public final class OrderData extends SavedData {
     private static final String DATA_NAME = "icreate_order_networking_orders";
     private final Map<UUID, Order> orders = new LinkedHashMap<>();
+    private final Set<UUID> processedDeliveryIds = new LinkedHashSet<>();
 
     public OrderData() {}
 
@@ -47,6 +50,15 @@ public final class OrderData extends SavedData {
                 // Ignore malformed records so a bad order does not stop the world loading.
             }
         }
+
+        ListTag receipts = tag.getList("ProcessedDeliveries", Tag.TAG_COMPOUND);
+        for (int i = 0; i < receipts.size(); i++) {
+            try {
+                data.processedDeliveryIds.add(UUID.fromString(receipts.getCompound(i).getString("Id")));
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed receipt IDs.
+            }
+        }
         return data;
     }
 
@@ -68,11 +80,29 @@ public final class OrderData extends SavedData {
             list.add(n);
         }
         tag.put("Orders", list);
+
+        ListTag receipts = new ListTag();
+        for (UUID id : processedDeliveryIds) {
+            CompoundTag receipt = new CompoundTag();
+            receipt.putString("Id", id.toString());
+            receipts.add(receipt);
+        }
+        tag.put("ProcessedDeliveries", receipts);
         return tag;
     }
 
     public Collection<Order> all() { return new ArrayList<>(orders.values()); }
     public Order find(UUID id) { return orders.get(id); }
+    public boolean hasProcessedDelivery(UUID deliveryId) { return processedDeliveryIds.contains(deliveryId); }
+
+    void recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
+        if (deliveryId == null || processedDeliveryIds.contains(deliveryId)) {
+            throw new IllegalStateException("Delivery receipt already exists or is invalid");
+        }
+        processedDeliveryIds.add(deliveryId);
+        setDirty();
+    }
+
     void add(Order order) { orders.put(order.id(), order); setDirty(); }
     void changed() { setDirty(); }
 }
