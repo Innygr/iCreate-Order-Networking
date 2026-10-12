@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.compat.CreateCompat;
+import com.innygr.icreateordernetworking.compat.CreateBeltCompat;
 import com.innygr.icreateordernetworking.compat.CreateFrogportCompat;
 import com.innygr.icreateordernetworking.compat.CreateTrainCompat;
 import com.innygr.icreateordernetworking.compat.AeronauticsDockingCompat;
@@ -105,6 +106,10 @@ public final class DeliveryService {
         if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN
                 || request.route() == DeliveryRoute.FROGPORT)
                 && !CreateCompat.isCreateLoaded()) return DeliveryResult.ROUTE_UNAVAILABLE;
+        if (request.route() == DeliveryRoute.BELT
+                && !CreateBeltCompat.isBeltInfrastructureAvailable()) {
+            return DeliveryResult.ROUTE_UNAVAILABLE;
+        }
         if (request.route() == DeliveryRoute.TRAIN
                 && !CreateTrainCompat.isPortableStorageInterfaceAvailable()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
