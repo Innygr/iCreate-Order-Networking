@@ -11,8 +11,5 @@
     "F": { "item": "create:andesite_funnel" },
     "A": { "item": "create:andesite_alloy" }
   },
-  "result": {
-    "id": "icreate_order_networking:terminal_logger",
-    "count": 1
-  }
+  "result": { "id": "icreate_order_networking:terminal_logger", "count": 1 }
 }

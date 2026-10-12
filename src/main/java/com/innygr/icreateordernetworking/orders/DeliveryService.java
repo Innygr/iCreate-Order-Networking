@@ -3,6 +3,8 @@ package com.innygr.icreateordernetworking.orders;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.economy.EconomyService;
+import com.innygr.icreateordernetworking.delivery.DeliveryResult;
+import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -32,15 +34,21 @@ public final class DeliveryService {
 
         Order order = data.find(orderId);
         DeliveryResult validation = validateOrder(order, claimantId, count);
-        if (validation != DeliveryResult.ACCEPTED) return validation;
+        if (validation != DeliveryResult.SUCCESS) return validation;
         if (cargo.getCount() < count) return DeliveryResult.INSUFFICIENT_CARGO;
 
         Item item = resolveItem(order.itemId());
         if (item == null || !cargo.is(item)) return DeliveryResult.WRONG_ITEM;
 
         long reward = (long) count * order.rewardPerItem();
+        // Use the same durable transaction ID for the payout and delivery receipt.
+        // This protects the currency ledger against duplicate credits if a delivery
+        // is retried after an interrupted save or an adapter retry.
+        if (reward > 0 && !EconomyService.canCreditOnce(level, claimantId, reward, deliveryId)) {
+            return DeliveryResult.PAYOUT_LIMIT;
+        }
         if (!data.recordDelivery(deliveryId, orderId, route)) return DeliveryResult.DUPLICATE;
-        if (reward > 0 && !EconomyService.credit(level, claimantId, reward)) {
+        if (reward > 0 && !EconomyService.creditOnce(level, claimantId, reward, deliveryId)) {
             data.forgetDelivery(deliveryId);
             return DeliveryResult.PAYOUT_LIMIT;
         }
@@ -48,7 +56,7 @@ public final class DeliveryService {
         cargo.shrink(count);
         order.fulfil(count);
         data.changed();
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     /** Manual handoff consumes matching items across the player's inventory as one shipment. */
@@ -63,7 +71,7 @@ public final class DeliveryService {
         if (data.hasProcessedDelivery(deliveryId)) return DeliveryResult.DUPLICATE;
         Order order = data.find(orderId);
         DeliveryResult validation = validateOrder(order, player.getUUID(), count);
-        if (validation != DeliveryResult.ACCEPTED) return validation;
+        if (validation != DeliveryResult.SUCCESS) return validation;
 
         Item item = resolveItem(order.itemId());
         if (item == null) return DeliveryResult.WRONG_ITEM;
@@ -79,10 +87,16 @@ public final class DeliveryService {
         if (available < count) return DeliveryResult.INSUFFICIENT_CARGO;
 
         long reward = (long) count * order.rewardPerItem();
+        // Manual inventory handoffs use the same idempotent payout ledger as
+        // automated routes; the delivery UUID is the durable transaction key.
+        if (reward > 0 && !EconomyService.canCreditOnce(
+                level, player.getUUID(), reward, deliveryId)) {
+            return DeliveryResult.PAYOUT_LIMIT;
+        }
         if (!data.recordDelivery(deliveryId, orderId, DeliveryRoute.MANUAL)) {
             return DeliveryResult.DUPLICATE;
         }
-        if (reward > 0 && !EconomyService.credit(level, player.getUUID(), reward)) {
+        if (reward > 0 && !EconomyService.creditOnce(level, player.getUUID(), reward, deliveryId)) {
             data.forgetDelivery(deliveryId);
             return DeliveryResult.PAYOUT_LIMIT;
         }
@@ -98,7 +112,7 @@ public final class DeliveryService {
         inventory.setChanged();
         order.fulfil(count);
         data.changed();
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     private static DeliveryResult validateOrder(Order order, UUID claimantId, int count) {
@@ -110,7 +124,7 @@ public final class DeliveryService {
         if (count > order.remainingCount() || count > OrderService.MAX_ORDER_COUNT) {
             return DeliveryResult.INVALID_REQUEST;
         }
-        return DeliveryResult.ACCEPTED;
+        return DeliveryResult.SUCCESS;
     }
 
     public static ResourceLocation itemId(ItemStack stack) {

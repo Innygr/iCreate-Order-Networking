@@ -1,6 +1,9 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
+import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
+import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -30,6 +33,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private long rejectedDeliveries;
     private String lastStatus = "Idle";
     private ResourceLocation filterItemId;
+    private UUID ownerId;
+    private UUID ownerPartyTeamId;
 
     private final ItemStackHandler inventory = new ItemStackHandler(SLOT_COUNT) {
         @Override
@@ -136,6 +141,50 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public long getRejectedDeliveries() { return rejectedDeliveries; }
     public String getLastStatus() { return lastStatus; }
     public ResourceLocation getFilterItemId() { return filterItemId; }
+    public UUID getOwnerId() { return ownerId; }
+    public UUID getOwnerPartyTeamId() { return ownerPartyTeamId; }
+    public boolean isConfigured() { return ownerId != null; }
+
+    /**
+     * Atomically claims an unconfigured logger for the first interacting player.
+     * Minecraft invokes block interactions on the server thread, so a second
+     * player cannot overwrite a successful first-use binding.
+     */
+    public boolean bindOwnerIfUnconfigured(UUID playerId) {
+        if (level == null || level.isClientSide || playerId == null || ownerId != null) return false;
+        ownerId = playerId;
+        ownerPartyTeamId = FTBTeamsCompat.partyTeamId(playerId).orElse(null);
+        setChanged();
+        sync();
+        return true;
+    }
+
+    /**
+     * Owner access is permanent for this placed block. Teammate access is based
+     * on live membership, not a cached roster, and is only granted to the party
+     * team that owned the logger at first use.
+     */
+    public boolean hasAccess(UUID playerId) {
+        if (playerId == null || ownerId == null) return false;
+        if (ownerId.equals(playerId)) return true;
+        if (ownerPartyTeamId == null) return false;
+        // Team sharing pauses if the owner leaves or changes parties. The owner
+        // keeps access and can restore sharing by rejoining the bound party.
+        Optional<UUID> currentOwnerTeam = FTBTeamsCompat.partyTeamId(ownerId);
+        if (currentOwnerTeam.isEmpty() || !ownerPartyTeamId.equals(currentOwnerTeam.get())) {
+            return false;
+        }
+        Optional<UUID> currentTeam = FTBTeamsCompat.partyTeamId(playerId);
+        return currentTeam.isPresent() && ownerPartyTeamId.equals(currentTeam.get());
+    }
+
+    /**
+     * Read-only adjacent endpoint discovery for diagnostics. An empty list means
+     * no candidate endpoint was found or this block entity is not on the server.
+     */
+    public java.util.List<TerminalLoggerConnection> getDetectedConnections() {
+        return TerminalLoggerConnectionDetector.detect(this);
+    }
 
     public boolean canInputFrom(Direction side, ResourceLocation itemId) {
         return side != null && side != outputDirection && acceptsItem(itemId);
@@ -208,6 +257,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         tag.putString("LastStatus", lastStatus);
         tag.put("Inventory", inventory.serializeNBT(registries));
         if (filterItemId != null) tag.putString("FilterItem", filterItemId.toString());
+        if (ownerId != null) tag.putString("OwnerId", ownerId.toString());
+        if (ownerPartyTeamId != null) tag.putString("OwnerPartyTeamId", ownerPartyTeamId.toString());
     }
 
     @Override
@@ -227,6 +278,15 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
             } catch (IllegalArgumentException ignored) {
                 filterItemId = null;
             }
+        }
+    }
+
+    private static UUID parseUuid(CompoundTag tag, String key) {
+        if (!tag.contains(key)) return null;
+        try {
+            return UUID.fromString(tag.getString(key));
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 
