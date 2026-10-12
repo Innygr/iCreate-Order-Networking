@@ -41,7 +41,24 @@ The Terminal Logger has two responsibilities:
 - Track logistics jobs, their source/destination, status, and delivery results.
 - Request chunk tickets for the minimum required endpoints while a valid job is active.
 
-Chunk loading must be bounded by server configuration (maximum tickets/chunks and a job timeout), released on completion/cancellation/failure, and cleaned up safely on block removal or server shutdown. It must not keep every factory loaded indefinitely. The existing logger block's six-face routing/filter settings remain separate from the job manager.
+Chunk loading must be bounded by server configuration (maximum tickets/chunks and a job timeout), released on completion/cancellation/failure, and cleaned up safely on block removal or server shutdown. It must not keep every factory loaded indefinitely.
+
+### Direct logistics connections (no funnels required)
+
+The Terminal Logger is itself a logistics connector/controller. Players must not need to attach Create Funnels to its input or output faces just to exchange cargo. It should support direct connections to compatible Create logistics blocks and transport components:
+
+- **Docking Connectors** — hand off/receive cargo through a connected airship docking interface when the connector reports a valid docked/ready state.
+- **Packagers** — accept packaged orders/cargo and provide outbound packages to the connected packaging endpoint, respecting package contents and job identity.
+- **Belts** — insert/extract cargo through a supported belt interaction point, with direction and item-transfer rules explicit. Avoid treating arbitrary adjacent belt blocks as a valid connection unless the connector geometry/state is verified.
+- **Portable Storage Interfaces (PSIs)** — integrate with a train's portable storage interface only while the interface is in a valid connected/transfer-ready state. Use the PSI transfer handshake; do not bypass Create's connection behavior.
+
+Connection discovery must use explicit, validated adapters/capability checks for each supported endpoint type, not broad assumptions based on nearby blocks. Show the detected connection type and ready/disconnected/error status in the logger's UI or diagnostics.
+
+The logger should define clear input/output behavior per connection. A connection can be input-only, output-only, or bidirectional only when the underlying component safely supports it. Do not allow the same item stack to be dispatched twice if multiple connections are attached. Cargo must be reserved/claimed by a single active job before transfer, and completion must be verified at the destination.
+
+No-funnel operation is the intended user-facing behavior; it does not mean every component exposes the same API. Use Create's supported interfaces where available and isolate optional integrations behind safe adapter classes. Detect absent optional mods/classes without crashing.
+
+The existing logger block's six-face routing/filter settings, if retained, should be independent of job management and direct-connection detection. They may configure allowed directions or item filters, but funnels must not be a prerequisite for the direct adapters above.
 
 ## Satellites and range
 
@@ -71,6 +88,7 @@ The satellite should be moderately expensive but available early enough to be us
 
 - Trains: integrate through Create Portable Storage Interfaces.
 - Airships: integrate through Docking Connectors.
+- The Terminal Logger's direct-connection adapters should hand off cargo through these interfaces without requiring Funnels attached to the logger.
 - Adapters must report readiness, reserve/commit cargo safely, verify delivery, and return a clear failure result when disconnected or unable to complete a route.
 - Keep the core order/network model independent of optional Create-family classes; use safe optional-mod detection.
 
@@ -85,7 +103,7 @@ The satellite should be moderately expensive but available early enough to be us
 1. Define network identity, factory endpoint registration, and safe stock lookup/reservation APIs.
 2. Add terminal first-use binding and server-side owner/team access checks.
 3. Add terminal request sourcing that checks connected factory stock first and requests only the shortfall.
-4. Connect the Terminal Logger to durable job tracking and bounded chunk loading.
+4. Connect the Terminal Logger to durable job tracking, direct connection adapters, and bounded chunk loading.
 5. Implement and test local delivery and receipt verification.
 6. Add satellite multiblock, coverage/config validation, and sequenced-assembly recipe.
 7. Add Portable Storage Interface train and Docking Connector airship adapters.
