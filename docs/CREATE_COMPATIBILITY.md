@@ -67,3 +67,11 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 - Economy payouts have persistent transaction receipts, so a replay of the same transaction cannot grant the same reward twice.
 - Train, Aeronautics airship, and Create package-Frogport adapters are not implemented yet. Until a verified adapter is registered, automated routes fail closed and leave cargo untouched.
 - The cross-mod adapter must be tested against the exact Create/Aeronautics APIs before being marked available. The current branch has not yet had a verified successful build or in-game test.
+
+## Create belts and Terminal Logger
+
+- **Frogport:** treat it as Create's built-in package Frogport, not a separate mod dependency. The current compatibility helper checks the Create registry ID and must not be interpreted as a working package-routing adapter.
+- **Belts:** Create belt infrastructure is detected separately from order delivery. Belt support must validate cargo at a server-owned belt endpoint; merely seeing a belt connector block is not proof that a shipment arrived.
+- **Terminal Logger:** planned as a six-sided funnel/router block. Each of the six faces can be enabled as an input, one face is selected as the configurable output, and the output face is never simultaneously an input. The block entity owns and persists this configuration.
+- Terminal Logger routing is not allowed to change order counts or pay rewards directly. It hands a verified cargo transfer to the shared delivery service and records a transaction UUID so repeated transfer callbacks cannot duplicate fulfilment.
+- The first backend step is the serializable routing configuration. A registered block, block entity, menu/screen, sided inventory transfer logic, and Create belt/frogport adapters are still required before the in-game block works.
