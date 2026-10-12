@@ -101,3 +101,15 @@ These are registry-presence checks only, not proof that an adapter is operationa
 - Both variants share the same block entity, saved output direction, and accepted/rejected delivery diagnostics. The filter predicate is exposed to transport adapters; it is not a replacement for server-side cargo verification.
 - Create belt compatibility detection is isolated in `CreateBeltCompat`. Registry detection only reports that belt/funnel infrastructure exists; actual belt handoff must be wired through a server-side adapter and verified against the target Create API.
 - The recipes are intended to be early-game: the andesite variant uses andesite casing instead of a shaft; the brass variant uses brass casing. The optional portable device is not required for crafting either logger.
+
+## Terminal Logger block design
+
+The Terminal Logger is the physical logistics handoff/diagnostic block:
+
+- **Andesite Terminal Logger:** inexpensive early-game recipe, no item filter, six configurable faces with one selected output face, and emits light.
+- **Brass Terminal Logger:** still approachable in the early Create progression, supports an item filter, the same six-way output selection, and emits light.
+- The configured output can be any of the six directions; the other five faces are candidate inputs. A future GUI should expose a six-direction selector, filter slot (brass only), accepted/rejected counters, last status, and a resettable diagnostic view.
+- Output direction and filter must persist in the block entity. Route handlers should report accepted/rejected shipments to its logger counters only after server-side validation.
+- Create belt compatibility is detected separately from actual belt transfer. The live adapter must validate the real item transfer into the logger; block-ID detection alone is not proof of delivery.
+- Train delivery uses a Create Portable Storage Interface handoff. Airship delivery uses an Aeronautics Docking Connector. These are the intended integration points, but actual API adapters remain unavailable until verified against the pinned mod versions.
+- Keep recipes affordable and craftable early: prefer common Create/vanilla ingredients and avoid expensive progression-gated components unless the brass filter variant genuinely needs brass. Recipe balance must be checked in a real recipe viewer/in-game.
