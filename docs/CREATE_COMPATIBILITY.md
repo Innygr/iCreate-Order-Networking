@@ -17,12 +17,13 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 ## Delivery routes (required design constraint)
 
-Every order must support all four delivery paths:
+Every order must support the four primary delivery paths, with belts available as a local automation route:
 
 1. **Manual delivery** — a player physically brings the requested items to the order handoff/terminal and submits them for server validation.
 2. **Train delivery** — items arrive through a Create train logistics workflow.
 3. **Airship delivery** — items arrive aboard an Aeronautics airship or moving contraption.
-4. **Frogport delivery** — items arrive through Create's package/Frogport logistics network. Frogport is part of base Create 6.x package logistics; it must not be treated as an Aeronautics API or assumed to require a separate Frogport mod.
+4. **Frogport delivery** — items arrive through Create's built-in Package Frogport (`create:package_frogport`), using its package address and actual package contents.
+5. **Belt delivery** — local item flow can use Create belts and belt connectors to feed a Terminal Logger; endpoint discovery alone is not delivery proof.
 
 The order lifecycle and escrow ledger must be transport-agnostic. Each route should submit a delivery request to one shared server-side fulfilment service; that service validates the order, claimant/route permissions, item identity and count, consumes or transfers the actual items, updates order progress, and pays from escrow exactly once. Route adapters must never directly edit order counts or issue currency.
 
