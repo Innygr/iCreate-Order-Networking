@@ -1,1 +1,39 @@
+name: Build
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Avoid duplicate runs for rapid pushes to the same branch/PR.
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # The repository's wrapper JAR is currently an empty placeholder.
+      # Install a pinned Gradle distribution directly until the wrapper is repaired.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.12"
+          validate-wrappers: false
+
+      - name: Build mod
+        run: gradle --no-daemon build
