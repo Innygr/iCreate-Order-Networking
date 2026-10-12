@@ -28,7 +28,7 @@ The order lifecycle and escrow ledger must be transport-agnostic. Each route sho
 
 Delivery requests should carry an order ID, item ID, quantity, route type, and a server-verifiable source/transfer context. Do not trust client-supplied counts, vehicle IDs, or claimed arrival events. Make repeated callbacks idempotent so a train/airship/frogport event cannot pay twice after retries or chunk unloads.
 
-Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train route detection targets Create's Portable Storage Interface (`create:portable_storage_interface`); airship route detection targets Aeronautics Docking Connectors; belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.0.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
+Manual delivery must always remain available even when optional Create-family logistics integrations are missing. Train, airship, and Frogport adapters should be optional, isolated, and activated only when their actual Create/Aeronautics hardware and server-side API are detected. Train route detection targets Create's Portable Storage Interface (`create:portable_storage_interface`); airship route detection targets Aeronautics Docking Connectors; belt infrastructure detection is isolated in `CreateBeltCompat`. Belt detection is only a capability check, not proof that cargo reached the logger. Frogport targets Create's built-in package/Frogport workflow; verify its package contents/address APIs against the exact Create 6.x build before writing the adapter. For train and airship delivery, verify the server-side inventory/cargo access path for the installed Create/Aeronautics/Sable builds before writing adapters.
 
 ## Aeronautics support boundary
 
@@ -113,3 +113,39 @@ The Terminal Logger is the physical logistics handoff/diagnostic block:
 - Create belt compatibility is detected separately from actual belt transfer. The live adapter must validate the real item transfer into the logger; block-ID detection alone is not proof of delivery.
 - Train delivery uses a Create Portable Storage Interface handoff. Airship delivery uses an Aeronautics Docking Connector. These are the intended integration points, but actual API adapters remain unavailable until verified against the pinned mod versions.
 - Keep recipes affordable and craftable early: prefer common Create/vanilla ingredients and avoid expensive progression-gated components unless the brass filter variant genuinely needs brass. Recipe balance must be checked in a real recipe viewer/in-game.
+
+## Terminal Logger and Scrapper block specification
+
+These are distinct blocks with distinct responsibilities. Do not add a light-emission property to the Terminal Logger.
+
+### Terminal Logger
+- **Purpose:** server-side delivery checkpoint and six-way item router/observer. It records actual item transfer into its inventory/connected logistics endpoint and associates that transfer with an order; it must never accept a client-only “arrived” message as proof.
+- **Shape:** a six-direction funnel-style block with a configurable output direction. The output direction must be saved in block state and persist across reloads.
+- **Output configuration:** use a wrench interaction or a small block UI to rotate/select the output. The brass tier additionally supports Create-style item filters (allow/deny item predicates); the andesite tier uses simple unfiltered routing.
+- **Transfer safety:** only route items accepted by the active order/filter. Keep unaccepted items in the input buffer or return them to the source; never void them. Each transfer gets a stable shipment/transaction UUID, and a repeated callback for the same shipment cannot advance progress or pay twice.
+- **No light emission:** Terminal Logger has no glow/light emission. It should use ordinary block lighting.
+- **Early-game crafting:** andesite tier should be craftable from early-game materials, using andesite alloy/andesite casing and basic Create components rather than brass-only ingredients. Brass tier may require brass but should remain a modest, reachable upgrade. Keep recipes cheap; avoid recipes requiring late-game or addon-only parts.
+- **Backend boundary:** block entity may observe/reserve cargo and report a verified transfer to DeliveryService; it must not edit order progress or balances directly. The logger is a routing/verification point, not a source of currency.
+
+### Logger tiers
+- **Andesite Terminal Logger:** basic six-way output selection, one configurable output, no filter slots, no emitted light.
+- **Brass Terminal Logger:** same six-way output selection plus filter slots/predicates and more precise routing, no emitted light.
+- Do not use a shaft as the defining body/center ingredient for the andesite logger; use an andesite component instead. The brass version should be a deliberate upgrade, not a recipe that requires an expensive late-game chain.
+
+### Scrapper
+- The Scrapper is the block that emits light. Keep light emission on the Scrapper only, and do not accidentally copy that light property to either Terminal Logger tier.
+- The Scrapper's recipe should also be accessible early-game, using basic Create/andesite materials; its processing behavior must be separate from delivery verification so scrap processing cannot masquerade as a delivery receipt.
+
+### Recipes and progression
+- All new block recipes must be cheap and obtainable early game, either as standard crafting recipes or basic Create processing recipes.
+- The portable device is the only planned exception that may be more expensive or require a later progression step.
+- Do not require Aeronautics, Sable, or another optional addon merely to craft/use the andesite or brass logger, or Scrapper.
+- The brass logger can require brass because brass is a normal Create progression milestone, but avoid rare/late-game materials beyond that.
+- Include recipe JSONs and test each recipe in a clean survival world before marking the feature complete.
+
+## Delivery route hardware constraints
+- **Train:** use Create Portable Storage Interfaces as the transfer boundary. A valid delivery is an actual server-observed PSI transfer into a logger/verified receiving inventory, not simply a train arriving near a station.
+- **Airship:** use Aeronautics Docking Connectors as the transfer boundary. A valid delivery is an actual server-observed dock/transfer event and confirmed cargo at the receiving endpoint; connector detection alone is insufficient.
+- **Belt:** belt compatibility is a separate Create route capability. A belt/logger interaction must verify actual server-side item transfer and must not treat a belt's presence as a shipment.
+- **Frogport:** use Create's built-in package Frogport workflow. Verify actual package contents and routing metadata before fulfilling the order.
+- All four user-facing delivery paths remain required: manual, train, airship, Frogport. Belt/logger infrastructure supports these routes and is not a replacement for any of them.
