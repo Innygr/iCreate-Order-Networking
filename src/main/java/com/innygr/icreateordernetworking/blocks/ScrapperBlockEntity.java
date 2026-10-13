@@ -1,9 +1,9 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -12,16 +12,17 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * Sound-state hooks for the Scrapper.
  *
- * Processing code should call startCrushing() when an item begins being
- * processed and stopCrushing() when processing finishes or pauses. Until a
- * custom sound pack is added, these cues intentionally reuse vanilla sounds.
+ * The loop-named cues are retriggered at intervals while the corresponding
+ * state is active. Processing logic should call startCrushing() and
+ * stopCrushing() at the beginning and end of each operation.
  */
 public final class ScrapperBlockEntity extends BlockEntity {
     private static final int IDLE_CUE_INTERVAL_TICKS = 100;
-    private static final float IDLE_VOLUME = 0.35F;
-    private static final float CRUSHING_VOLUME = 0.7F;
+    private static final int ACTIVE_CUE_INTERVAL_TICKS = 40;
+    private static final float IDLE_VOLUME = 0.45F;
+    private static final float ACTIVE_VOLUME = 0.75F;
 
-    private int idleCueTimer;
+    private int cueTimer;
     private boolean crushing;
 
     public ScrapperBlockEntity(BlockPos pos, BlockState state) {
@@ -30,39 +31,43 @@ public final class ScrapperBlockEntity extends BlockEntity {
 
     public static void serverTick(Level level, BlockPos pos, BlockState state,
                                   ScrapperBlockEntity scrapper) {
-        if (level.isClientSide || scrapper.crushing) {
+        if (level.isClientSide) {
             return;
         }
 
-        if (++scrapper.idleCueTimer >= IDLE_CUE_INTERVAL_TICKS) {
-            scrapper.idleCueTimer = 0;
-            scrapper.playCue(SoundEvents.CHAIN_STEP, IDLE_VOLUME,
-                    0.7F + level.random.nextFloat() * 0.2F);
+        int interval = scrapper.crushing ? ACTIVE_CUE_INTERVAL_TICKS : IDLE_CUE_INTERVAL_TICKS;
+        if (++scrapper.cueTimer >= interval) {
+            scrapper.cueTimer = 0;
+            if (scrapper.crushing) {
+                scrapper.playCue(ModSounds.GRINDER_ACTIVE_LOOP.get(), ACTIVE_VOLUME, 1.0F);
+            } else {
+                scrapper.playCue(ModSounds.GRINDER_IDLE_LOOP.get(), IDLE_VOLUME, 1.0F);
+            }
         }
     }
 
-    /** Call when the Scrapper starts crushing an item. */
+    /** Call once when the Scrapper starts processing an item. */
     public void startCrushing() {
         if (crushing) {
             return;
         }
         crushing = true;
-        idleCueTimer = 0;
-        playCue(SoundEvents.ANVIL_USE, CRUSHING_VOLUME, 0.85F + levelRandom() * 0.3F);
+        cueTimer = 0;
+        playCue(ModSounds.GRINDER_BEGIN.get(), ACTIVE_VOLUME, 1.0F);
     }
 
-    /** Call when the current crushing operation ends or pauses. */
+    /** Call when processing ends or pauses; plays the metallic finishing cue. */
     public void stopCrushing() {
+        if (!crushing) {
+            return;
+        }
         crushing = false;
-        idleCueTimer = 0;
+        cueTimer = 0;
+        playCue(ModSounds.GRINDER_METAL.get(), ACTIVE_VOLUME, 1.0F);
     }
 
     public boolean isCrushing() {
         return crushing;
-    }
-
-    private float levelRandom() {
-        return level == null ? 0.5F : level.random.nextFloat();
     }
 
     private void playCue(SoundEvent sound, float volume, float pitch) {

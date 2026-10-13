@@ -1,0 +1,26 @@
+{
+  "grinder_idle_loop": {
+    "subtitle": "subtitles.icreate_order_networking.grinder_idle",
+    "sounds": [
+      { "name": "icreate_order_networking:grinder_idle_loop", "type": "file" }
+    ]
+  },
+  "grinder_begin": {
+    "subtitle": "subtitles.icreate_order_networking.grinder_begin",
+    "sounds": [
+      { "name": "icreate_order_networking:grinder_begin", "type": "file" }
+    ]
+  },
+  "grinder_active_loop": {
+    "subtitle": "subtitles.icreate_order_networking.grinder_active",
+    "sounds": [
+      { "name": "icreate_order_networking:grinder_active_loop", "type": "file" }
+    ]
+  },
+  "grinder_metal": {
+    "subtitle": "subtitles.icreate_order_networking.grinder_metal",
+    "sounds": [
+      { "name": "icreate_order_networking:grinder_metal", "type": "file" }
+    ]
+  }
+}
