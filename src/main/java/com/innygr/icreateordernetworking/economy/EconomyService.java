@@ -91,11 +91,18 @@ public final class EconomyService {
 
     /** Preflights a payout while allowing a matching already-recorded transaction retry. */
     public static boolean canCreditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
-        if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
+        return canCreditOnce(level, playerId, amount, transactionId, "delivery");
+    }
+
+    /** Preflights an idempotent credit within a purpose-specific transaction scope. */
+    public static boolean canCreditOnce(ServerLevel level, UUID playerId, long amount,
+                                        UUID transactionId, String scope) {
+        if (level == null || playerId == null || transactionId == null || amount <= 0
+                || scope == null || scope.isBlank() || scope.length() > 64) return false;
         EconomyProvider provider = externalProvider;
-        if (provider == null) return EconomyData.get(level).canCreditOnce(transactionId, playerId, amount);
+        if (provider == null) return EconomyData.get(level).canCreditOnce(transactionId, playerId, amount, scope);
         try {
-            return provider.canCreditOnce(level, playerId, amount, transactionId);
+            return provider.canCreditOnce(level, playerId, amount, transactionId, scope);
         } catch (RuntimeException | LinkageError exception) {
             return false;
         }
@@ -103,11 +110,18 @@ public final class EconomyService {
 
     /** Credit a delivery payout exactly once across retries and world reloads. */
     public static boolean creditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
-        if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
+        return creditOnce(level, playerId, amount, transactionId, "delivery");
+    }
+
+    /** Credits once within a purpose-specific transaction scope. */
+    public static boolean creditOnce(ServerLevel level, UUID playerId, long amount,
+                                     UUID transactionId, String scope) {
+        if (level == null || playerId == null || transactionId == null || amount <= 0
+                || scope == null || scope.isBlank() || scope.length() > 64) return false;
         EconomyProvider provider = externalProvider;
-        if (provider == null) return EconomyData.get(level).creditOnce(transactionId, playerId, amount);
+        if (provider == null) return EconomyData.get(level).creditOnce(transactionId, playerId, amount, scope);
         try {
-            return provider.creditOnce(level, playerId, amount, transactionId);
+            return provider.creditOnce(level, playerId, amount, transactionId, scope);
         } catch (RuntimeException | LinkageError exception) {
             return false;
         }
