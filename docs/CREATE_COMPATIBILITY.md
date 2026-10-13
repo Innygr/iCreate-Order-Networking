@@ -165,7 +165,7 @@ These are distinct blocks with distinct responsibilities. Do not add a light-emi
 - `CreateBeltCompat` separately detects Create belt infrastructure and both funnel tiers. This is capability detection only; the actual transfer still must be observed server-side.
 - The andesite Terminal Logger recipe uses an andesite casing and andesite funnels rather than a shaft as its central component.
 - The brass Terminal Logger is an upgrade recipe using the andesite logger, brass sheet, Create filter, and brass funnel instead of requiring four filters and four iron ingots.
-- The logger persists its selected output face and transfer counters in block-entity NBT. It currently exposes the face/filter/diagnostic backend, but does not yet provide a live item-handler or real Create transfer hook; do not describe belt/train/airship/Frogport delivery as end-to-end working until those adapters are implemented and tested.
+- The logger persists its selected output face, transfer counters, inventory, owner, and optional filter in block-entity NBT. The current implementation registers a sided NeoForge item-handler capability: the five non-output faces accept items (respecting the brass filter), and only the selected output face allows extraction. This is a generic inventory boundary, not a verified PSI handshake, Aeronautics docking adapter, belt adapter, or Frogport adapter; do not describe any automated route as end-to-end working until its route-specific transfer and receipt checks are implemented and tested.
 
 ## Release requirements: teams and early-game logistics
 
