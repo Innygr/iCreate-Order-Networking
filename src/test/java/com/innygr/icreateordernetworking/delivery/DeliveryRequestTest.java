@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.innygr.icreateordernetworking.orders.OrderService;
 import net.minecraft.resources.ResourceLocation;
 
 class DeliveryRequestTest {
@@ -42,6 +43,10 @@ class DeliveryRequestTest {
         assertFalse(new DeliveryRequest(orderId, itemId, 0, DeliveryRoute.TRAIN,
                 actorId, null, transactionId).isWellFormed());
         assertFalse(new DeliveryRequest(orderId, itemId, -1, DeliveryRoute.TRAIN,
+                actorId, null, transactionId).isWellFormed());
+        assertFalse(new DeliveryRequest(orderId, itemId, OrderService.MAX_ORDER_COUNT + 1,
+                DeliveryRoute.TRAIN, actorId, null, transactionId).isWellFormed());
+        assertFalse(new DeliveryRequest(orderId, itemId, 1, DeliveryRoute.MANUAL,
                 actorId, null, transactionId).isWellFormed());
     }
 }
