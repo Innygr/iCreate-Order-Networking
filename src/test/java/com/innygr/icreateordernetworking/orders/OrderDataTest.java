@@ -43,11 +43,15 @@ class OrderDataTest {
     void pendingDeliveryReservationsReduceAvailableOrderQuantity() {
         OrderData data = new OrderData();
         UUID orderId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
         UUID claimantId = UUID.randomUUID();
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();
+        data.add(new Order(orderId, ownerId, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                11, 0, 0, claimantId, OrderStatus.IN_PROGRESS, 1L));
 
         assertTrue(data.reserveDelivery(first, orderId, DeliveryRoute.TRAIN, claimantId, 7));
+        assertFalse(data.reserveDelivery(UUID.randomUUID(), orderId, DeliveryRoute.BELT, claimantId, 5));
         assertTrue(data.reserveDelivery(second, orderId, DeliveryRoute.BELT, claimantId, 4));
         assertEquals(11L, data.pendingDeliveryCountForOrder(orderId, null));
         assertEquals(4L, data.pendingDeliveryCountForOrder(orderId, first));
