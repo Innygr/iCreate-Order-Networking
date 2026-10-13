@@ -13,8 +13,15 @@ public record DeliveryReceipt(
     public DeliveryReceipt {
         if (orderId == null) throw new IllegalArgumentException("orderId cannot be null");
         if (route == null) throw new IllegalArgumentException("route cannot be null");
-        if (count < 0) throw new IllegalArgumentException("count cannot be negative");
-        if (count > 0 && claimantId == null) throw new IllegalArgumentException("claimant required for counted delivery");
+        if (count < 0 || count > OrderService.MAX_ORDER_COUNT) {
+            throw new IllegalArgumentException("count is outside the supported delivery range");
+        }
+        if (count > 0 && route == DeliveryRoute.MANUAL) {
+            throw new IllegalArgumentException("manual legacy receipts cannot authorize counted automated delivery");
+        }
+        if (count > 0 && claimantId == null) {
+            throw new IllegalArgumentException("claimant required for counted delivery");
+        }
     }
 
     /** Legacy receipts are treated as finalized because their original transaction details are unavailable. */
