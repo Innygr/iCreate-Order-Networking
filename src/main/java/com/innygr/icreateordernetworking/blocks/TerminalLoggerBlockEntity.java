@@ -8,6 +8,7 @@ import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
+import com.innygr.icreateordernetworking.logistics.NetworkStatsData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -159,9 +160,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 }
                 int accepted = extracted.getCount() - remainder.getCount();
                 if (accepted > 0) {
-                    recordAccepted("Pulled " + accepted + "x "
-                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(extracted.getItem())
-                            + " from " + side.getName());
+                    ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(extracted.getItem());
+                    recordAccepted("Pulled " + accepted + "x " + itemId + " from " + side.getName());
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.INPUT, accepted,
+                            "Input from " + side.getName());
                     return;
                 }
             }
@@ -182,12 +184,31 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 int moved = Math.min(TRANSFER_PER_TICK, stored.getCount()) - remainder.getCount();
                 if (moved > 0) {
                     inventory.extractItem(slot, moved, false);
-                    recordAccepted("Output " + moved + "x "
-                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stored.getItem()));
+                    ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stored.getItem());
+                    recordAccepted("Output " + moved + "x " + itemId);
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.OUTPUT, moved,
+                            "Output to " + outputDirection.getName());
                     return;
                 }
             }
         }
+    }
+
+    /**
+     * Returns this owner's network statistics only when the requester has access
+     * to this logger. A null result means access is denied or the logger is not
+     * attached to a server world.
+     */
+    public NetworkStatsData.Snapshot getNetworkStats(UUID requesterId) {
+        if (level == null || level.isClientSide || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)
+                || !hasAccess(requesterId) || ownerId == null) return null;
+        return NetworkStatsData.get(serverLevel).snapshot(ownerId);
+    }
+
+    private void recordNetworkTransfer(Level level, ResourceLocation itemId,
+                                       NetworkStatsData.EventType type, int count, String detail) {
+        if (ownerId == null || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        NetworkStatsData.get(serverLevel).record(serverLevel, ownerId, worldPosition, itemId, type, count, detail);
     }
 
     public ItemStackHandler getInventory() { return inventory; }
