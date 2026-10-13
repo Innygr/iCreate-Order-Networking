@@ -39,13 +39,13 @@ public final class RedstoneRequesterOrderBridge {
             latchedRequesters.remove(key);
             return;
         }
-        if (!latchedRequesters.add(key)) return;
-        createOrders(level, pos, requester);
+        if (latchedRequesters.contains(key)) return;
+        if (createOrders(level, pos, requester)) latchedRequesters.add(key);
     }
 
-    private static void createOrders(ServerLevel level, BlockPos requesterPos,
-                                     RedstoneRequesterBlockEntity requester) {
-        if (requester.encodedRequest == null || requester.encodedRequest.isEmpty()) return;
+    private static boolean createOrders(ServerLevel level, BlockPos requesterPos,
+                                        RedstoneRequesterBlockEntity requester) {
+        if (requester.encodedRequest == null || requester.encodedRequest.isEmpty()) return false;
 
         OrderTerminalBlockEntity terminal = null;
         for (Direction direction : Direction.values()) {
@@ -56,10 +56,10 @@ public final class RedstoneRequesterOrderBridge {
                 break;
             }
         }
-        if (terminal == null) return;
+        if (terminal == null) return false;
 
         UUID ownerId = terminal.getFactoryOwnerId();
-        if (ownerId == null) return;
+        if (ownerId == null) return false;
         ServerPlayer onlineOwner = level.getServer().getPlayerList().getPlayer(ownerId);
         String ownerName = onlineOwner == null ? "Factory " + ownerId.toString().substring(0, 8)
                 : onlineOwner.getGameProfile().getName();
@@ -71,5 +71,6 @@ public final class RedstoneRequesterOrderBridge {
             if (itemId == null || itemId.equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
             OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, entry.count);
         }
+        return true;
     }
 }
