@@ -1,5 +1,6 @@
 {
   "block.icreate_order_networking.terminal_logger": "Andesite Terminal Logger",
   "block.icreate_order_networking.brass_terminal_logger": "Brass Terminal Logger",
+  "block.icreate_order_networking.network_statistics": "Network Statistics",
   "block.icreate_order_networking.scrapper": "Scrapper"
 }
