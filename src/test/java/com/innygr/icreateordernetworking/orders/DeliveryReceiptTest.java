@@ -53,6 +53,10 @@ class DeliveryReceiptTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new DeliveryReceipt(orderId, DeliveryRoute.TRAIN, claimantId, 0, false));
         assertThrows(IllegalArgumentException.class,
+                () -> new DeliveryReceipt(orderId, DeliveryRoute.MANUAL, null, 0, false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeliveryReceipt(orderId, DeliveryRoute.MANUAL, claimantId, 0, true));
+        assertThrows(IllegalArgumentException.class,
                 () -> new DeliveryReceipt(orderId, DeliveryRoute.TRAIN, claimantId,
                         OrderService.MAX_ORDER_COUNT + 1, false));
         assertThrows(IllegalArgumentException.class,
