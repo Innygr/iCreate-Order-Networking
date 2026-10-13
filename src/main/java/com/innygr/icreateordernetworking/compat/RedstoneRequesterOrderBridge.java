@@ -29,12 +29,24 @@ public final class RedstoneRequesterOrderBridge {
     @net.neoforged.bus.api.SubscribeEvent
     public void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
-        BlockPos pos = event.getPos();
+
+        // NeighborNotifyEvent identifies the block sending the notification, not
+        // necessarily the requester receiving it. Inspect the source and adjacent
+        // positions so both a redstone update and a newly placed terminal can retry.
+        BlockPos sourcePos = event.getPos();
+        processRequester(level, sourcePos);
+        for (Direction direction : Direction.values()) {
+            processRequester(level, sourcePos.relative(direction));
+        }
+    }
+
+    private void processRequester(ServerLevel level, BlockPos pos) {
         if (!(level.getBlockEntity(pos) instanceof RedstoneRequesterBlockEntity requester)) return;
 
         String key = level.dimension().location() + ":" + pos.asLong();
-        boolean powered = level.getBlockState(pos).hasProperty(BlockStateProperties.POWERED)
-                && level.getBlockState(pos).getValue(BlockStateProperties.POWERED);
+        var state = level.getBlockState(pos);
+        boolean powered = state.hasProperty(BlockStateProperties.POWERED)
+                && state.getValue(BlockStateProperties.POWERED);
         if (!powered) {
             latchedRequesters.remove(key);
             return;
