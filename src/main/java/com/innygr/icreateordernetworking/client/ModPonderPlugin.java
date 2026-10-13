@@ -26,10 +26,9 @@ public final class ModPonderPlugin implements PonderPlugin {
     public void registerTags(PonderTagRegistrationHelper<ResourceLocation> helper) {
         ResourceLocation logistics = ResourceLocation.fromNamespaceAndPath(ICreateOrderNetworking.MOD_ID, "logistics");
         ResourceLocation missile = ResourceLocation.fromNamespaceAndPath(ICreateOrderNetworking.MOD_ID, "missiles");
-        helper.registerTag(logistics, "iCreate Logistics", "Blocks used to configure orders and track deliveries.",
-                ModBlocks.ORDER_TERMINAL.getId(), ModBlocks.TERMINAL_LOGGER.getId(),
-                ModBlocks.BRASS_TERMINAL_LOGGER.getId(), ModBlocks.NETWORK_STATISTICS.getId());
-        helper.registerTag(missile, "Missile Systems", "Fuel and identity components for the planned missile system.",
-                ModBlocks.MISSILE_THRUSTER.getId(), ModBlocks.MISSILE_TAG.getId());
+        // Ponder 1.21.1's tag helper accepts the tag ID here; tag metadata is
+        // supplied by the library's localization/tag registration mechanism.
+        helper.registerTag(logistics);
+        helper.registerTag(missile);
     }
 }

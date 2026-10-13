@@ -19,7 +19,7 @@ public final class RadiationEffect extends MobEffect {
     @Override
     public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         if (entity.level() instanceof ServerLevel serverLevel && entity.tickCount % 40 == 0) {
-            entity.hurtServer(serverLevel, serverLevel.damageSources().magic(), 1.0F + amplifier);
+            entity.hurt(serverLevel.damageSources().magic(), 1.0F + amplifier);
         }
         return true;
     }
