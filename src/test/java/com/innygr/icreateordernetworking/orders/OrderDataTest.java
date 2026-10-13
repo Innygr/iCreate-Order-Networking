@@ -1,0 +1,81 @@
+package com.innygr.icreateordernetworking.orders;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+
+class OrderDataTest {
+    @Test
+    void orderStateSurvivesSavedDataRoundTrip() {
+        OrderData original = new OrderData();
+        UUID id = UUID.randomUUID();
+        UUID owner = UUID.randomUUID();
+        UUID claimant = UUID.randomUUID();
+        Order order = new Order(id, owner, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                64, 16, 3, claimant, OrderStatus.IN_PROGRESS, 123L, "team-a");
+        original.add(order);
+        original.reserveDelivery(UUID.randomUUID(), id, DeliveryRoute.TRAIN, claimant, 8);
+
+        CompoundTag saved = original.save(new CompoundTag(), null);
+        OrderData restored = OrderData.load(saved, null);
+
+        Order loaded = restored.find(id);
+        assertEquals(OrderStatus.IN_PROGRESS, loaded.status());
+        assertEquals(64, loaded.requestedCount());
+        assertEquals(16, loaded.fulfilledCount());
+        assertEquals(48, loaded.remainingCount());
+        assertEquals("team-a", loaded.ownerTeamKey());
+        assertTrue(restored.hasPendingDeliveryForOrder(id));
+    }
+
+    @Test
+    void malformedAndInconsistentOrdersAreIgnoredDuringLoad() {
+        CompoundTag root = new CompoundTag();
+        ListTag orders = new ListTag();
+
+        CompoundTag malformedId = validOrder(UUID.randomUUID().toString());
+        malformedId.putString("Id", "not-a-uuid");
+        orders.add(malformedId);
+
+        CompoundTag invalidCount = validOrder(UUID.randomUUID().toString());
+        invalidCount.putInt("Requested", 0);
+        orders.add(invalidCount);
+
+        CompoundTag inconsistentStatus = validOrder(UUID.randomUUID().toString());
+        inconsistentStatus.putString("Status", OrderStatus.OPEN.name());
+        inconsistentStatus.putString("ClaimedBy", UUID.randomUUID().toString());
+        orders.add(inconsistentStatus);
+
+        root.put("Orders", orders);
+        OrderData loaded = OrderData.load(root, null);
+
+        assertNull(loaded.find(UUID.fromString(invalidCount.getString("Id"))));
+        assertNull(loaded.find(UUID.fromString(inconsistentStatus.getString("Id"))));
+        assertTrue(loaded.all().isEmpty());
+    }
+
+    private static CompoundTag validOrder(String id) {
+        CompoundTag order = new CompoundTag();
+        order.putString("Id", id);
+        order.putString("Owner", UUID.randomUUID().toString());
+        order.putString("OwnerName", "owner");
+        order.putString("Item", "minecraft:iron_ingot");
+        order.putInt("Requested", 16);
+        order.putInt("Fulfilled", 0);
+        order.putInt("Reward", 2);
+        order.putString("Status", OrderStatus.OPEN.name());
+        order.putLong("CreatedAt", 1L);
+        return order;
+    }
+}
