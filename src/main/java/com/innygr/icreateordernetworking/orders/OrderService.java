@@ -159,8 +159,12 @@ public final class OrderService {
                 || count < 1 || count > MAX_ORDER_COUNT) return false;
         OrderData data = OrderData.get(level);
         // A retry after a crash may find the order progress saved but the receipt
-        // finalization not yet saved. Never apply the same transaction twice.
-        if (data.hasAppliedAutomatedProgress(transactionId)) return true;
+        // finalization not yet saved. Never apply the same transaction twice, and
+        // do not report success for a reused transaction ID with different details.
+        if (data.hasAppliedAutomatedProgress(transactionId)) {
+            DeliveryReceipt prior = data.deliveryReceipt(transactionId);
+            return prior != null && prior.matches(orderId, prior.route(), claimantId, count);
+        }
         Order order = data.find(orderId);
         if (order == null || (order.status() != OrderStatus.OPEN
                 && order.status() != OrderStatus.IN_PROGRESS)
