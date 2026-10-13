@@ -24,10 +24,11 @@ import net.neoforged.neoforge.items.IItemHandler;
 
 /**
  * Six-way inventory junction. Five faces pull from adjacent NeoForge item-handler
- * capabilities; the configured face is output-only. This generic capability path
- * does not inspect PSI connection state or Aeronautics docking lifecycle, and is
- * not a substitute for either transport adapter. Route-specific order verification
- * remains separate.
+ * capabilities; the configured face is output-only. Create's Portable Storage
+ * Interface exposes its own item handler only during its native transfer state, so
+ * this junction can exchange items through that capability without duplicating the
+ * PSI handshake. Aeronautics docking lifecycle and route-specific order receipts
+ * remain separate integration work.
  */
 public final class TerminalLoggerBlockEntity extends BlockEntity {
     private static final int SLOT_COUNT = 18;
