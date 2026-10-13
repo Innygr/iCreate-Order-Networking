@@ -43,6 +43,28 @@ public final class OrderService {
         return order;
     }
 
+    /** True when the owner already has a live order for this item. */
+    public static boolean hasActiveOrderForOwnerItem(ServerLevel level, UUID ownerId, ResourceLocation itemId) {
+        if (level == null || ownerId == null || itemId == null) return true;
+        return OrderData.get(level).all().stream().anyMatch(order ->
+                ownerId.equals(order.ownerId()) && itemId.equals(order.itemId())
+                        && (order.status() == OrderStatus.OPEN || order.status() == OrderStatus.IN_PROGRESS));
+    }
+
+    /** Creates a no-reward restock order on behalf of a placed Restore Requester. */
+    public static Order createRestockOrder(ServerLevel level, UUID ownerId, String ownerName,
+                                           String ownerTeamKey, ResourceLocation itemId, int count) {
+        if (level == null || ownerId == null || itemId == null
+                || !BuiltInRegistries.ITEM.containsKey(itemId)
+                || count < 1 || count > MAX_ORDER_COUNT
+                || hasActiveOrderForOwnerItem(level, ownerId, itemId)) return null;
+        Order order = new Order(UUID.randomUUID(), ownerId,
+                ownerName == null || ownerName.isBlank() ? "Unknown" : ownerName,
+                itemId, count, 0, 0, null, OrderStatus.OPEN, level.getGameTime(), ownerTeamKey);
+        OrderData.get(level).add(order);
+        return order;
+    }
+
     public static List<Order> list(ServerLevel level) {
         return OrderData.get(level).all().stream()
                 .filter(o -> o.status() == OrderStatus.OPEN || o.status() == OrderStatus.IN_PROGRESS)
