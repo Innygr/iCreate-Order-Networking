@@ -5,40 +5,58 @@
 A valid missile assembly must contain:
 
 - 4 fins
-- 1 thruster
-- 1 fuel tank or compatible fluid tank
+- 1 custom missile thruster
+- 1 fluid tank containing a supported fuel (water or lava)
 - 1 navigator
 - 1 cone
 - At least 1 explosive payload
 
 The assembly validator should report missing components and refuse launch until the build is valid.
 
+## Navigation and guidance
+
+The navigator is responsible for stable guidance rather than simply pointing the missile at the target once.
+
+- Keep the target in world coordinates and update guidance every tick on the server.
+- For block targets, aim at the target block's center. For player targets, resolve the saved player UUID and continually steer toward the player's current position.
+- Use smooth course corrections and limit turning acceleration so the missile does not jitter, instantly reverse, or overshoot while chasing moving targets.
+- Compensate for the missile's current velocity and lead moving targets where possible instead of always aiming at their last position.
+- Re-check target validity and maximum range throughout flight. If a player target disconnects or becomes invalid, stop active guidance and apply a consistent fail-safe (coast with current velocity rather than teleporting or abruptly reversing).
+- Keep guidance and launch validation server-authoritative; synchronize position and orientation to clients.
+- Avoid loading chunks solely to chase a target. If the target is in an unloaded area, stop guidance and enter the defined fail-safe state.
+- Provide a configurable steering strength/turn-rate so the guidance can be tuned for gameplay.
+
 ## Targeting remote
 
 The targeting remote is the player's control item.
 
 - Right-click a block to store that block's coordinates as a fixed target.
-- Right-click a player to select that player as a heat-seeking target. The missile tracks the selected player's current position during flight.
+- Right-click a player to select that player as a heat-seeking target.
 - Right-click in the air to open the remote control screen.
 - The control screen should allow the player to link/select a missile, inspect readiness and range, and issue a launch command.
 - Store target data in the remote item so it persists between uses and survives relogging. Block targets store coordinates; player targets store a stable player UUID, not just a username or the player's current coordinates.
 - A missile should be referenced by a stable identifier rather than only its current coordinates.
 - Target-setting and launch requests must be handled and validated server-side.
 
-## Range and propulsion
+## Thruster and fuel
 
-Each installed fluid tank provides 100 blocks of maximum range:
+The missile uses a custom `Missile Thruster` block. When it is actively firing, the thruster should emit light and heat; nearby flammable blocks can catch fire. The registered standalone block currently responds to redstone power as a testable ignition/lighting behaviour. Actual missile-mounted thrust and fuel consumption will be wired into the missile entity/assembly implementation.
 
-`maximumRange = fluidTankCount * 100`
+Supported fuels:
 
-Examples:
-- 1 tank: 100 blocks
-- 2 tanks: 200 blocks
-- 5 tanks: 500 blocks
+- **Water:** valid low-efficiency fuel. It provides the baseline thrust/range but consumes fuel more quickly or produces less range per tank.
+- **Lava:** valid high-efficiency fuel. It provides more thrust/range per tank than water.
+- Do not accept arbitrary fluids as fuel. Fuel type must be detected from the tank's actual contents.
+- Keep fuel efficiency values configurable. For the initial balance, water provides 50% of lava's range per equal tank capacity.
+- When fuel runs out, shut down the thruster and let the missile coast under its existing velocity.
 
-For a block target, measure 3D distance from the launch position to the center of the target block. For a heat-seeking target, measure 3D distance from the launch position to the player's current position. If the target exceeds the missile's maximum range during flight, shut the thruster off immediately.
+Maximum range should account for tank count and fuel efficiency:
 
-After the thruster cuts out, preserve the missile's current velocity and let it coast under the flight physics until it collides or comes to rest. A missile must have at least one valid tank to have non-zero range.
+`maximumRange = tankCount * 100 * fuelEfficiency`
+
+Use `fuelEfficiency = 0.5` for water and `1.0` for lava initially. Thus one full tank gives 50 blocks on water or 100 blocks on lava; two tanks give 100 or 200 blocks respectively.
+
+If a missile exceeds its maximum range during flight, shut the thruster off immediately. Preserve its current velocity and let it coast under flight physics until it collides or comes to rest.
 
 ## Water landing and flotation
 
@@ -79,7 +97,9 @@ A missile may contain a nuclear core instead of, or in addition to, a convention
 
 The current code implements the persistent per-dimension radiation-zone data, rain cleanup, green dust cloud particles, server-side exposure checks, the Radiation status effect, and the Nuclear Core assembly-marker item. The zone entry point is `RadiationService.createBlastZone(ServerLevel, BlockPos, int)`; a missile detonation handler should call it once the missile-flight system exists.
 
-The repository does not yet contain the missile assembly, targeting remote, flight entity, impact handling, or detonation pipeline. Therefore the Nuclear Core is registered but is not yet wired into a launchable missile. The Radiation effect currently communicates contamination with green effect particles and applies damage over time; a full green tint over the player's rendered model still needs a client-render implementation.
+The custom missile thruster block is registered and can be redstone-powered to light up and attempt to ignite nearby flammable surroundings. The actual missile assembly, targeting remote, flight entity, navigation controller, impact handling, and fuel-consuming propulsion are not yet implemented; the thruster block is not yet a working propulsion unit.
+
+The Radiation effect currently communicates contamination with green effect particles and applies damage over time; a full green tint over the player's rendered model still needs a client-render implementation.
 
 ### Existing mod compatibility
 
@@ -91,9 +111,9 @@ Before launching, verify:
 
 1. The remote is linked to a loaded, valid missile assembly.
 2. The assembly has all required components.
-3. The missile has sufficient fuel.
+3. The tank contains a supported fuel and has sufficient fluid.
 4. A valid block or player target has been set.
-5. The target is within range.
+5. The target is within range based on the current fuel.
 6. The player is permitted to command that missile.
 
-If any check fails, do not launch and report the reason. For a player target, handle the target becoming unavailable (for example, disconnecting or no longer being a valid target) deterministically and report the resulting missile status. The first implementation can separate assembly validation and remote/target persistence from the later physical missile flight and impact simulation.
+If any check fails, do not launch and report the reason. For a player target, handle the target becoming unavailable deterministically and report the resulting missile status. The first implementation can separate assembly validation and remote/target persistence from the later physical missile flight and impact simulation.

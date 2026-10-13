@@ -5,6 +5,7 @@
   "block.icreate_order_networking.network_statistics": "Network Statistics",
   "icreate_order_networking.display_source.network_statistics": "Network Statistics",
   "block.icreate_order_networking.scrapper": "Scrapper",
+  "block.icreate_order_networking.missile_thruster": "Missile Thruster",
   "item.icreate_order_networking.nuclear_core": "Nuclear Core",
   "effect.icreate_order_networking.radiation": "Radiation",
   "subtitles.icreate_order_networking.grinder_idle": "Scrapper idles",

@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.registry;
 
 import com.innygr.icreateordernetworking.ICreateOrderNetworking;
+import com.innygr.icreateordernetworking.blocks.MissileThrusterBlock;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlock;
 import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlock;
@@ -53,6 +54,14 @@ public final class ModBlocks {
     public static final DeferredItem<BlockItem> SCRAPPER_ITEM =
             ITEMS.register("scrapper",
                     () -> new BlockItem(SCRAPPER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<MissileThrusterBlock> MISSILE_THRUSTER =
+            BLOCKS.register("missile_thruster",
+                    () -> new MissileThrusterBlock(BlockBehaviour.Properties.of()
+                            .strength(3.0F).lightLevel(state -> state.getValue(MissileThrusterBlock.LIT) ? 12 : 0)));
+    public static final DeferredItem<BlockItem> MISSILE_THRUSTER_ITEM =
+            ITEMS.register("missile_thruster",
+                    () -> new BlockItem(MISSILE_THRUSTER.get(), new Item.Properties()));
 
     private ModBlocks() {}
 
