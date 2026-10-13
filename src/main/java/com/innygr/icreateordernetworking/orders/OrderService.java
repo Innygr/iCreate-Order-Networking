@@ -210,7 +210,10 @@ public final class OrderService {
                 || data.hasPendingDeliveryForOrder(orderId)) return false;
 
         long refund = (long) order.remainingCount() * order.rewardPerItem();
-        if (refund > 0 && !EconomyService.credit(level, order.ownerId(), refund)) return false;
+        // Scope the refund to this order so a crash after the economy save but
+        // before the order-status save cannot refund the same escrow twice.
+        if (refund > 0 && !EconomyService.creditOnce(level, order.ownerId(), refund,
+                order.id(), "order-cancel-refund")) return false;
 
         order.cancel();
         data.changed();
