@@ -1,7 +1,5 @@
 package com.innygr.icreateordernetworking.delivery;
 
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.compat.CreateCompat;
@@ -20,15 +18,15 @@ import net.minecraft.server.level.ServerPlayer;
 
 /** Shared server-side entry point for all delivery routes. Call on the logical server thread only. */
 public final class DeliveryService {
-    private static final Map<DeliveryRoute, AutomatedDeliveryAdapter> ADAPTERS = new EnumMap<>(DeliveryRoute.class);
-
     private DeliveryService() {}
 
     public static void registerAdapter(AutomatedDeliveryAdapter adapter) {
         if (adapter == null || adapter.route() == null || adapter.route() == DeliveryRoute.MANUAL) {
             throw new IllegalArgumentException("Only a non-manual delivery adapter can be registered");
         }
-        ADAPTERS.put(adapter.route(), adapter);
+        if (!AutomatedDeliveryRegistry.register(adapter)) {
+            throw new IllegalStateException("Adapter is unavailable or already registered for " + adapter.route());
+        }
     }
 
     public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
@@ -77,29 +75,37 @@ public final class DeliveryService {
                 || request.count() > order.remainingCount())) return DeliveryResult.ORDER_REJECTED;
 
         var requestedItem = BuiltInRegistries.ITEM.get(request.itemId());
-        if (requestedItem == null || BuiltInRegistries.ITEM.getKey(requestedItem).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
+        if (requestedItem == null
+                || BuiltInRegistries.ITEM.getKey(requestedItem).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
             return DeliveryResult.INVALID_REQUEST;
         }
-        AutomatedDeliveryAdapter adapter = ADAPTERS.get(request.route());
-        if (adapter == null || !adapter.isAvailable()) return DeliveryResult.ROUTE_UNAVAILABLE;
-        if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN
-                || request.route() == DeliveryRoute.FROGPORT) && !CreateCompat.isCreateLoaded()) {
+
+        AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(request.route()).orElse(null);
+        if (adapter == null) return DeliveryResult.ROUTE_UNAVAILABLE;
+
+        try {
+            if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN
+                    || request.route() == DeliveryRoute.FROGPORT) && !CreateCompat.isCreateLoaded()) {
+                return DeliveryResult.ROUTE_UNAVAILABLE;
+            }
+            if (request.route() == DeliveryRoute.BELT && !CreateBeltCompat.isBeltInfrastructureAvailable()) {
+                return DeliveryResult.ROUTE_UNAVAILABLE;
+            }
+            if (request.route() == DeliveryRoute.TRAIN && !CreateTrainCompat.isPortableStorageInterfaceAvailable()) {
+                return DeliveryResult.ROUTE_UNAVAILABLE;
+            }
+            if (request.route() == DeliveryRoute.AIRSHIP
+                    && (!CreateCompat.isAeronauticsStackAvailable()
+                    || !AeronauticsDockingCompat.isDockingConnectorAvailable())) {
+                return DeliveryResult.ROUTE_UNAVAILABLE;
+            }
+            if (request.route() == DeliveryRoute.FROGPORT && !CreateFrogportCompat.isPackageFrogportAvailable()) {
+                return DeliveryResult.ROUTE_UNAVAILABLE;
+            }
+            if (!adapter.isAuthorized(level, request)) return DeliveryResult.ROUTE_NOT_AUTHORIZED;
+        } catch (RuntimeException | LinkageError exception) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
-        if (request.route() == DeliveryRoute.BELT && !CreateBeltCompat.isBeltInfrastructureAvailable()) {
-            return DeliveryResult.ROUTE_UNAVAILABLE;
-        }
-        if (request.route() == DeliveryRoute.TRAIN && !CreateTrainCompat.isPortableStorageInterfaceAvailable()) {
-            return DeliveryResult.ROUTE_UNAVAILABLE;
-        }
-        if (request.route() == DeliveryRoute.AIRSHIP
-                && (!CreateCompat.isAeronauticsStackAvailable() || !AeronauticsDockingCompat.isDockingConnectorAvailable())) {
-            return DeliveryResult.ROUTE_UNAVAILABLE;
-        }
-        if (request.route() == DeliveryRoute.FROGPORT && !CreateFrogportCompat.isPackageFrogportAvailable()) {
-            return DeliveryResult.ROUTE_UNAVAILABLE;
-        }
-        if (!adapter.isAuthorized(level, request)) return DeliveryResult.ROUTE_NOT_AUTHORIZED;
 
         PreparedDelivery prepared;
         try {
@@ -111,13 +117,13 @@ public final class DeliveryService {
 
         long reward = (long) request.count() * order.rewardPerItem();
         if (reward > 0 && !EconomyService.canCreditOnce(level, request.actorId(), reward, request.transactionId())) {
-            prepared.rollback();
+            safeRollback(prepared);
             return DeliveryResult.ORDER_REJECTED;
         }
 
         if (!recovering && !data.reserveDelivery(request.transactionId(), request.orderId(), request.route(),
                 request.actorId(), request.count())) {
-            prepared.rollback();
+            safeRollback(prepared);
             return DeliveryResult.ORDER_REJECTED;
         }
 
@@ -129,21 +135,27 @@ public final class DeliveryService {
         }
         if (!cargoCommitted) {
             // Keep the pending receipt: an adapter may be able to recover its reservation on retry.
-            prepared.rollback();
+            safeRollback(prepared);
             return DeliveryResult.ORDER_REJECTED;
         }
 
         if (reward > 0 && !EconomyService.creditOnce(level, request.actorId(), reward, request.transactionId())) {
-            prepared.rollback();
+            safeRollback(prepared);
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        // Pending receipts are retried after interruptions; once marked applied,
-        // the same transaction can never advance order progress a second time.
         if (!OrderService.recordAutomatedFulfilment(level, request.orderId(), request.actorId(), request.count())) {
             return DeliveryResult.ORDER_REJECTED;
         }
         data.markDeliveryProgressApplied(request.transactionId());
         return DeliveryResult.SUCCESS;
+    }
+
+    private static void safeRollback(PreparedDelivery prepared) {
+        try {
+            prepared.rollback();
+        } catch (RuntimeException | LinkageError ignored) {
+            // A broken optional adapter must not crash the server during cleanup.
+        }
     }
 }
