@@ -82,6 +82,27 @@ class OrderDataTest {
     }
 
     @Test
+    void reservationsRequireTheExactClaimantAndUniqueTransaction() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        data.add(new Order(orderId, ownerId, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                10, 0, 0, claimantId, OrderStatus.IN_PROGRESS, 1L));
+
+        assertTrue(data.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 6));
+        assertFalse(data.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 1));
+        assertFalse(data.reserveDelivery(UUID.randomUUID(), orderId, DeliveryRoute.BELT,
+                UUID.randomUUID(), 1));
+        assertFalse(data.reserveDelivery(UUID.randomUUID(), orderId, DeliveryRoute.BELT,
+                claimantId, 5));
+        assertFalse(data.reserveDelivery(UUID.randomUUID(), orderId, DeliveryRoute.MANUAL,
+                claimantId, 1));
+        assertEquals(6L, data.pendingDeliveryCountForOrder(orderId, null));
+    }
+
+    @Test
     void legacyReceiptPathAcceptsOnlyManualHandoffs() {
         OrderData data = new OrderData();
         UUID orderId = UUID.randomUUID();
