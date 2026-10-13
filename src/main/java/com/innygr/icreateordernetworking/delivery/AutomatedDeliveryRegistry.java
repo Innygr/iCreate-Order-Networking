@@ -21,7 +21,8 @@ public final class AutomatedDeliveryRegistry {
 
     /** Returns false if the adapter is null, unavailable, or its route is already registered. */
     public static synchronized boolean register(AutomatedDeliveryAdapter adapter) {
-        if (adapter == null || adapter.route() == null || !isAvailable(adapter)
+        if (adapter == null || adapter.route() == null
+                || adapter.route() == DeliveryRoute.MANUAL || !isAvailable(adapter)
                 || ADAPTERS.containsKey(adapter.route())) {
             return false;
         }
