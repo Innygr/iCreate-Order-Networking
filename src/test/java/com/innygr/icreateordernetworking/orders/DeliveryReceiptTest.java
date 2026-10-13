@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.orders;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
@@ -45,5 +46,16 @@ class DeliveryReceiptTest {
 
         assertFalse(legacy.matches(orderId, DeliveryRoute.MANUAL, claimantId, 1));
         assertFalse(legacy.matches(orderId, DeliveryRoute.TRAIN, claimantId, 1));
+    }
+
+    @Test
+    void rejectsInvalidReceiptCountsAndCountedManualReceipts() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeliveryReceipt(orderId, DeliveryRoute.TRAIN, claimantId, 0, false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeliveryReceipt(orderId, DeliveryRoute.TRAIN, claimantId,
+                        OrderService.MAX_ORDER_COUNT + 1, false));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeliveryReceipt(orderId, DeliveryRoute.MANUAL, claimantId, 1, false));
     }
 }
