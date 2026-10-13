@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
 import net.minecraft.core.HolderLookup;
@@ -19,6 +21,8 @@ public final class OrderData extends SavedData {
     private static final String DATA_NAME = "icreate_order_networking_orders";
     private final Map<UUID, Order> orders = new LinkedHashMap<>();
     private final Map<UUID, DeliveryReceipt> processedDeliveries = new LinkedHashMap<>();
+    /** Transaction IDs whose order progress mutation has already been applied. */
+    private final Set<UUID> appliedAutomatedProgress = new LinkedHashSet<>();
 
     public OrderData() {}
 
@@ -71,6 +75,14 @@ public final class OrderData extends SavedData {
                 // Ignore malformed receipt records.
             }
         }
+        ListTag appliedProgress = tag.getList("AppliedAutomatedProgress", Tag.TAG_STRING);
+        for (int i = 0; i < appliedProgress.size(); i++) {
+            try {
+                data.appliedAutomatedProgress.add(UUID.fromString(appliedProgress.getString(i)));
+            } catch (IllegalArgumentException ignored) {
+                // Ignore malformed transaction IDs.
+            }
+        }
         return data;
     }
 
@@ -120,6 +132,12 @@ public final class OrderData extends SavedData {
             receipts.add(saved);
         }
         tag.put("ProcessedDeliveries", receipts);
+
+        ListTag appliedProgress = new ListTag();
+        for (UUID transactionId : appliedAutomatedProgress) {
+            appliedProgress.add(net.minecraft.nbt.StringTag.valueOf(transactionId.toString()));
+        }
+        tag.put("AppliedAutomatedProgress", appliedProgress);
         return tag;
     }
 
@@ -127,6 +145,12 @@ public final class OrderData extends SavedData {
     public Order find(UUID id) { return orders.get(id); }
     public DeliveryReceipt deliveryReceipt(UUID id) { return processedDeliveries.get(id); }
     public boolean hasProcessedDelivery(UUID id) { return processedDeliveries.containsKey(id); }
+    public boolean hasAppliedAutomatedProgress(UUID transactionId) {
+        return appliedAutomatedProgress.contains(transactionId);
+    }
+    public void markAutomatedProgressApplied(UUID transactionId) {
+        if (transactionId != null && appliedAutomatedProgress.add(transactionId)) setDirty();
+    }
 
     /** Legacy/finalized receipt path for manual deliveries. */
     public boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {

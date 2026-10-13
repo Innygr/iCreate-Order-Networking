@@ -144,7 +144,7 @@ public final class DeliveryService {
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        if (!OrderService.recordAutomatedFulfilment(level, request.orderId(), request.actorId(), request.count())) {
+        if (!OrderService.recordAutomatedFulfilment(level, request.orderId(), request.actorId(), request.count(), request.transactionId())) {
             return DeliveryResult.ORDER_REJECTED;
         }
         data.markDeliveryProgressApplied(request.transactionId());

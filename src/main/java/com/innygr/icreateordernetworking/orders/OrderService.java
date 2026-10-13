@@ -132,16 +132,20 @@ public final class OrderService {
      * This deliberately does not inspect player inventory or credit currency.
      */
     public static boolean recordAutomatedFulfilment(ServerLevel level, UUID orderId,
-                                                     UUID claimantId, int count) {
-        if (level == null || orderId == null || claimantId == null || count < 1
-                || count > MAX_ORDER_COUNT) return false;
+                                                     UUID claimantId, int count, UUID transactionId) {
+        if (level == null || orderId == null || claimantId == null || transactionId == null
+                || count < 1 || count > MAX_ORDER_COUNT) return false;
         OrderData data = OrderData.get(level);
+        // A retry after a crash may find the order progress saved but the receipt
+        // finalization not yet saved. Never apply the same transaction twice.
+        if (data.hasAppliedAutomatedProgress(transactionId)) return true;
         Order order = data.find(orderId);
         if (order == null || (order.status() != OrderStatus.OPEN
                 && order.status() != OrderStatus.IN_PROGRESS)
                 || !claimantId.equals(order.claimedBy())
                 || count > order.remainingCount()) return false;
         order.fulfil(count);
+        data.markAutomatedProgressApplied(transactionId);
         data.changed();
         return true;
     }
