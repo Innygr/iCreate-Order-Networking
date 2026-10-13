@@ -60,8 +60,8 @@ public final class NetworkStatsData extends SavedData {
                         Math.max(0, n.getInt("Count")),
                         Math.max(0L, n.getLong("Timestamp")),
                         safeDetail(n.getString("Detail"))));
-            } catch (IllegalArgumentException ignored) {
-                // Ignore malformed events so stats cannot prevent world loading.
+            } catch (RuntimeException ignored) {
+                // Ignore malformed events/resource IDs so stats cannot prevent world loading.
             }
         }
         return data;
