@@ -21,12 +21,19 @@ public final class AutomatedDeliveryRegistry {
 
     /** Returns false if the adapter is null, unavailable, or its route is already registered. */
     public static synchronized boolean register(AutomatedDeliveryAdapter adapter) {
-        if (adapter == null || adapter.route() == null
-                || adapter.route() == DeliveryRoute.MANUAL || !isAvailable(adapter)
-                || ADAPTERS.containsKey(adapter.route())) {
+        if (adapter == null) return false;
+        DeliveryRoute route;
+        try {
+            route = adapter.route();
+        } catch (RuntimeException | LinkageError ignored) {
+            // A broken optional adapter must not crash common setup.
             return false;
         }
-        ADAPTERS.put(adapter.route(), adapter);
+        if (route == null || route == DeliveryRoute.MANUAL
+                || !isAvailable(adapter) || ADAPTERS.containsKey(route)) {
+            return false;
+        }
+        ADAPTERS.put(route, adapter);
         return true;
     }
 
