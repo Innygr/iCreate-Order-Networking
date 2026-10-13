@@ -142,6 +142,25 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
                 && ownerPartyTeamId.equals(FTBTeamsCompat.partyTeamId(ownerId).orElse(null));
     }
 
+    /**
+     * Snapshot for physical Create Display Link output. The display is a public
+     * in-world readout, but it fails closed if its selected factory/team scope
+     * is no longer valid.
+     */
+    public NetworkStatsData.Snapshot getDisplaySnapshot() {
+        if (level == null || level.isClientSide || !(level instanceof ServerLevel serverLevel)) return null;
+        NetworkStatsData data = NetworkStatsData.get(serverLevel);
+        if (mode == Mode.TEAM_GLOBAL) {
+            if (ownerPartyTeamId == null
+                    || !ownerPartyTeamId.equals(FTBTeamsCompat.partyTeamId(ownerId).orElse(null))) return null;
+            return data.snapshotTeam(ownerPartyTeamId);
+        }
+        if (factoryId == null || factoryOwnerId == null) return null;
+        if (factoryPartyTeamId != null
+                && !factoryPartyTeamId.equals(FTBTeamsCompat.partyTeamId(factoryOwnerId).orElse(null))) return null;
+        return data.snapshotFactory(factoryId);
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
