@@ -56,6 +56,10 @@ class OrderDataTest {
         inconsistentStatus.putString("ClaimedBy", UUID.randomUUID().toString());
         orders.add(inconsistentStatus);
 
+        CompoundTag invalidItem = validOrder(UUID.randomUUID().toString());
+        invalidItem.putString("Item", "not a valid resource id!");
+        orders.add(invalidItem);
+
         root.put("Orders", orders);
         OrderData loaded = OrderData.load(root, null);
 
