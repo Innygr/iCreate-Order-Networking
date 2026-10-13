@@ -83,6 +83,19 @@ public final class OrderData extends SavedData {
                 // Ignore malformed transaction IDs.
             }
         }
+
+        // Recover the narrow crash window where order progress was saved but the
+        // matching receipt was not finalized yet. The durable progress marker proves
+        // cargo/progress must not be replayed; finalize the receipt during load.
+        boolean recoveredReceipt = false;
+        for (Map.Entry<UUID, DeliveryReceipt> entry : data.processedDeliveries.entrySet()) {
+            DeliveryReceipt receipt = entry.getValue();
+            if (!receipt.progressApplied() && data.appliedAutomatedProgress.contains(entry.getKey())) {
+                entry.setValue(receipt.finalized());
+                recoveredReceipt = true;
+            }
+        }
+        if (recoveredReceipt) data.setDirty();
         return data;
     }
 
