@@ -29,6 +29,40 @@ class AutomatedDeliveryRegistryTest {
     }
 
     @Test
+    void manualRouteCannotBeRegisteredAsAnAutomatedAdapter() {
+        assertFalse(AutomatedDeliveryRegistry.register(adapter(DeliveryRoute.MANUAL, true)));
+        assertTrue(AutomatedDeliveryRegistry.availableRoutes().isEmpty());
+    }
+
+    @Test
+    void availabilityFailureDisablesAdapterSafely() {
+        AutomatedDeliveryAdapter broken = new AutomatedDeliveryAdapter() {
+            @Override
+            public DeliveryRoute route() {
+                return DeliveryRoute.AIRSHIP;
+            }
+
+            @Override
+            public boolean isAvailable() {
+                throw new LinkageError("optional API is missing");
+            }
+
+            @Override
+            public boolean isAuthorized(ServerLevel level, DeliveryRequest request) {
+                return false;
+            }
+
+            @Override
+            public PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request) {
+                return null;
+            }
+        };
+
+        assertFalse(AutomatedDeliveryRegistry.register(broken));
+        assertTrue(AutomatedDeliveryRegistry.find(DeliveryRoute.AIRSHIP).isEmpty());
+    }
+
+    @Test
     void unregisterRequiresTheExactRegisteredInstance() {
         AutomatedDeliveryAdapter registered = adapter(DeliveryRoute.BELT, true);
         AutomatedDeliveryAdapter different = adapter(DeliveryRoute.BELT, true);
