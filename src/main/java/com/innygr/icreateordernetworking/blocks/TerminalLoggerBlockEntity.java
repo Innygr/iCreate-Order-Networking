@@ -1,5 +1,6 @@
 package com.innygr.icreateordernetworking.blocks;
 
+import java.util.EnumMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,8 +53,57 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         }
     };
 
+    private final EnumMap<Direction, IItemHandler> sidedHandlers = new EnumMap<>(Direction.class);
+
     public TerminalLoggerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TERMINAL_LOGGER.get(), pos, state);
+        for (Direction side : Direction.values()) {
+            sidedHandlers.put(side, new IItemHandler() {
+                @Override
+                public int getSlots() {
+                    return inventory.getSlots();
+                }
+
+                @Override
+                public ItemStack getStackInSlot(int slot) {
+                    return inventory.getStackInSlot(slot);
+                }
+
+                @Override
+                public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+                    if (side == outputDirection || stack.isEmpty() || !acceptsItem(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                        return stack;
+                    }
+                    return inventory.insertItem(slot, stack, simulate);
+                }
+
+                @Override
+                public ItemStack extractItem(int slot, int amount, boolean simulate) {
+                    if (side != outputDirection) return ItemStack.EMPTY;
+                    return inventory.extractItem(slot, amount, simulate);
+                }
+
+                @Override
+                public int getSlotLimit(int slot) {
+                    return inventory.getSlotLimit(slot);
+                }
+
+                @Override
+                public boolean isItemValid(int slot, ItemStack stack) {
+                    return side != outputDirection && inventory.isItemValid(slot, stack);
+                }
+            });
+        }
+    }
+
+    /**
+     * Sided automation view: five faces accept filtered items and only the
+     * selected output face allows extraction. Null-side access is deliberately
+     * not exposed to avoid bypassing the face configuration.
+     */
+    public IItemHandler getSidedItemHandler(Direction side) {
+        return side == null ? null : sidedHandlers.get(side);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, TerminalLoggerBlockEntity logger) {
