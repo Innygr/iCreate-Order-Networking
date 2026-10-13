@@ -16,6 +16,9 @@ public record DeliveryReceipt(
         if (count < 0 || count > OrderService.MAX_ORDER_COUNT) {
             throw new IllegalArgumentException("count is outside the supported delivery range");
         }
+        if (count == 0 && (route != DeliveryRoute.MANUAL || claimantId != null || !progressApplied)) {
+            throw new IllegalArgumentException("only finalized manual receipts may omit transaction details");
+        }
         if (count > 0 && route == DeliveryRoute.MANUAL) {
             throw new IllegalArgumentException("manual legacy receipts cannot authorize counted automated delivery");
         }
