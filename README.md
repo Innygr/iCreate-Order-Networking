@@ -19,6 +19,14 @@ A player-driven economy mod for Create-based Minecraft servers. The goal is to c
 
 These are goals, not claims that the features are already implemented. This repository is currently a development scaffold.
 
+## Current backend status
+
+The current branch has a passing GitHub Actions Java/Gradle build. The backend includes persistent orders, server-side order validation, the shared delivery-service boundary, and a bridge from Create's built-in Redstone Requester to adjacent configured Order Terminals.
+
+When activated, a valid Redstone Requester can publish zero-reward restock orders to the order board. Duplicate active orders for the same owner and item are suppressed. This bridge still requires live-world verification against the pinned Create version; CI success confirms compilation, not that redstone event timing and block interactions work in-game.
+
+Train, airship, Frogport, and belt delivery adapters remain unavailable until each route can verify real server-side cargo transfer and safely commit delivery receipts.
+
 
 ## Logistics design
 
