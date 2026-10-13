@@ -16,8 +16,14 @@ public final class EconomyService {
      * escrowed orders. Registering the same provider instance twice is harmless.
      */
     public static synchronized boolean registerProvider(EconomyProvider provider) {
-        if (provider == null || provider.id() == null || provider.id().isBlank()
-                || provider.currencyName() == null || provider.currencyName().isBlank()) return false;
+        if (provider == null) return false;
+        try {
+            if (provider.id() == null || provider.id().isBlank()
+                    || provider.currencyName() == null || provider.currencyName().isBlank()) return false;
+        } catch (RuntimeException | LinkageError exception) {
+            // A broken optional provider must not crash mod initialization.
+            return false;
+        }
         if (externalProvider == null) {
             externalProvider = provider;
             return true;
@@ -27,26 +33,46 @@ public final class EconomyService {
 
     public static String providerId() {
         EconomyProvider provider = externalProvider;
-        return provider == null ? "icreate_order_networking:internal" : provider.id();
+        if (provider == null) return "icreate_order_networking:internal";
+        try {
+            return provider.id();
+        } catch (RuntimeException | LinkageError exception) {
+            return "unavailable";
+        }
     }
 
     public static String currencyName() {
         EconomyProvider provider = externalProvider;
-        return provider == null ? "Order Credits" : provider.currencyName();
+        if (provider == null) return "Order Credits";
+        try {
+            return provider.currencyName();
+        } catch (RuntimeException | LinkageError exception) {
+            return "Unavailable currency";
+        }
     }
 
     public static long balance(ServerPlayer player) {
         if (player == null || !(player.level() instanceof ServerLevel level)) return 0L;
         EconomyProvider provider = externalProvider;
-        return provider == null ? EconomyData.get(level).balance(player.getUUID())
-                : provider.balance(level, player.getUUID());
+        if (provider == null) return EconomyData.get(level).balance(player.getUUID());
+        try {
+            return Math.max(0L, provider.balance(level, player.getUUID()));
+        } catch (RuntimeException | LinkageError exception) {
+            return 0L;
+        }
     }
 
     /** Returns whether a credit can succeed without changing the ledger. */
     public static boolean canCredit(ServerLevel level, UUID playerId, long amount) {
         if (level == null || playerId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
-        if (provider != null) return provider.canCredit(level, playerId, amount);
+        if (provider != null) {
+            try {
+                return provider.canCredit(level, playerId, amount);
+            } catch (RuntimeException | LinkageError exception) {
+                return false;
+            }
+        }
         long current = EconomyData.get(level).balance(playerId);
         return current <= EconomyData.maxBalance() - amount;
     }
@@ -55,34 +81,48 @@ public final class EconomyService {
     public static boolean credit(ServerLevel level, UUID playerId, long amount) {
         if (level == null || playerId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
-        return provider == null ? EconomyData.get(level).change(playerId, amount)
-                : provider.credit(level, playerId, amount);
+        if (provider == null) return EconomyData.get(level).change(playerId, amount);
+        try {
+            return provider.credit(level, playerId, amount);
+        } catch (RuntimeException | LinkageError exception) {
+            return false;
+        }
     }
 
     /** Preflights a payout while allowing a matching already-recorded transaction retry. */
     public static boolean canCreditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
         if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
-        return provider == null
-                ? EconomyData.get(level).canCreditOnce(transactionId, playerId, amount)
-                : provider.canCreditOnce(level, playerId, amount, transactionId);
+        if (provider == null) return EconomyData.get(level).canCreditOnce(transactionId, playerId, amount);
+        try {
+            return provider.canCreditOnce(level, playerId, amount, transactionId);
+        } catch (RuntimeException | LinkageError exception) {
+            return false;
+        }
     }
 
     /** Credit a delivery payout exactly once across retries and world reloads. */
     public static boolean creditOnce(ServerLevel level, UUID playerId, long amount, UUID transactionId) {
         if (level == null || playerId == null || transactionId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
-        return provider == null
-                ? EconomyData.get(level).creditOnce(transactionId, playerId, amount)
-                : provider.creditOnce(level, playerId, amount, transactionId);
+        if (provider == null) return EconomyData.get(level).creditOnce(transactionId, playerId, amount);
+        try {
+            return provider.creditOnce(level, playerId, amount, transactionId);
+        } catch (RuntimeException | LinkageError exception) {
+            return false;
+        }
     }
 
     /** Debit funds only when the player has enough balance. */
     public static boolean debit(ServerLevel level, UUID playerId, long amount) {
         if (level == null || playerId == null || amount <= 0) return false;
         EconomyProvider provider = externalProvider;
-        return provider == null ? EconomyData.get(level).change(playerId, -amount)
-                : provider.debit(level, playerId, amount);
+        if (provider == null) return EconomyData.get(level).change(playerId, -amount);
+        try {
+            return provider.debit(level, playerId, amount);
+        } catch (RuntimeException | LinkageError exception) {
+            return false;
+        }
     }
 
     /**
@@ -94,7 +134,13 @@ public final class EconomyService {
                 || amount <= 0) return false;
 
         EconomyProvider provider = externalProvider;
-        if (provider != null) return provider.transfer(level, sender, recipient, amount);
+        if (provider != null) {
+            try {
+                return provider.transfer(level, sender, recipient, amount);
+            } catch (RuntimeException | LinkageError exception) {
+                return false;
+            }
+        }
 
         EconomyData data = EconomyData.get(level);
         if (data.balance(sender) < amount
