@@ -13,12 +13,12 @@ public final class RadiationEffect extends MobEffect {
 
     @Override
     public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
-        return duration > 0 && duration % 40 == 0;
+        return true;
     }
 
     @Override
     public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-        if (entity.level() instanceof ServerLevel serverLevel) {
+        if (entity.level() instanceof ServerLevel serverLevel && entity.tickCount % 40 == 0) {
             entity.hurtServer(serverLevel, serverLevel.damageSources().magic(), 1.0F + amplifier);
         }
         return true;
