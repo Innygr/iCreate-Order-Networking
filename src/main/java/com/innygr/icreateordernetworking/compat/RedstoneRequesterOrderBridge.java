@@ -41,9 +41,15 @@ public final class RedstoneRequesterOrderBridge {
     }
 
     private void processRequester(ServerLevel level, BlockPos pos) {
-        if (!(level.getBlockEntity(pos) instanceof RedstoneRequesterBlockEntity requester)) return;
-
         String key = level.dimension().location() + ":" + pos.asLong();
+        if (!(level.getBlockEntity(pos) instanceof RedstoneRequesterBlockEntity requester)) {
+            // A requester may be broken while powered. Drop its latch when a
+            // nearby notification reaches that position, avoiding stale entries
+            // and allowing a replacement requester to activate normally.
+            latchedRequesters.remove(key);
+            return;
+        }
+
         var state = level.getBlockState(pos);
         boolean powered = state.hasProperty(BlockStateProperties.POWERED)
                 && state.getValue(BlockStateProperties.POWERED);
