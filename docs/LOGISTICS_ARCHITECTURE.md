@@ -55,6 +55,10 @@ The Terminal Logger is itself a logistics connector/controller. Players must not
 
 Connection discovery must use explicit, validated adapters/capability checks for each supported endpoint type, not broad assumptions based on nearby blocks. Show the detected connection type and ready/disconnected/error status in the logger's UI or diagnostics.
 
+### Current implementation boundary
+
+The Terminal Logger now exposes a standard NeoForge `ItemHandler.BLOCK` capability with sided access: five faces accept filtered items and the selected output face permits extraction. Its existing server tick can also pull from adjacent item-handler providers and push buffered items through the configured output face. This makes the logger's inventory available to compatible automation, but it does **not** implement Create's PSI connection handshake, Aeronautics docking lifecycle, package/Frogport routing, or verified belt-to-order receipts. Endpoint discovery remains diagnostic only; no route should fulfil an order or pay a reward until a route adapter verifies the real transfer and destination receipt.
+
 The logger should define clear input/output behavior per connection. A connection can be input-only, output-only, or bidirectional only when the underlying component safely supports it. Do not allow the same item stack to be dispatched twice if multiple connections are attached. Cargo must be reserved/claimed by a single active job before transfer, and completion must be verified at the destination.
 
 No-funnel operation is the intended user-facing behavior; it does not mean every component exposes the same API. Use Create's supported interfaces where available and isolate optional integrations behind safe adapter classes. Detect absent optional mods/classes without crashing.
