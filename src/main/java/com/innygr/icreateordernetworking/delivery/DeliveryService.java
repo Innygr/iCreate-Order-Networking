@@ -10,6 +10,7 @@ import com.innygr.icreateordernetworking.compat.CreateFrogportCompat;
 import com.innygr.icreateordernetworking.compat.CreateTrainCompat;
 import com.innygr.icreateordernetworking.compat.AeronauticsDockingCompat;
 import com.innygr.icreateordernetworking.economy.EconomyService;
+import com.innygr.icreateordernetworking.orders.DeliveryReceipt;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
 import com.innygr.icreateordernetworking.orders.OrderService;
@@ -17,18 +18,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
-/**
- * Shared server-side entry point for all delivery routes.
- *
- * Manual delivery is live through OrderService. Automated routes fail closed
- * until their adapter can participate in a single atomic cargo + order + payout
- * transaction. Never consume automated cargo before that transaction exists.
- *
- * Call from the logical server thread only.
- */
+/** Shared server-side entry point for all delivery routes. Call on the logical server thread only. */
 public final class DeliveryService {
-    private static final Map<DeliveryRoute, AutomatedDeliveryAdapter> ADAPTERS =
-            new EnumMap<>(DeliveryRoute.class);
+    private static final Map<DeliveryRoute, AutomatedDeliveryAdapter> ADAPTERS = new EnumMap<>(DeliveryRoute.class);
 
     private DeliveryService() {}
 
@@ -39,88 +31,72 @@ public final class DeliveryService {
         ADAPTERS.put(adapter.route(), adapter);
     }
 
-    /**
-     * Manual handoff with a durable transaction ID. The caller must reuse the
-     * same ID if it retries the same submission (for example after a UI timeout).
-     */
-    public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId,
-                                                 int count, UUID transactionId) {
+    public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
         if (player == null || orderId == null || count < 1 || transactionId == null
-                || !(player.level() instanceof ServerLevel level)) {
-            return DeliveryResult.INVALID_REQUEST;
-        }
-
+                || !(player.level() instanceof ServerLevel level)) return DeliveryResult.INVALID_REQUEST;
         OrderData data = OrderData.get(level);
-        if (data.hasProcessedDelivery(transactionId)) return DeliveryResult.ORDER_REJECTED;
-        if (!data.recordDelivery(transactionId, orderId, DeliveryRoute.MANUAL)) {
-            return DeliveryResult.ORDER_REJECTED;
-        }
-
+        if (data.hasProcessedDelivery(transactionId)
+                || !data.recordDelivery(transactionId, orderId, DeliveryRoute.MANUAL)) return DeliveryResult.ORDER_REJECTED;
         if (!OrderService.fulfil(player, orderId, count)) {
-            // No fulfilment happened, so allow a legitimate retry with the same ID.
             data.forgetDelivery(transactionId);
             return DeliveryResult.ORDER_REJECTED;
         }
         return DeliveryResult.SUCCESS;
     }
 
-    /**
-     * Convenience overload for one-shot callers. Network/UI code should use the
-     * transaction-ID overload to make retries idempotent.
-     */
     public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId, int count) {
         return deliverManually(player, orderId, count, UUID.randomUUID());
     }
 
     /**
-     * Automated delivery is intentionally fail-closed for now. A working adapter
-     * needs to atomically reserve/consume cargo, advance order state, credit the
-     * verified beneficiary, and persist an idempotency receipt. Splitting those
-     * steps would risk lost cargo or duplicate rewards on retries/restarts.
+     * Automated delivery uses a durable pending receipt. On retry, the adapter
+     * must make commit idempotent for request.transactionId(); a pending receipt
+     * is resumed instead of being rejected or paying twice.
      */
     public static DeliveryResult deliverAutomated(ServerLevel level, DeliveryRequest request) {
         if (level == null || request == null || !request.isWellFormed()
                 || request.route() == DeliveryRoute.MANUAL) return DeliveryResult.INVALID_REQUEST;
 
         OrderData data = OrderData.get(level);
-        if (data.hasProcessedDelivery(request.transactionId())) return DeliveryResult.ORDER_REJECTED;
+        DeliveryReceipt prior = data.deliveryReceipt(request.transactionId());
+        boolean recovering = prior != null;
+        if (recovering) {
+            if (!prior.matches(request.orderId(), request.route(), request.actorId(), request.count())) {
+                return DeliveryResult.ORDER_REJECTED;
+            }
+            if (prior.progressApplied()) return DeliveryResult.DUPLICATE;
+        }
 
         Order order = data.find(request.orderId());
-        if (order == null || (order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.OPEN
-                && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
-                || !order.itemId().equals(request.itemId())
-                || request.count() > order.remainingCount()) return DeliveryResult.ORDER_REJECTED;
+        if (order == null || !order.itemId().equals(request.itemId())) return DeliveryResult.ORDER_REJECTED;
         if (order.claimedBy() == null || !order.claimedBy().equals(request.actorId())) {
             return DeliveryResult.ROUTE_NOT_AUTHORIZED;
         }
+        if (!recovering && ((order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.OPEN
+                && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
+                || request.count() > order.remainingCount())) return DeliveryResult.ORDER_REJECTED;
 
         var requestedItem = BuiltInRegistries.ITEM.get(request.itemId());
-        if (requestedItem == null
-                || BuiltInRegistries.ITEM.getKey(requestedItem).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
+        if (requestedItem == null || BuiltInRegistries.ITEM.getKey(requestedItem).equals(BuiltInRegistries.ITEM.getDefaultKey())) {
             return DeliveryResult.INVALID_REQUEST;
         }
-
         AutomatedDeliveryAdapter adapter = ADAPTERS.get(request.route());
         if (adapter == null || !adapter.isAvailable()) return DeliveryResult.ROUTE_UNAVAILABLE;
-
         if ((request.route() == DeliveryRoute.AIRSHIP || request.route() == DeliveryRoute.TRAIN
-                || request.route() == DeliveryRoute.FROGPORT)
-                && !CreateCompat.isCreateLoaded()) return DeliveryResult.ROUTE_UNAVAILABLE;
-        if (request.route() == DeliveryRoute.BELT
-                && !CreateBeltCompat.isBeltInfrastructureAvailable()) {
+                || request.route() == DeliveryRoute.FROGPORT) && !CreateCompat.isCreateLoaded()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
-        if (request.route() == DeliveryRoute.TRAIN
-                && !CreateTrainCompat.isPortableStorageInterfaceAvailable()) {
+        if (request.route() == DeliveryRoute.BELT && !CreateBeltCompat.isBeltInfrastructureAvailable()) {
+            return DeliveryResult.ROUTE_UNAVAILABLE;
+        }
+        if (request.route() == DeliveryRoute.TRAIN && !CreateTrainCompat.isPortableStorageInterfaceAvailable()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
         if (request.route() == DeliveryRoute.AIRSHIP
-                && (!CreateCompat.isAeronauticsStackAvailable()
-                || !AeronauticsDockingCompat.isDockingConnectorAvailable())) {
+                && (!CreateCompat.isAeronauticsStackAvailable() || !AeronauticsDockingCompat.isDockingConnectorAvailable())) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
-        if (request.route() == DeliveryRoute.FROGPORT
-                && !CreateFrogportCompat.isPackageFrogportAvailable()) {
+        if (request.route() == DeliveryRoute.FROGPORT && !CreateFrogportCompat.isPackageFrogportAvailable()) {
             return DeliveryResult.ROUTE_UNAVAILABLE;
         }
         if (!adapter.isAuthorized(level, request)) return DeliveryResult.ROUTE_NOT_AUTHORIZED;
@@ -128,7 +104,7 @@ public final class DeliveryService {
         PreparedDelivery prepared;
         try {
             prepared = adapter.prepareCargo(level, request);
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException | LinkageError exception) {
             return DeliveryResult.ORDER_REJECTED;
         }
         if (prepared == null) return DeliveryResult.ORDER_REJECTED;
@@ -139,10 +115,8 @@ public final class DeliveryService {
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        // Reserve the id before committing cargo. Saved order progress and the
-        // receipt are persisted together; adapters must make commit idempotent
-        // for transactionId so a retry can safely recover a committed shipment.
-        if (!data.recordDelivery(request.transactionId(), request.orderId(), request.route())) {
+        if (!recovering && !data.reserveDelivery(request.transactionId(), request.orderId(), request.route(),
+                request.actorId(), request.count())) {
             prepared.rollback();
             return DeliveryResult.ORDER_REJECTED;
         }
@@ -150,30 +124,26 @@ public final class DeliveryService {
         boolean cargoCommitted;
         try {
             cargoCommitted = prepared.commit();
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException | LinkageError exception) {
             cargoCommitted = false;
         }
         if (!cargoCommitted) {
-            data.forgetDelivery(request.transactionId());
+            // Keep the pending receipt: an adapter may be able to recover its reservation on retry.
             prepared.rollback();
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        if (reward > 0 && !EconomyService.creditOnce(
-                level, request.actorId(), reward, request.transactionId())) {
+        if (reward > 0 && !EconomyService.creditOnce(level, request.actorId(), reward, request.transactionId())) {
             prepared.rollback();
-            data.forgetDelivery(request.transactionId());
             return DeliveryResult.ORDER_REJECTED;
         }
 
-        // The order was validated above and all mutations run on the server
-        // thread, so no other action can invalidate this finalization mid-call.
-        if (!OrderService.recordAutomatedFulfilment(
-                level, request.orderId(), request.actorId(), request.count())) {
-            // Keep the transaction receipt and idempotent payout: a retry can
-            // complete progress without consuming or paying the same shipment twice.
+        // Pending receipts are retried after interruptions; once marked applied,
+        // the same transaction can never advance order progress a second time.
+        if (!OrderService.recordAutomatedFulfilment(level, request.orderId(), request.actorId(), request.count())) {
             return DeliveryResult.ORDER_REJECTED;
         }
+        data.markDeliveryProgressApplied(request.transactionId());
         return DeliveryResult.SUCCESS;
     }
 }

@@ -3,10 +3,31 @@ package com.innygr.icreateordernetworking.orders;
 import java.util.UUID;
 import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
 
-/** Durable idempotency record for a single physical delivery shipment. */
-public record DeliveryReceipt(UUID orderId, DeliveryRoute route) {
+/** Durable idempotency record for one physical delivery transaction. */
+public record DeliveryReceipt(
+        UUID orderId,
+        DeliveryRoute route,
+        UUID claimantId,
+        int count,
+        boolean progressApplied) {
     public DeliveryReceipt {
         if (orderId == null) throw new IllegalArgumentException("orderId cannot be null");
         if (route == null) throw new IllegalArgumentException("route cannot be null");
+        if (count < 0) throw new IllegalArgumentException("count cannot be negative");
+        if (count > 0 && claimantId == null) throw new IllegalArgumentException("claimant required for counted delivery");
+    }
+
+    /** Legacy receipts are treated as finalized because their original transaction details are unavailable. */
+    public DeliveryReceipt(UUID orderId, DeliveryRoute route) {
+        this(orderId, route, null, 0, true);
+    }
+
+    public boolean matches(UUID requestedOrder, DeliveryRoute requestedRoute, UUID requestedClaimant, int requestedCount) {
+        return orderId.equals(requestedOrder) && route == requestedRoute
+                && claimantId != null && claimantId.equals(requestedClaimant) && count == requestedCount;
+    }
+
+    public DeliveryReceipt finalized() {
+        return progressApplied ? this : new DeliveryReceipt(orderId, route, claimantId, count, true);
     }
 }

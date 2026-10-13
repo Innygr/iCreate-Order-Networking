@@ -43,7 +43,6 @@ public final class OrderData extends SavedData {
                 UUID claimant = n.contains("ClaimedBy") ? UUID.fromString(n.getString("ClaimedBy")) : null;
                 OrderStatus status = OrderStatus.valueOf(n.getString("Status"));
                 String teamKey = n.contains("OwnerTeam") ? n.getString("OwnerTeam") : null;
-
                 if (isValidLoadedOrder(requested, fulfilled, reward, claimant, status)
                         && !data.orders.containsKey(id)) {
                     data.orders.put(id, new Order(id, owner, n.getString("OwnerName"), item,
@@ -63,7 +62,11 @@ public final class OrderData extends SavedData {
                         ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);
                 DeliveryRoute route = receipt.contains("Route")
                         ? DeliveryRoute.valueOf(receipt.getString("Route")) : DeliveryRoute.MANUAL;
-                data.processedDeliveries.putIfAbsent(deliveryId, new DeliveryReceipt(orderId, route));
+                UUID claimant = receipt.contains("Claimant") ? UUID.fromString(receipt.getString("Claimant")) : null;
+                int count = receipt.contains("Count") ? receipt.getInt("Count") : 0;
+                boolean applied = !receipt.contains("ProgressApplied") || receipt.getBoolean("ProgressApplied");
+                DeliveryReceipt loaded = new DeliveryReceipt(orderId, route, claimant, count, applied);
+                data.processedDeliveries.putIfAbsent(deliveryId, loaded);
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed receipt records.
             }
@@ -75,14 +78,11 @@ public final class OrderData extends SavedData {
                                               UUID claimant, OrderStatus status) {
         if (requested < 1 || requested > OrderService.MAX_ORDER_COUNT
                 || fulfilled < 0 || fulfilled > requested
-                || reward < 0 || reward > OrderService.MAX_REWARD_PER_ITEM
-                || status == null) return false;
-
+                || reward < 0 || reward > OrderService.MAX_REWARD_PER_ITEM || status == null) return false;
         return switch (status) {
             case OPEN -> fulfilled == 0 && claimant == null;
             case IN_PROGRESS -> fulfilled < requested && claimant != null;
             case COMPLETED -> fulfilled == requested;
-            // A cancelled order may have partial progress or may never have been claimed.
             case CANCELLED -> true;
         };
     }
@@ -109,11 +109,15 @@ public final class OrderData extends SavedData {
 
         ListTag receipts = new ListTag();
         for (Map.Entry<UUID, DeliveryReceipt> entry : processedDeliveries.entrySet()) {
-            CompoundTag receipt = new CompoundTag();
-            receipt.putString("Id", entry.getKey().toString());
-            receipt.putString("Order", entry.getValue().orderId().toString());
-            receipt.putString("Route", entry.getValue().route().name());
-            receipts.add(receipt);
+            DeliveryReceipt value = entry.getValue();
+            CompoundTag saved = new CompoundTag();
+            saved.putString("Id", entry.getKey().toString());
+            saved.putString("Order", value.orderId().toString());
+            saved.putString("Route", value.route().name());
+            if (value.claimantId() != null) saved.putString("Claimant", value.claimantId().toString());
+            saved.putInt("Count", value.count());
+            saved.putBoolean("ProgressApplied", value.progressApplied());
+            receipts.add(saved);
         }
         tag.put("ProcessedDeliveries", receipts);
         return tag;
@@ -121,15 +125,33 @@ public final class OrderData extends SavedData {
 
     public Collection<Order> all() { return new ArrayList<>(orders.values()); }
     public Order find(UUID id) { return orders.get(id); }
-    public boolean hasProcessedDelivery(UUID deliveryId) {
-        return processedDeliveries.containsKey(deliveryId);
-    }
+    public DeliveryReceipt deliveryReceipt(UUID id) { return processedDeliveries.get(id); }
+    public boolean hasProcessedDelivery(UUID id) { return processedDeliveries.containsKey(id); }
 
+    /** Legacy/finalized receipt path for manual deliveries. */
     public boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
-        if (deliveryId == null || orderId == null || route == null
-                || processedDeliveries.containsKey(deliveryId)) return false;
+        if (deliveryId == null || orderId == null || route == null || processedDeliveries.containsKey(deliveryId)) return false;
         processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
         setDirty();
+        return true;
+    }
+
+    /** Records an automated transaction before cargo commit so retries can recover it safely. */
+    public boolean reserveDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route, UUID claimantId, int count) {
+        if (deliveryId == null || orderId == null || route == null || route == DeliveryRoute.MANUAL
+                || claimantId == null || count < 1 || processedDeliveries.containsKey(deliveryId)) return false;
+        processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route, claimantId, count, false));
+        setDirty();
+        return true;
+    }
+
+    public boolean markDeliveryProgressApplied(UUID deliveryId) {
+        DeliveryReceipt receipt = processedDeliveries.get(deliveryId);
+        if (receipt == null) return false;
+        if (!receipt.progressApplied()) {
+            processedDeliveries.put(deliveryId, receipt.finalized());
+            setDirty();
+        }
         return true;
     }
 
