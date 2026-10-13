@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.delivery;
 
 import java.util.UUID;
+import com.innygr.icreateordernetworking.orders.OrderService;
 import net.minecraft.resources.ResourceLocation;
 
 /**
@@ -19,7 +20,8 @@ public record DeliveryRequest(
         UUID transactionId
 ) {
     public boolean isWellFormed() {
-        return orderId != null && itemId != null && count > 0 && route != null
-                && actorId != null && transactionId != null;
+        return orderId != null && itemId != null && count > 0
+                && count <= OrderService.MAX_ORDER_COUNT && route != null
+                && route != DeliveryRoute.MANUAL && actorId != null && transactionId != null;
     }
 }
