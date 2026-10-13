@@ -19,6 +19,9 @@ dependencies {
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
     runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 base {
@@ -26,6 +29,10 @@ base {
 }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
 
 neoForge {
     version = neo_forge_version
