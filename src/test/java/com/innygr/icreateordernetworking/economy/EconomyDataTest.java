@@ -45,6 +45,23 @@ class EconomyDataTest {
     }
 
     @Test
+    void creditReceiptsAreIndependentByPurposeScopeAndPersistAcrossReloads() {
+        EconomyData original = new EconomyData();
+        UUID player = UUID.randomUUID();
+        UUID transaction = UUID.randomUUID();
+
+        assertTrue(original.creditOnce(transaction, player, 100, "delivery"));
+        assertTrue(original.creditOnce(transaction, player, 200, "order-cancel-refund"));
+        assertEquals(300L, original.balance(player));
+
+        EconomyData restored = EconomyData.load(original.save(new CompoundTag(), null), null);
+        assertTrue(restored.creditOnce(transaction, player, 100, "delivery"));
+        assertTrue(restored.creditOnce(transaction, player, 200, "order-cancel-refund"));
+        assertEquals(300L, restored.balance(player));
+        assertFalse(restored.creditOnce(transaction, player, 201, "order-cancel-refund"));
+    }
+
+    @Test
     void balanceMutationRejectsUnderflowAndOverflowWithoutChangingBalance() {
         EconomyData data = new EconomyData();
         UUID player = UUID.randomUUID();
