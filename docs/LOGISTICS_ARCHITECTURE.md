@@ -153,10 +153,10 @@ Show rolling throughput (such as items moved over the last 60 seconds and 5 minu
 
 ### Suggested first release
 
-1. Add a server-side stats service/data model with typed counters and a bounded recent-event buffer.
-2. Instrument logger transfer outcomes and the shared delivery/job lifecycle with explicit event types.
-3. Expose a permission-checked snapshot API for the future Terminal Logger stats screen.
-4. Add the UI after the snapshot model is stable; label unavailable adapter metrics clearly.
-5. Test restart persistence, denied access, transfer retries, duplicate receipts, and the distinction between moved cargo and completed orders.
+1. **Implemented foundation:** `NetworkStatsData` persists per-owner cumulative input/output item totals and rejected-transfer counts in overworld SavedData, with a bounded 256-event history.
+2. **Implemented instrumentation:** actual accepted input/output item movement is recorded from the Terminal Logger transfer loop; explicitly rejected transfers reported through `recordTransfer` are recorded separately.
+3. **Implemented snapshot API:** `TerminalLoggerBlockEntity.getNetworkStats` returns the owner's read-only snapshot only when the requester passes the logger's existing owner/team access check.
+4. **Still needed:** wire the snapshot into a stats screen; add rolling-window rates and job/receipt/payout counters from the shared delivery services.
+5. **Verification needed:** test restart persistence, denied access, transfer retries, and the distinction between moved cargo and completed orders in a running game.
 
-Network Stats is a planned feature until the service, event instrumentation, persistence, and UI are implemented and tested. Existing accepted/rejected logger counters are diagnostics, not a complete network-wide stats system.
+The stats service currently measures item movement, not verified order completion. Existing endpoint detection remains diagnostic, and no transfer statistic is evidence of a fulfilled order or payout.
