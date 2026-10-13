@@ -188,3 +188,16 @@ Team support is a release requirement, not a post-launch update. Before the firs
 - An external provider must support debit/refund and an idempotent `creditOnce(transactionId, playerId, amount)` operation, or provide an equivalent durable transaction key. Without idempotent payout support, automated routes must stay disabled rather than risk double-paying after retries.
 - Never silently switch currency providers for a world with active escrow. Provider choice must be stable per world, and the UI should display the currency/provider name so players understand what their reward represents.
 - Compatibility detection alone is not integration: no third-party economy provider is considered supported until an adapter is implemented and tested against that mod's real API.
+
+
+## Create Redstone Requester order-board bridge
+
+The bridge uses Create's existing `create:redstone_requester`; iCreate does not register a replacement requester block. On the server, a powered requester with a valid encoded request searches the six directly adjacent block positions for a configured iCreate Order Terminal. If found, each valid requested item becomes a zero-reward order owned by that terminal's factory owner. An existing open or in-progress order for the same owner and item suppresses a duplicate.
+
+The bridge only latches a requester after finding a terminal and at least one valid requested item. If no terminal is adjacent, a later neighbor notification can retry while the requester remains powered. The latch is currently in-memory and keyed by dimension + block position; it resets on an observed unpowered notification and is not persisted across server restarts.
+
+Important boundaries:
+- This is an order-board bridge, not a replacement for Create's own package-request behavior; Create may still broadcast its normal request.
+- The order count is validated against the order service limit before creating an order.
+- The factory owner is the order owner. The owner's scoreboard team is snapshotted only when that owner is online at activation; offline-owner team association is not inferred.
+- The bridge has passed the repository's Java/Gradle CI build, but still needs a live-world test against Create 6.0.6. Specifically verify event timing, a power-on/power-off cycle, late terminal placement, multi-item requests, and duplicate suppression before describing it as runtime-verified.
