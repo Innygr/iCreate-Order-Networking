@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking;
 
 import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
+import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.registry.ModBlocks;
@@ -13,6 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -23,6 +25,7 @@ public final class ICreateOrderNetworking {
     public static final String MOD_ID = "icreate_order_networking";
 
     public ICreateOrderNetworking(IEventBus modBus) {
+        NeoForge.EVENT_BUS.register(new RedstoneRequesterOrderBridge());
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
         ModItems.register(modBus);

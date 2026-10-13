@@ -51,7 +51,7 @@ public final class OrderService {
                         && (order.status() == OrderStatus.OPEN || order.status() == OrderStatus.IN_PROGRESS));
     }
 
-    /** Creates a no-reward restock order on behalf of a placed Restore Requester. */
+    /** Creates a no-reward automated restock order from a configured Create Redstone Requester. */
     public static Order createRestockOrder(ServerLevel level, UUID ownerId, String ownerName,
                                            String ownerTeamKey, ResourceLocation itemId, int count) {
         if (level == null || ownerId == null || itemId == null

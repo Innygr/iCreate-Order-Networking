@@ -1,6 +1,5 @@
 {
   "block.icreate_order_networking.order_terminal": "Order Terminal",
-  "block.icreate_order_networking.restore_requester": "Restore Requester",
   "block.icreate_order_networking.terminal_logger": "Andesite Terminal Logger",
   "block.icreate_order_networking.brass_terminal_logger": "Brass Terminal Logger",
   "block.icreate_order_networking.network_statistics": "Network Statistics",

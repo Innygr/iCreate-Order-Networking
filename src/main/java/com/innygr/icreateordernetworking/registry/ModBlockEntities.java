@@ -5,7 +5,6 @@ import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlockEntity;
 import com.innygr.icreateordernetworking.blocks.OrderTerminalBlockEntity;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlockEntity;
-import com.innygr.icreateordernetworking.blocks.RestoreRequesterBlockEntity;
 import com.innygr.icreateordernetworking.blocks.MissileTagBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -31,11 +30,6 @@ public final class ModBlockEntities {
             BLOCK_ENTITIES.register("order_terminal",
                     () -> BlockEntityType.Builder.of(OrderTerminalBlockEntity::new,
                             ModBlocks.ORDER_TERMINAL.get()).build(null));
-
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RestoreRequesterBlockEntity>> RESTORE_REQUESTER =
-            BLOCK_ENTITIES.register("restore_requester",
-                    () -> BlockEntityType.Builder.of(RestoreRequesterBlockEntity::new,
-                            ModBlocks.RESTORE_REQUESTER.get()).build(null));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ScrapperBlockEntity>> SCRAPPER =
             BLOCK_ENTITIES.register("scrapper",
