@@ -65,9 +65,16 @@ public final class TerminalLoggerConnectionDetector {
             TerminalLoggerConnection.Status status = modAvailable
                     ? TerminalLoggerConnection.Status.DETECTED_API_PENDING
                     : TerminalLoggerConnection.Status.MOD_MISSING;
-            String detail = modAvailable
-                    ? "Endpoint detected; transfer adapter and receipt verification are not implemented yet."
-                    : "Endpoint ID found, but its optional mod stack is not available.";
+            String detail;
+            if (!modAvailable) {
+                detail = "Endpoint ID found, but its optional mod stack is not available.";
+            } else if (kind == TerminalLoggerConnection.Kind.PORTABLE_STORAGE_INTERFACE) {
+                detail = "Create's PSI controls its own transfer-ready item capability; the logger can exchange items while that capability is exposed. Order-job binding and destination receipt verification are still pending.";
+            } else if (kind == TerminalLoggerConnection.Kind.DOCKING_CONNECTOR) {
+                detail = "Docking connector detected. Its cargo capability and docking lifecycle are not yet verified by this mod; no order receipt is implied.";
+            } else {
+                detail = "Endpoint detected; route-specific transfer and destination receipt verification are not implemented yet.";
+            }
 
             connections.add(new TerminalLoggerConnection(
                     face, kind, direction, status, id, detail));
