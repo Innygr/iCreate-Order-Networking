@@ -41,7 +41,7 @@ The `delivery` package now defines `DeliveryRoute`, `DeliveryRequest`, `Delivery
 
 Frogport is treated as Create's built-in package Frogport, not a separate mod. Detection uses the Create registry item ID `create:package_frogport`; the actual package-address/routing API still needs validation against the selected Create release. The adapter interface is only a boundary, not evidence of completed train/airship/Frogport support.
 
-## Implemented backend pieces (not yet build-verified)
+## Implemented backend pieces (CI build verified; runtime testing pending)
 
 - `delivery/DeliveryRoute` defines MANUAL, TRAIN, AIRSHIP, and FROGPORT.
 - `delivery/DeliveryRequest` carries transport-neutral request metadata. It is not proof that cargo arrived.
@@ -53,11 +53,14 @@ The transport-specific adapters for trains, airships, and Frogports are not impl
 
 ## Verification checklist
 
-- [ ] Build against NeoForge 21.1.251 / Java 21.
+- [x] Build against NeoForge 21.1.251 / Java 21 (GitHub Actions CI).
+- [ ] Run an in-game test against the pinned Create 6.0.6 build.
 - [ ] Launch with Create only.
 - [ ] Launch with Create + Sable + Create: Aeronautics 1.21.1.
 - [ ] Launch without Aeronautics to verify optional classes are never loaded.
 - [ ] Create/claim/fulfil/cancel an order from normal terrain.
+- [ ] Test Redstone Requester activation with the terminal placed before and after the requester is powered.
+- [ ] Test requester activation while the factory owner is offline, both with and without a cached profile.
 - [ ] Repeat order interactions while riding/moving in an Aeronautics contraption once terminal interaction support is implemented.
 
 ## Terminal Logger
@@ -75,7 +78,7 @@ The buffer and output direction are saved with the block entity. The logger's ac
 - Automated delivery validates the claimed order, expected item registry ID, route availability, actor/claimant, quantity, and payout capacity on the server.
 - Economy payouts have persistent transaction receipts, so a replay of the same transaction cannot grant the same reward twice.
 - Train, Aeronautics airship, and Create package-Frogport adapters are not implemented yet. Until a verified adapter is registered, automated routes fail closed and leave cargo untouched.
-- The cross-mod adapter must be tested against the exact Create/Aeronautics APIs before being marked available. The current branch has not yet had a verified successful build or in-game test.
+- The cross-mod adapter must be tested against the exact Create/Aeronautics APIs before being marked available. The current branch has passed its GitHub Actions Java/Gradle build, but has not yet had an in-game test.
 
 ## Create belts and Terminal Logger
 
