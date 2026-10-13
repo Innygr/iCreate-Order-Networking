@@ -63,6 +63,22 @@ For non-water impacts, determine the missile's impact speed:
 
 Keep the threshold configurable so it can be tuned for gameplay. The payload must be present and valid for a detonation; otherwise the missile should not produce an explosive effect.
 
+## Nuclear payload and radiation
+
+A missile may contain a nuclear core instead of, or in addition to, a conventional explosive payload. The nuclear core must be an explicitly recognized assembly component; its presence changes the detonation outcome.
+
+- When a valid nuclear core detonates, create a persistent radioactive blast zone around the impact point.
+- Show the contaminated area with green radiation clouds.
+- The cloud and its hazardous zone persist until rain clears them. Define the zone's radius and persistence in one place so they can be tuned.
+- Players entering the contaminated zone receive the custom Radiation status effect. The effect visually turns the affected player green and deals damage over time (DoT).
+- Prevent repeated effect application from stacking into unbounded damage; refresh or update the existing effect while the player remains exposed.
+- Keep radiation damage and duration configurable, and apply the effect server-side. The green tint is visual feedback, not the source of the damage.
+- Water-landing safety still takes priority: a missile that lands in water does not detonate, so it must not create a nuclear blast or radiation zone.
+
+### Existing mod compatibility
+
+The current `build.gradle` dependencies list NeoForge, Create, Ponder, Flywheel, and Registrate; they do not show a nuclear or radiation mod dependency. If another mod in the intended modpack already provides nuclear cores, radiation clouds, or a radiation effect, check its actual mod ID, API, and version before integrating it. Otherwise, implement the core marker, radiation-zone state, cloud visuals, and custom Radiation effect in this mod without requiring an unverified dependency.
+
 ## Launch checks
 
 Before launching, verify:
