@@ -77,9 +77,7 @@ public final class NetworkStatisticsBlock extends BaseEntityBlock {
             return ItemInteractionResult.SUCCESS;
         }
 
-        player.displayClientMessage(Component.literal(stats.getFactoryId() == null
-                ? "No factory selected yet; bind one from its Order Terminal."
-                : "Network Statistics mode: " + stats.getMode().name()), true);
+        reportStats(player, stats);
         return ItemInteractionResult.SUCCESS;
     }
 
@@ -100,10 +98,27 @@ public final class NetworkStatisticsBlock extends BaseEntityBlock {
             player.displayClientMessage(Component.literal("You do not have access to this Network Statistics block."), true);
             return InteractionResult.FAIL;
         }
-        player.displayClientMessage(Component.literal(stats.getFactoryId() == null
-                ? "No factory selected yet." : "Statistics target: " + stats.getFactoryId()
-                + " (" + stats.getMode().name() + ")"), true);
+        reportStats(player, stats);
         return InteractionResult.SUCCESS;
+    }
+
+    private static void reportStats(Player player, NetworkStatisticsBlockEntity stats) {
+        if (stats.getMode() == NetworkStatisticsBlockEntity.Mode.FACTORY && stats.getFactoryId() == null) {
+            player.displayClientMessage(Component.literal("No factory selected. Right-click the relevant Order Terminal to bind this display."), true);
+            return;
+        }
+        net.minecraft.world.level.Level level = player.level();
+        if (level.isClientSide) return;
+        com.innygr.icreateordernetworking.logistics.NetworkStatsData.Snapshot snapshot =
+                stats.getStats(player.getUUID());
+        if (snapshot == null) {
+            player.displayClientMessage(Component.literal("Statistics unavailable: factory/team access is missing or no transfer data has been recorded."), true);
+            return;
+        }
+        player.displayClientMessage(Component.literal("Network Stats [" + stats.getMode().name()
+                + "] In: " + snapshot.totalInputItems()
+                + " | Out: " + snapshot.totalOutputItems()
+                + " | Rejected events: " + snapshot.rejectedTransfers()), true);
     }
 
     @Override
