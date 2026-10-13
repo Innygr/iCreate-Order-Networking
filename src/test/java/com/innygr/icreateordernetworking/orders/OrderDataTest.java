@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.orders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,6 +37,15 @@ class OrderDataTest {
         assertEquals(48, loaded.remainingCount());
         assertEquals("team-a", loaded.ownerTeamKey());
         assertTrue(restored.hasPendingDeliveryForOrder(id));
+    }
+
+    @Test
+    void legacyReceiptPathAcceptsOnlyManualHandoffs() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+
+        assertTrue(data.recordDelivery(UUID.randomUUID(), orderId, DeliveryRoute.MANUAL));
+        assertFalse(data.recordDelivery(UUID.randomUUID(), orderId, DeliveryRoute.TRAIN));
     }
 
     @Test
