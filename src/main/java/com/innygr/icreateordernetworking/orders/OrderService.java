@@ -174,7 +174,8 @@ public final class OrderService {
         if (order == null || (order.status() != OrderStatus.OPEN
                 && order.status() != OrderStatus.IN_PROGRESS)
                 || !claimantId.equals(order.claimedBy())
-                || count > order.remainingCount()) return false;
+                || count > order.remainingCount()
+                        - data.pendingDeliveryCountForOrder(orderId, transactionId)) return false;
         order.fulfil(count);
         data.markAutomatedProgressApplied(transactionId);
         data.changed();
