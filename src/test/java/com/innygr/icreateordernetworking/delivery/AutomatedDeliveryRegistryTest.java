@@ -1,5 +1,6 @@
 package com.innygr.icreateordernetworking.delivery;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -87,6 +88,23 @@ class AutomatedDeliveryRegistryTest {
         };
 
         assertFalse(AutomatedDeliveryRegistry.register(broken));
+        assertTrue(AutomatedDeliveryRegistry.availableRoutes().isEmpty());
+    }
+
+    @Test
+    void publicRegistrationBoundaryDoesNotCrashForBrokenOptionalRoute() {
+        AutomatedDeliveryAdapter broken = new AutomatedDeliveryAdapter() {
+            @Override
+            public DeliveryRoute route() {
+                throw new LinkageError("optional route API is missing");
+            }
+
+            @Override public boolean isAvailable() { return true; }
+            @Override public boolean isAuthorized(ServerLevel level, DeliveryRequest request) { return false; }
+            @Override public PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request) { return null; }
+        };
+
+        assertDoesNotThrow(() -> DeliveryService.registerAdapter(broken));
         assertTrue(AutomatedDeliveryRegistry.availableRoutes().isEmpty());
     }
 
