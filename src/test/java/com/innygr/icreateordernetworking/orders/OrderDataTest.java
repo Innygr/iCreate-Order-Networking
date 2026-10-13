@@ -40,6 +40,25 @@ class OrderDataTest {
     }
 
     @Test
+    void pendingDeliveryReservationsReduceAvailableOrderQuantity() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+
+        assertTrue(data.reserveDelivery(first, orderId, DeliveryRoute.TRAIN, claimantId, 7));
+        assertTrue(data.reserveDelivery(second, orderId, DeliveryRoute.BELT, claimantId, 4));
+        assertEquals(11L, data.pendingDeliveryCountForOrder(orderId, null));
+        assertEquals(4L, data.pendingDeliveryCountForOrder(orderId, first));
+
+        // Progress can be durable before the pending receipt is finalized.
+        // That transaction must stop reserving quantity during recovery.
+        data.markAutomatedProgressApplied(first);
+        assertEquals(4L, data.pendingDeliveryCountForOrder(orderId, null));
+    }
+
+    @Test
     void legacyReceiptPathAcceptsOnlyManualHandoffs() {
         OrderData data = new OrderData();
         UUID orderId = UUID.randomUUID();
