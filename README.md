@@ -35,3 +35,7 @@ The required delivery routes are **manual handoff, Create trains, Aeronautics ai
 The six-way **Terminal Logger** is the local belt/funnel handoff point, with one configurable output face and five remaining faces for routing. The **Andesite Terminal Logger** is the cheap early-game version and uses an Andesite Funnel (not an Andesite Alloy substitute). The **Brass Terminal Logger** uses Brass Funnels and Create Filters for a more expensive filtered version.
 
 Automated route adapters are not yet implemented or build-verified. Until an adapter can verify and reserve real server-side cargo, the backend rejects that route instead of consuming items on an unverified event.
+
+## Backend completion: 60%
+
+This estimate covers backend functionality, not the overall mod or GUI. Implemented foundations include world-persistent orders and delivery receipts, server-side order/economy validation, claim/fulfil/cancel flows, retry/idempotency guards, the shared delivery-service boundary, and the Create Redstone Requester restock-order bridge. The remaining work is substantial: implement and verify real cargo adapters for manual handoff, trains, airships, Frogports, and belts; add broader automated lifecycle/recovery tests; and verify requester/redstone behavior in a live world. A passing CI build proves compilation only, not in-game behavior.
