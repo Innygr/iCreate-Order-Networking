@@ -404,7 +404,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
             try {
                 ResourceLocation candidate = ResourceLocation.parse(tag.getString("FilterItem"));
                 if (net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(candidate)) filterItemId = candidate;
-            } catch (IllegalArgumentException ignored) {
+            } catch (RuntimeException ignored) {
+                // Invalid resource identifiers should not prevent the block entity from loading.
                 filterItemId = null;
             }
         }
