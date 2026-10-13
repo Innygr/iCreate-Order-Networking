@@ -160,3 +160,12 @@ Show rolling throughput (such as items moved over the last 60 seconds and 5 minu
 5. **Verification needed:** test restart persistence, denied access, transfer retries, and the distinction between moved cargo and completed orders in a running game.
 
 The stats service currently measures item movement, not verified order completion. Existing endpoint detection remains diagnostic, and no transfer statistic is evidence of a fulfilled order or payout.
+
+## Network Statistics block (implementation foundation)
+
+- The `network_statistics` block and persistent block entity are registered. The block stores its owner, the selected factory UUID, the selected factory's party UUID, and a `FACTORY` / `TEAM_GLOBAL` view mode.
+- First interaction claims the display. Only its owner and currently authorized members of the bound FTB party can configure it.
+- Right-clicking with Create's wrench toggles between factory mode and Team Global. Team Global is rejected unless the display owner still belongs to the party captured when the display was claimed; no server-wide or cross-team fallback is permitted.
+- The block entity exposes a server-side `bindFactory` hook intended for the Order Terminal interaction. The Order Terminal block is not yet implemented, so in-world factory binding is not wired up in this patch.
+- This is configuration scaffolding, not a functioning statistics screen yet. The block model currently uses a temporary vanilla iron-block texture. Display Link source registration, selectable statistic channels, factory-keyed counter aggregation, and a proper model/texture remain follow-up work.
+- Cargo movement remains distinct from order delivery. No delivery totals should be exposed until the delivery receipt service provides verified completion events.
