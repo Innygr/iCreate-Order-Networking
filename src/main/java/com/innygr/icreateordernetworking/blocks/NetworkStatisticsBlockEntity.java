@@ -79,10 +79,12 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide || selectedFactoryId == null
                 || selectedFactoryOwnerId == null || !hasAccess(requesterId)) return false;
 
-        boolean isFactoryOwner = selectedFactoryOwnerId.equals(requesterId);
-        boolean sharesFactoryTeam = selectedFactoryTeamId != null
-                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null));
-        if (!isFactoryOwner && !sharesFactoryTeam) return false;
+        boolean isPersonalFactoryOwner = selectedFactoryTeamId == null
+                && selectedFactoryOwnerId.equals(requesterId);
+        boolean sharesLiveFactoryTeam = selectedFactoryTeamId != null
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null))
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(selectedFactoryOwnerId).orElse(null));
+        if (!isPersonalFactoryOwner && !sharesLiveFactoryTeam) return false;
 
         factoryId = selectedFactoryId;
         factoryOwnerId = selectedFactoryOwnerId;
