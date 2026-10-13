@@ -19,7 +19,7 @@ public final class EconomyData extends SavedData {
     private static final long MAX_BALANCE = 9_000_000_000_000L;
 
     private final Map<UUID, Long> balances = new HashMap<>();
-    private final Map<UUID, CreditReceipt> creditReceipts = new HashMap<>();
+    private final Map<CreditKey, CreditReceipt> creditReceipts = new HashMap<>();
 
     public EconomyData() {}
 
@@ -50,9 +50,11 @@ public final class EconomyData extends SavedData {
             try {
                 UUID transactionId = UUID.fromString(receipt.getString("Transaction"));
                 UUID playerId = UUID.fromString(receipt.getString("Player"));
+                String scope = receipt.contains("Scope") ? receipt.getString("Scope") : "delivery";
                 long amount = receipt.getLong("Amount");
                 if (amount > 0 && amount <= MAX_BALANCE) {
-                    data.creditReceipts.put(transactionId, new CreditReceipt(playerId, amount));
+                    CreditKey key = new CreditKey(transactionId, scope);
+                    data.creditReceipts.putIfAbsent(key, new CreditReceipt(playerId, amount));
                 }
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed transaction receipts.
@@ -73,9 +75,10 @@ public final class EconomyData extends SavedData {
         tag.put("Balances", list);
 
         ListTag receipts = new ListTag();
-        for (Map.Entry<UUID, CreditReceipt> entry : creditReceipts.entrySet()) {
+        for (Map.Entry<CreditKey, CreditReceipt> entry : creditReceipts.entrySet()) {
             CompoundTag saved = new CompoundTag();
-            saved.putString("Transaction", entry.getKey().toString());
+            saved.putString("Transaction", entry.getKey().transactionId().toString());
+            saved.putString("Scope", entry.getKey().scope());
             saved.putString("Player", entry.getValue().playerId().toString());
             saved.putLong("Amount", entry.getValue().amount());
             receipts.add(saved);
@@ -105,8 +108,12 @@ public final class EconomyData extends SavedData {
     }
 
     boolean canCreditOnce(UUID transactionId, UUID playerId, long amount) {
-        if (transactionId == null || playerId == null || amount <= 0 || amount > MAX_BALANCE) return false;
-        CreditReceipt existing = creditReceipts.get(transactionId);
+        return canCreditOnce(transactionId, playerId, amount, "delivery");
+    }
+
+    boolean canCreditOnce(UUID transactionId, UUID playerId, long amount, String scope) {
+        if (!isValidCreditRequest(transactionId, playerId, amount, scope)) return false;
+        CreditReceipt existing = creditReceipts.get(new CreditKey(transactionId, scope));
         if (existing != null) {
             return existing.playerId().equals(playerId) && existing.amount() == amount;
         }
@@ -115,20 +122,38 @@ public final class EconomyData extends SavedData {
     }
 
     /**
-     * Idempotent credit keyed by a durable transaction ID. Replaying the same
-     * transaction succeeds without paying twice; reusing its ID for different
-     * parameters is rejected.
+     * Idempotent credit keyed by transaction ID and purpose scope. The scope
+     * prevents unrelated operations (e.g. delivery payouts and cancellation refunds)
+     * from colliding even when a client controls one operation's transaction ID.
      */
     boolean creditOnce(UUID transactionId, UUID playerId, long amount) {
-        if (transactionId == null || playerId == null || amount <= 0 || amount > MAX_BALANCE) return false;
-        CreditReceipt existing = creditReceipts.get(transactionId);
+        return creditOnce(transactionId, playerId, amount, "delivery");
+    }
+
+    boolean creditOnce(UUID transactionId, UUID playerId, long amount, String scope) {
+        if (!isValidCreditRequest(transactionId, playerId, amount, scope)) return false;
+        CreditKey key = new CreditKey(transactionId, scope);
+        CreditReceipt existing = creditReceipts.get(key);
         if (existing != null) {
             return existing.playerId().equals(playerId) && existing.amount() == amount;
         }
         if (!change(playerId, amount)) return false;
-        creditReceipts.put(transactionId, new CreditReceipt(playerId, amount));
+        creditReceipts.put(key, new CreditReceipt(playerId, amount));
         setDirty();
         return true;
+    }
+
+    private static boolean isValidCreditRequest(UUID transactionId, UUID playerId, long amount, String scope) {
+        return transactionId != null && playerId != null && amount > 0 && amount <= MAX_BALANCE
+                && scope != null && !scope.isBlank() && scope.length() <= 64;
+    }
+
+    private record CreditKey(UUID transactionId, String scope) {
+        private CreditKey {
+            if (transactionId == null || scope == null || scope.isBlank() || scope.length() > 64) {
+                throw new IllegalArgumentException("Invalid credit receipt key");
+            }
+        }
     }
 
     private record CreditReceipt(UUID playerId, long amount) {}
