@@ -154,17 +154,21 @@ public final class OrderService {
      * This deliberately does not inspect player inventory or credit currency.
      */
     public static boolean recordAutomatedFulfilment(ServerLevel level, UUID orderId,
+                                                     com.innygr.icreateordernetworking.delivery.DeliveryRoute route,
                                                      UUID claimantId, int count, UUID transactionId) {
-        if (level == null || orderId == null || claimantId == null || transactionId == null
+        if (level == null || orderId == null || route == null
+                || route == com.innygr.icreateordernetworking.delivery.DeliveryRoute.MANUAL
+                || claimantId == null || transactionId == null
                 || count < 1 || count > MAX_ORDER_COUNT) return false;
         OrderData data = OrderData.get(level);
+        // Progress can only be applied to the exact durable reservation created by
+        // DeliveryService. Validate all transaction fields before either normal
+        // processing or the idempotent recovery path.
+        DeliveryReceipt prior = data.deliveryReceipt(transactionId);
+        if (prior == null || !prior.matches(orderId, route, claimantId, count)) return false;
         // A retry after a crash may find the order progress saved but the receipt
-        // finalization not yet saved. Never apply the same transaction twice, and
-        // do not report success for a reused transaction ID with different details.
-        if (data.hasAppliedAutomatedProgress(transactionId)) {
-            DeliveryReceipt prior = data.deliveryReceipt(transactionId);
-            return prior != null && prior.matches(orderId, prior.route(), claimantId, count);
-        }
+        // finalization not yet saved. Never apply the same transaction twice.
+        if (data.hasAppliedAutomatedProgress(transactionId)) return true;
         Order order = data.find(orderId);
         if (order == null || (order.status() != OrderStatus.OPEN
                 && order.status() != OrderStatus.IN_PROGRESS)
