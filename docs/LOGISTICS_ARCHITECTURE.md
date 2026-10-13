@@ -116,3 +116,47 @@ The satellite should be moderately expensive but available early enough to be us
 9. Consider cross-dimensional routing only after same-dimension delivery is reliable.
 
 Each milestone should be compiled and tested before the next one is layered on.
+
+## Network Stats
+
+Network Stats is the read-only observability layer for a logistics network. It should be available from a Terminal Logger interaction/menu and summarize the network the player is authorized to view. The initial implementation should reuse the endpoint registry and delivery/job services rather than perform world-wide block scans.
+
+### Overview panel
+
+Show:
+- registered Terminal Loggers and discovered endpoints, grouped by endpoint type (local inventory, Create PSI/train, Aeronautics Docking Connector/airship, belt, and package/Frogport);
+- endpoint state: ready, idle, disconnected, unavailable, or error, with the reason where known;
+- queued, sourcing, reserved, transporting, receipt-pending, delivered, failed, and cancelled jobs;
+- outstanding reservations and shipments awaiting destination confirmation.
+
+A registry-presence check must not be shown as a ready/working adapter. For example, an Aeronautics connector whose transfer API is not verified must display as detected-but-unavailable, not operational.
+
+### Throughput and history
+
+Track actual item movement as separate events from order completion:
+- items inserted into or extracted from a logger;
+- transfer attempts accepted/rejected and the reason;
+- shipment dispatch and destination receipt;
+- order fulfilment and reward transaction.
+
+Show rolling throughput (such as items moved over the last 60 seconds and 5 minutes), recent transfer events, and routes with repeated failures or long receipt-pending times. Count item quantities, not just stack operations. Keep event history bounded and configurable so busy networks cannot grow saved data without limit.
+
+### Correctness rules
+
+- **Moved is not delivered.** Inventory movement updates cargo-transfer statistics only. A delivery is counted as successful only after the shared fulfilment service validates the destination receipt.
+- **No invented precision.** If an adapter cannot report readiness, distance, or cargo state, show “unknown/unavailable” rather than guessing.
+- **Server-authoritative.** Collect and aggregate stats on the logical server. The client may request a view, but cannot submit counts, job states, receipts, or payout data.
+- **Permission-aware.** Network stats must apply the same owner/team/network access rules as the endpoints and jobs being summarized; private factory inventory and another team's routes must not leak through the UI.
+- **Restart-safe totals.** Persist cumulative counters and bounded recent events in saved data; derive short rolling windows from timestamped events or reset them clearly after restart. Do not persist unbounded per-tick samples.
+- **Low overhead.** Update counters on transfer/job events rather than scanning every loaded chunk or polling every endpoint every tick. Refresh the client view on demand or at a modest interval.
+- **One source of truth.** Job counts come from the job service, endpoint counts from the registry, and reward counts from the idempotent economy receipts. Do not maintain competing counters that can drift.
+
+### Suggested first release
+
+1. Add a server-side stats service/data model with typed counters and a bounded recent-event buffer.
+2. Instrument logger transfer outcomes and the shared delivery/job lifecycle with explicit event types.
+3. Expose a permission-checked snapshot API for the future Terminal Logger stats screen.
+4. Add the UI after the snapshot model is stable; label unavailable adapter metrics clearly.
+5. Test restart persistence, denied access, transfer retries, duplicate receipts, and the distinction between moved cargo and completed orders.
+
+Network Stats is a planned feature until the service, event instrumentation, persistence, and UI are implemented and tested. Existing accepted/rejected logger counters are diagnostics, not a complete network-wide stats system.
