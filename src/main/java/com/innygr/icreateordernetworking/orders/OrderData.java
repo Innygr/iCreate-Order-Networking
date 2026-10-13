@@ -152,6 +152,30 @@ public final class OrderData extends SavedData {
         return processedDeliveries.values().stream()
                 .anyMatch(receipt -> orderId.equals(receipt.orderId()) && !receipt.progressApplied());
     }
+
+    /**
+     * Counts cargo reserved by unfinished automated transactions for an order.
+     * A progress marker may be durable before receipt finalization; those transactions
+     * must not reserve the same quantity twice during crash recovery.
+     *
+     * @param excludingTransactionId transaction whose own reservation the caller is processing
+     */
+    public long pendingDeliveryCountForOrder(UUID orderId, UUID excludingTransactionId) {
+        if (orderId == null) return 0L;
+        long reserved = 0L;
+        for (Map.Entry<UUID, DeliveryReceipt> entry : processedDeliveries.entrySet()) {
+            UUID transactionId = entry.getKey();
+            DeliveryReceipt receipt = entry.getValue();
+            if (!orderId.equals(receipt.orderId()) || receipt.progressApplied()
+                    || receipt.count() < 1 || transactionId.equals(excludingTransactionId)
+                    || appliedAutomatedProgress.contains(transactionId)) {
+                continue;
+            }
+            if (Long.MAX_VALUE - reserved < receipt.count()) return Long.MAX_VALUE;
+            reserved += receipt.count();
+        }
+        return reserved;
+    }
     public boolean hasAppliedAutomatedProgress(UUID transactionId) {
         return appliedAutomatedProgress.contains(transactionId);
     }
