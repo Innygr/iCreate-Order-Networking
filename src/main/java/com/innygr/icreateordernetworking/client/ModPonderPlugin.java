@@ -15,10 +15,10 @@ public final class ModPonderPlugin implements PonderPlugin {
     public void registerScenes(PonderSceneRegistrationHelper<ResourceLocation> helper) {
         helper.forComponents(ModBlocks.TERMINAL_LOGGER.getId()).addStoryBoard("terminal_logger/basics", ModPonderScenes::terminalLogger);
         helper.forComponents(ModBlocks.BRASS_TERMINAL_LOGGER.getId()).addStoryBoard("terminal_logger/brass", ModPonderScenes::brassTerminalLogger);
-        helper.forComponents(ModBlocks.ORDER_TERMINAL.getId()).addStoryBoard("orders/terminal", ModPonderScenes::orderTerminal);
+        helper.forComponents(ModBlocks.ORDER_TERMINAL.getId()).addStoryBoard("orders/terminal", ModPonderScenes::orderTerminal).addStoryBoard("transport/adapters", ModPonderScenes::transportAdapters);
         helper.forComponents(ModBlocks.NETWORK_STATISTICS.getId()).addStoryBoard("network/statistics", ModPonderScenes::networkStatistics);
         helper.forComponents(ModBlocks.SCRAPPER.getId()).addStoryBoard("scrapper/basics", ModPonderScenes::scrapper);
-        helper.forComponents(ModBlocks.MISSILE_THRUSTER.getId()).addStoryBoard("missile/fuel", ModPonderScenes::missileThruster);
+        helper.forComponents(ModBlocks.MISSILE_THRUSTER.getId()).addStoryBoard("missile/fuel", ModPonderScenes::missileThruster).addStoryBoard("missile/orbital", ModPonderScenes::orbitalMissile);
         helper.forComponents(ModBlocks.MISSILE_TAG.getId()).addStoryBoard("missile/team_tag", ModPonderScenes::missileTag);
     }
 

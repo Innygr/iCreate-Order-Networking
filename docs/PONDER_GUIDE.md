@@ -8,10 +8,10 @@ This document tracks the in-game Ponder tutorials registered for iCreate: Order 
 | --- | --- | --- |
 | Terminal Logger | Tracking an item delivery | The logger's role in observing delivery activity |
 | Brass Terminal Logger | Choosing the brass logger | Distinguishes the brass logger variant |
-| Order Terminal | Creating and fulfilling orders | Order workflow and checking fulfillment |
+| Order Terminal | Creating and fulfilling orders | Order workflow and checking fulfillment |\n| Order Terminal | Connecting mobile transport | Planned Portable Storage Interface and Aeronautics Docking Connector integration |
 | Network Statistics | Reading network statistics | Inspecting activity rather than guessing at failures |
 | Scrapper | Using the Scrapper | Where to check accepted inputs and output behavior |
-| Missile Thruster | Fuel and thruster basics | Water/lava efficiency and current engine limitations |
+| Missile Thruster | Fuel and thruster basics | Water/lava efficiency and current engine limitations |\n| Missile Thruster | Orbital missile overview | Y=250 minimum, inverted assembly, gravity-assisted descent concept, and integration status |
 | Missile Tag | Assigning missile identity | Stored identity data and current attribution limitations |
 
 The scenes are registered client-side through Create Ponder's plugin API. Their demonstration layouts use vanilla blocks instead of schematic files, so they do not need generated schematic assets.

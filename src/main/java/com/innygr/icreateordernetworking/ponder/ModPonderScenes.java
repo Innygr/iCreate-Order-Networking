@@ -96,6 +96,32 @@ public final class ModPonderScenes {
         scene.markAsFinished();
     }
 
+    public static void transportAdapters(SceneBuilder builder, SceneBuildingUtil util) {
+        CreateSceneBuilder scene = start(builder, "transport_adapters", "Connecting mobile transport");
+        showBase(scene, util);
+        scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.RAIL.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.CHEST.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
+        scene.world().showSection(util.select().fromTo(1, 1, 2, 3, 1, 2), Direction.DOWN);
+        text(scene, "Train delivery integration is intended to use Create Portable Storage Interfaces.");
+        text(scene, "Airship integration is intended to use Aeronautics Docking Connectors.");
+        text(scene, "These adapters are integration targets; this scene does not claim the complete transport workflow is wired up.");
+        scene.markAsFinished();
+    }
+
+    public static void orbitalMissile(SceneBuilder builder, SceneBuildingUtil util) {
+        CreateSceneBuilder scene = start(builder, "orbital_missile", "Orbital missile overview");
+        showBase(scene, util);
+        scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(2, 2, 2), Blocks.FURNACE.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(2, 3, 2), Blocks.ANVIL.defaultBlockState(), false);
+        scene.world().showSection(util.select().fromTo(2, 1, 2, 2, 3, 2), Direction.DOWN);
+        text(scene, "The planned orbital assembly must be inverted and its anchor must be at Y=250 or higher.");
+        text(scene, "Starting high and descending should reduce the fuel needed for the climb.");
+        text(scene, "The validator and message helpers exist, but live launch, descent physics, and impact integration remain future work.");
+        scene.markAsFinished();
+    }
+
     private static CreateSceneBuilder start(SceneBuilder builder, String id, String title) {
         CreateSceneBuilder scene = new CreateSceneBuilder(builder);
         scene.title(id, title);
