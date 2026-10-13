@@ -79,7 +79,10 @@ public final class DeliveryService {
         }
         if (!recovering && ((order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.OPEN
                 && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
-                || request.count() > order.remainingCount())) return DeliveryResult.ORDER_REJECTED;
+                || request.count() > order.remainingCount()
+                        - data.pendingDeliveryCountForOrder(order.id(), null))) {
+            return DeliveryResult.ORDER_REJECTED;
+        }
 
         var requestedItem = BuiltInRegistries.ITEM.get(request.itemId());
         if (requestedItem == null
