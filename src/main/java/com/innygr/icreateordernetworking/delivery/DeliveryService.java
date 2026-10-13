@@ -15,17 +15,34 @@ import com.innygr.icreateordernetworking.orders.OrderService;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Shared server-side entry point for all delivery routes. Call on the logical server thread only. */
 public final class DeliveryService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeliveryService.class);
+
     private DeliveryService() {}
 
+    /**
+     * Registers a verified optional transport adapter. Broken or unavailable
+     * optional integrations are logged and skipped rather than taking down startup.
+     */
     public static void registerAdapter(AutomatedDeliveryAdapter adapter) {
-        if (adapter == null || adapter.route() == null || adapter.route() == DeliveryRoute.MANUAL) {
-            throw new IllegalArgumentException("Only a non-manual delivery adapter can be registered");
+        if (adapter == null) throw new IllegalArgumentException("Adapter cannot be null");
+        DeliveryRoute route;
+        try {
+            route = adapter.route();
+        } catch (RuntimeException | LinkageError exception) {
+            LOGGER.warn("Skipping delivery adapter whose route API is unavailable", exception);
+            return;
+        }
+        if (route == null || route == DeliveryRoute.MANUAL) {
+            LOGGER.warn("Skipping invalid automated delivery adapter route: {}", route);
+            return;
         }
         if (!AutomatedDeliveryRegistry.register(adapter)) {
-            throw new IllegalStateException("Adapter is unavailable or already registered for " + adapter.route());
+            LOGGER.warn("Skipping unavailable or duplicate delivery adapter for route {}", route);
         }
     }
 
