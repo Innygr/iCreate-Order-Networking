@@ -22,9 +22,13 @@ public final class NetworkStatisticsDisplaySource extends SingleLineDisplaySourc
 
         NetworkStatsData.Snapshot snapshot = statistics.getDisplaySnapshot();
         if (snapshot == null) return Component.literal("Stats unavailable");
-        return Component.literal("IN " + snapshot.totalInputItems()
-                + " OUT " + snapshot.totalOutputItems()
-                + " REJ " + snapshot.rejectedTransfers());
+        String scope = statistics.getMode() == NetworkStatisticsBlockEntity.Mode.TEAM_GLOBAL
+                ? "TEAM"
+                : statistics.getFactoryId() == null ? "FACTORY"
+                : "F:" + statistics.getFactoryId().toString().substring(0, 4);
+        return Component.literal(scope + " I:" + snapshot.totalInputItems()
+                + " O:" + snapshot.totalOutputItems()
+                + " R:" + snapshot.rejectedTransfers());
     }
 
     @Override
