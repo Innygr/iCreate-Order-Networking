@@ -42,10 +42,12 @@ public final class OrderData extends SavedData {
                 int reward = n.getInt("Reward");
                 UUID claimant = n.contains("ClaimedBy") ? UUID.fromString(n.getString("ClaimedBy")) : null;
                 OrderStatus status = OrderStatus.valueOf(n.getString("Status"));
-                if (requested > 0 && fulfilled >= 0 && fulfilled <= requested && reward >= 0) {
+                String teamKey = n.contains("OwnerTeam") ? n.getString("OwnerTeam") : null;
+
+                if (isValidLoadedOrder(requested, fulfilled, reward, claimant, status)
+                        && !data.orders.containsKey(id)) {
                     data.orders.put(id, new Order(id, owner, n.getString("OwnerName"), item,
-                            requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt"),
-                            n.contains("OwnerTeam") ? n.getString("OwnerTeam") : null));
+                            requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt"), teamKey));
                 }
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed records so one bad order cannot stop world loading.
@@ -61,12 +63,28 @@ public final class OrderData extends SavedData {
                         ? UUID.fromString(receipt.getString("Order")) : new UUID(0L, 0L);
                 DeliveryRoute route = receipt.contains("Route")
                         ? DeliveryRoute.valueOf(receipt.getString("Route")) : DeliveryRoute.MANUAL;
-                data.processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
+                data.processedDeliveries.putIfAbsent(deliveryId, new DeliveryReceipt(orderId, route));
             } catch (IllegalArgumentException ignored) {
                 // Ignore malformed receipt records.
             }
         }
         return data;
+    }
+
+    private static boolean isValidLoadedOrder(int requested, int fulfilled, int reward,
+                                              UUID claimant, OrderStatus status) {
+        if (requested < 1 || requested > OrderService.MAX_ORDER_COUNT
+                || fulfilled < 0 || fulfilled > requested
+                || reward < 0 || reward > OrderService.MAX_REWARD_PER_ITEM
+                || status == null) return false;
+
+        return switch (status) {
+            case OPEN -> fulfilled == 0 && claimant == null;
+            case IN_PROGRESS -> fulfilled < requested && claimant != null;
+            case COMPLETED -> fulfilled == requested;
+            // A cancelled order may have partial progress or may never have been claimed.
+            case CANCELLED -> true;
+        };
     }
 
     @Override
