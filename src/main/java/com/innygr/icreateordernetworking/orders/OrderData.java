@@ -145,6 +145,13 @@ public final class OrderData extends SavedData {
     public Order find(UUID id) { return orders.get(id); }
     public DeliveryReceipt deliveryReceipt(UUID id) { return processedDeliveries.get(id); }
     public boolean hasProcessedDelivery(UUID id) { return processedDeliveries.containsKey(id); }
+
+    /** Pending automated shipments must be recovered before their order can be cancelled/refunded. */
+    public boolean hasPendingDeliveryForOrder(UUID orderId) {
+        if (orderId == null) return false;
+        return processedDeliveries.values().stream()
+                .anyMatch(receipt -> orderId.equals(receipt.orderId()) && !receipt.progressApplied());
+    }
     public boolean hasAppliedAutomatedProgress(UUID transactionId) {
         return appliedAutomatedProgress.contains(transactionId);
     }

@@ -161,7 +161,8 @@ public final class OrderService {
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
         if (order == null || !order.ownerId().equals(player.getUUID())
-                || (order.status() != OrderStatus.OPEN && order.status() != OrderStatus.IN_PROGRESS)) return false;
+                || (order.status() != OrderStatus.OPEN && order.status() != OrderStatus.IN_PROGRESS)
+                || data.hasPendingDeliveryForOrder(orderId)) return false;
 
         long refund = (long) order.remainingCount() * order.rewardPerItem();
         if (refund > 0 && !EconomyService.credit(level, order.ownerId(), refund)) return false;
