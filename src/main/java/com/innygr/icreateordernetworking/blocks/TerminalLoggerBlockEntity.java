@@ -1,5 +1,8 @@
 package com.innygr.icreateordernetworking.blocks;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
@@ -269,6 +272,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         acceptedDeliveries = Math.max(0, tag.getLong("AcceptedDeliveries"));
         rejectedDeliveries = Math.max(0, tag.getLong("RejectedDeliveries"));
         lastStatus = safeStatus(tag.getString("LastStatus"));
+        ownerId = parseUuid(tag, "OwnerId");
+        ownerPartyTeamId = parseUuid(tag, "OwnerPartyTeamId");
         if (tag.contains("Inventory")) inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         filterItemId = null;
         if (tag.contains("FilterItem")) {
