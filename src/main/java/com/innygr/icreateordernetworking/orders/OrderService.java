@@ -98,7 +98,17 @@ public final class OrderService {
      * cannot race with another gameplay action.
      */
     public static boolean fulfil(ServerPlayer player, UUID orderId, int count) {
-        if (!(player.level() instanceof ServerLevel level) || count < 1) return false;
+        return fulfil(player, orderId, count, null);
+    }
+
+    /**
+     * Manual delivery variant that binds the payout to the delivery transaction ID.
+     * This prevents a retried handoff from paying twice if economy data was saved
+     * but the order receipt was not yet persisted.
+     */
+    public static boolean fulfil(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
+        if (!(player.level() instanceof ServerLevel level) || count < 1
+                || (transactionId != null && transactionId.equals(new UUID(0L, 0L)))) return false;
 
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
@@ -112,7 +122,9 @@ public final class OrderService {
         long reward = (long) count * order.rewardPerItem();
         // Check the payout cap before touching inventory. Since all mutations run
         // on the server thread, a successful preflight makes the subsequent credit safe.
-        if (reward > 0 && !EconomyService.canCredit(level, player.getUUID(), reward)) return false;
+        if (reward > 0 && !(transactionId == null
+                ? EconomyService.canCredit(level, player.getUUID(), reward)
+                : EconomyService.canCreditOnce(level, player.getUUID(), reward, transactionId))) return false;
 
         Inventory inventory = player.getInventory();
         int available = 0;
@@ -135,7 +147,9 @@ public final class OrderService {
         }
         inventory.setChanged();
 
-        if (reward > 0 && !EconomyService.credit(level, player.getUUID(), reward)) {
+        if (reward > 0 && !(transactionId == null
+                ? EconomyService.credit(level, player.getUUID(), reward)
+                : EconomyService.creditOnce(level, player.getUUID(), reward, transactionId))) {
             // Defensive rollback: restore the exact item count if an unexpected
             // balance mutation failure occurs after preflight.
             ItemStack refund = new ItemStack(item, count);
