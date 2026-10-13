@@ -5,6 +5,7 @@ import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlockEntity;
 import com.innygr.icreateordernetworking.blocks.OrderTerminalBlockEntity;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlockEntity;
+import com.innygr.icreateordernetworking.blocks.MissileTagBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -34,6 +35,11 @@ public final class ModBlockEntities {
             BLOCK_ENTITIES.register("scrapper",
                     () -> BlockEntityType.Builder.of(ScrapperBlockEntity::new,
                             ModBlocks.SCRAPPER.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MissileTagBlockEntity>> MISSILE_TAG =
+            BLOCK_ENTITIES.register("missile_tag",
+                    () -> BlockEntityType.Builder.of(MissileTagBlockEntity::new,
+                            ModBlocks.MISSILE_TAG.get()).build(null));
 
     private ModBlockEntities() {}
 

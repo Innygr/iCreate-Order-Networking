@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "icreate_order_networking:block/missile_tag" }
+  }
+}

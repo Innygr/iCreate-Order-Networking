@@ -120,3 +120,8 @@ Before launching, verify:
 6. The player is permitted to command that missile.
 
 If any check fails, do not launch and report the reason. For a player target, handle the target becoming unavailable deterministically and report the resulting missile status. The first implementation can separate assembly validation and remote/target persistence from the later physical missile flight and impact simulation.
+
+
+## Optional Missile Tag
+
+The optional Missile Tag is an identity marker for a missile assembly. Its block entity persists a stable missile UUID, team name, and a copy of the team's banner item stack. Assembly code can assign these through `MissileTagBlockEntity.configureIdentity(...)`; a missile's death message can use `MissileDeathMessages.explodedByTeam(...)` to produce “player was exploded via Team's missile”, falling back to “player was exploded via missile” when the tag has no team name. This identity data is ready for the future missile entity/impact handler. The current repository still has no missile entity to call the death-message helper, and the tag's small banner/sign-style in-world renderer remains a follow-up client-rendering task.

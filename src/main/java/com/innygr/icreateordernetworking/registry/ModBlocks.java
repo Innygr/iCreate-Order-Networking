@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.registry;
 
 import com.innygr.icreateordernetworking.ICreateOrderNetworking;
 import com.innygr.icreateordernetworking.blocks.MissileThrusterBlock;
+import com.innygr.icreateordernetworking.blocks.MissileTagBlock;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlock;
 import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlock;
@@ -62,6 +63,11 @@ public final class ModBlocks {
     public static final DeferredItem<BlockItem> MISSILE_THRUSTER_ITEM =
             ITEMS.register("missile_thruster",
                     () -> new BlockItem(MISSILE_THRUSTER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<MissileTagBlock> MISSILE_TAG =
+            BLOCKS.register("missile_tag", () -> new MissileTagBlock(BlockBehaviour.Properties.of().strength(2.0F)));
+    public static final DeferredItem<BlockItem> MISSILE_TAG_ITEM =
+            ITEMS.register("missile_tag", () -> new BlockItem(MISSILE_TAG.get(), new Item.Properties()));
 
     private ModBlocks() {}
 
