@@ -42,6 +42,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private ResourceLocation filterItemId;
     private UUID ownerId;
     private UUID ownerPartyTeamId;
+    private UUID factoryId;
+    private UUID factoryPartyTeamId;
 
     private final ItemStackHandler inventory = new ItemStackHandler(SLOT_COUNT) {
         @Override
@@ -208,7 +210,12 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private void recordNetworkTransfer(Level level, ResourceLocation itemId,
                                        NetworkStatsData.EventType type, int count, String detail) {
         if (ownerId == null || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
-        NetworkStatsData.get(serverLevel).record(serverLevel, ownerId, worldPosition, itemId, type, count, detail);
+        UUID currentOwnerTeam = ownerPartyTeamId != null
+                && ownerPartyTeamId.equals(FTBTeamsCompat.partyTeamId(ownerId).orElse(null))
+                ? ownerPartyTeamId : null;
+        UUID statsTeamId = factoryPartyTeamId != null ? factoryPartyTeamId : currentOwnerTeam;
+        NetworkStatsData.get(serverLevel).record(serverLevel, ownerId, factoryId, statsTeamId,
+                worldPosition, itemId, type, count, detail);
     }
 
     public ItemStackHandler getInventory() { return inventory; }
@@ -219,7 +226,25 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public ResourceLocation getFilterItemId() { return filterItemId; }
     public UUID getOwnerId() { return ownerId; }
     public UUID getOwnerPartyTeamId() { return ownerPartyTeamId; }
+    public UUID getFactoryId() { return factoryId; }
+    public UUID getFactoryPartyTeamId() { return factoryPartyTeamId; }
     public boolean isConfigured() { return ownerId != null; }
+
+    /**
+     * Bind this logger to a stable factory identity. Intended for a trusted
+     * Order Terminal/factory interaction after the factory owner is authorized.
+     */
+    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId, UUID selectedFactoryTeamId) {
+        if (level == null || level.isClientSide || selectedFactoryId == null
+                || !hasAccess(requesterId)) return false;
+        if (selectedFactoryTeamId != null
+                && !selectedFactoryTeamId.equals(ownerPartyTeamId)) return false;
+        factoryId = selectedFactoryId;
+        factoryPartyTeamId = selectedFactoryTeamId;
+        setChanged();
+        sync();
+        return true;
+    }
 
     /**
      * Atomically claims an unconfigured logger for the first interacting player.
@@ -340,6 +365,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (filterItemId != null) tag.putString("FilterItem", filterItemId.toString());
         if (ownerId != null) tag.putString("OwnerId", ownerId.toString());
         if (ownerPartyTeamId != null) tag.putString("OwnerPartyTeamId", ownerPartyTeamId.toString());
+        if (factoryId != null) tag.putString("FactoryId", factoryId.toString());
+        if (factoryPartyTeamId != null) tag.putString("FactoryPartyTeamId", factoryPartyTeamId.toString());
     }
 
     @Override
@@ -352,6 +379,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         lastStatus = safeStatus(tag.getString("LastStatus"));
         ownerId = parseUuid(tag, "OwnerId");
         ownerPartyTeamId = parseUuid(tag, "OwnerPartyTeamId");
+        factoryId = parseUuid(tag, "FactoryId");
+        factoryPartyTeamId = parseUuid(tag, "FactoryPartyTeamId");
         if (tag.contains("Inventory")) inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         filterItemId = null;
         if (tag.contains("FilterItem")) {
