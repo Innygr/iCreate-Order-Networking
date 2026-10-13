@@ -17,6 +17,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Bridges Create's built-in Redstone Requester to iCreate's order board.
@@ -24,6 +26,7 @@ import net.neoforged.neoforge.event.level.BlockEvent;
  * one no-reward order per requested item. Existing active orders suppress repeats.
  */
 public final class RedstoneRequesterOrderBridge {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedstoneRequesterOrderBridge.class);
     private final Set<String> latchedRequesters = new HashSet<>();
 
     @net.neoforged.bus.api.SubscribeEvent
@@ -104,7 +107,11 @@ public final class RedstoneRequesterOrderBridge {
             var itemId = BuiltInRegistries.ITEM.getKey(entry.stack.getItem());
             if (itemId == null || itemId.equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
             hasValidRequest = true;
-            OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, entry.count);
+            var created = OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, entry.count);
+            if (created != null) {
+                LOGGER.info("Created Redstone Requester restock order {} for {} x{} at {} in {}",
+                        created.id(), itemId, entry.count, requesterPos, level.dimension().location());
+            }
         }
         return hasValidRequest;
     }
