@@ -17,13 +17,16 @@ The assembly validator should report missing components and refuse launch until 
 
 The navigator is responsible for stable guidance rather than simply pointing the missile at the target once.
 
+- **Plan altitude before ascent.** Before applying upward velocity, sample the direct launch-to-target corridor using already-loaded terrain. Select the lowest cruise altitude that clears the highest sampled terrain by a configurable safety margin (initially 8 blocks), while respecting the world's build-height limit.
+- Sample the corridor at regular intervals (initially every 4 horizontal blocks). Do not load chunks just to plan or chase a target; if the required corridor crosses an unloaded chunk, postpone planning or fail launch safely.
+- Estimate the fuel cost as climb distance + horizontal distance + descent distance. If this estimate exceeds the fuel-derived range budget, report insufficient fuel/range before takeoff rather than wasting fuel on an impossible route.
+- For long routes, a later improvement can plan multiple waypoints and re-plan around high terrain; the first implementation uses a direct corridor and conservative clearance.
 - Keep the target in world coordinates and update guidance every tick on the server.
 - For block targets, aim at the target block's center. For player targets, resolve the saved player UUID and continually steer toward the player's current position.
 - Use smooth course corrections and limit turning acceleration so the missile does not jitter, instantly reverse, or overshoot while chasing moving targets.
 - Compensate for the missile's current velocity and lead moving targets where possible instead of always aiming at their last position.
 - Re-check target validity and maximum range throughout flight. If a player target disconnects or becomes invalid, stop active guidance and apply a consistent fail-safe (coast with current velocity rather than teleporting or abruptly reversing).
 - Keep guidance and launch validation server-authoritative; synchronize position and orientation to clients.
-- Avoid loading chunks solely to chase a target. If the target is in an unloaded area, stop guidance and enter the defined fail-safe state.
 - Provide a configurable steering strength/turn-rate so the guidance can be tuned for gameplay.
 
 ## Targeting remote
@@ -54,7 +57,7 @@ Maximum range should account for tank count and fuel efficiency:
 
 `maximumRange = tankCount * 100 * fuelEfficiency`
 
-Use `fuelEfficiency = 0.5` for water and `1.0` for lava initially. Thus one full tank gives 50 blocks on water or 100 blocks on lava; two tanks give 100 or 200 blocks respectively.
+Use `fuelEfficiency = 0.5` for water and `1.0` for lava initially. Thus one full tank gives 50 blocks on water or 100 blocks on lava; two tanks give 100 or 200 blocks respectively. The altitude planner estimates route cost as climb + horizontal travel + descent and rejects a launch if that estimate exceeds this range budget.
 
 If a missile exceeds its maximum range during flight, shut the thruster off immediately. Preserve its current velocity and let it coast under flight physics until it collides or comes to rest.
 
@@ -97,7 +100,7 @@ A missile may contain a nuclear core instead of, or in addition to, a convention
 
 The current code implements the persistent per-dimension radiation-zone data, rain cleanup, green dust cloud particles, server-side exposure checks, the Radiation status effect, and the Nuclear Core assembly-marker item. The zone entry point is `RadiationService.createBlastZone(ServerLevel, BlockPos, int)`; a missile detonation handler should call it once the missile-flight system exists.
 
-The custom missile thruster block is registered and can be redstone-powered to light up and attempt to ignite nearby flammable surroundings. The actual missile assembly, targeting remote, flight entity, navigation controller, impact handling, and fuel-consuming propulsion are not yet implemented; the thruster block is not yet a working propulsion unit.
+The custom missile thruster block is registered and can be redstone-powered to light up and attempt to ignite nearby flammable surroundings. The water/lava efficiency helper and pre-launch altitude planner are implemented as reusable utilities, but neither is yet connected to a working missile tank, assembly, launch, or flight entity. The actual missile assembly, targeting remote, flight entity, navigation controller, impact handling, and fuel-consuming propulsion are not yet implemented.
 
 The Radiation effect currently communicates contamination with green effect particles and applies damage over time; a full green tint over the player's rendered model still needs a client-render implementation.
 
