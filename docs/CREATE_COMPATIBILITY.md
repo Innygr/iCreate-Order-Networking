@@ -199,5 +199,5 @@ The bridge only latches a requester after finding a terminal and at least one va
 Important boundaries:
 - This is an order-board bridge, not a replacement for Create's own package-request behavior; Create may still broadcast its normal request.
 - The order count is validated against the order service limit before creating an order.
-- The factory owner is the order owner. The owner's scoreboard team is snapshotted only when that owner is online at activation; offline-owner team association is not inferred.
+- The factory owner is the order owner. When the owner is online, the bridge snapshots their scoreboard team directly. When offline, it attempts to resolve the cached GameProfile and look up that profile name on the scoreboard; if no cached profile is available, the team association remains unset.
 - The bridge has passed the repository's Java/Gradle CI build, but still needs a live-world test against Create 6.0.6. Specifically verify event timing, a power-on/power-off cycle, late terminal placement, multi-item requests, and duplicate suppression before describing it as runtime-verified.
