@@ -52,7 +52,7 @@ public final class OrderData extends SavedData {
                     data.orders.put(id, new Order(id, owner, n.getString("OwnerName"), item,
                             requested, fulfilled, reward, claimant, status, n.getLong("CreatedAt"), teamKey));
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (RuntimeException ignored) {
                 // Ignore malformed records so one bad order cannot stop world loading.
             }
         }
@@ -71,7 +71,7 @@ public final class OrderData extends SavedData {
                 boolean applied = !receipt.contains("ProgressApplied") || receipt.getBoolean("ProgressApplied");
                 DeliveryReceipt loaded = new DeliveryReceipt(orderId, route, claimant, count, applied);
                 data.processedDeliveries.putIfAbsent(deliveryId, loaded);
-            } catch (IllegalArgumentException ignored) {
+            } catch (RuntimeException ignored) {
                 // Ignore malformed receipt records.
             }
         }
