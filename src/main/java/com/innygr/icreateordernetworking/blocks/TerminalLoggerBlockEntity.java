@@ -1,5 +1,6 @@
 package com.innygr.icreateordernetworking.blocks;
 
+import java.util.EnumMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,10 +23,12 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * Six-way Create logistics junction. Five faces are input faces and pull from
- * adjacent item-handler capabilities; the configured face is output-only.
- * PSI and Docking Connector endpoints are handled through their exposed item
- * capability when docked. Route-specific order verification remains separate.
+ * Six-way inventory junction. Five faces pull from adjacent NeoForge item-handler
+ * capabilities; the configured face is output-only. Create's Portable Storage
+ * Interface exposes its own item handler only during its native transfer state, so
+ * this junction can exchange items through that capability without duplicating the
+ * PSI handshake. Aeronautics docking lifecycle and route-specific order receipts
+ * remain separate integration work.
  */
 public final class TerminalLoggerBlockEntity extends BlockEntity {
     private static final int SLOT_COUNT = 18;
@@ -52,8 +55,57 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         }
     };
 
+    private final EnumMap<Direction, IItemHandler> sidedHandlers = new EnumMap<>(Direction.class);
+
     public TerminalLoggerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TERMINAL_LOGGER.get(), pos, state);
+        for (Direction side : Direction.values()) {
+            sidedHandlers.put(side, new IItemHandler() {
+                @Override
+                public int getSlots() {
+                    return inventory.getSlots();
+                }
+
+                @Override
+                public ItemStack getStackInSlot(int slot) {
+                    return inventory.getStackInSlot(slot);
+                }
+
+                @Override
+                public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+                    if (side == outputDirection || stack.isEmpty() || !acceptsItem(
+                            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                        return stack;
+                    }
+                    return inventory.insertItem(slot, stack, simulate);
+                }
+
+                @Override
+                public ItemStack extractItem(int slot, int amount, boolean simulate) {
+                    if (side != outputDirection) return ItemStack.EMPTY;
+                    return inventory.extractItem(slot, amount, simulate);
+                }
+
+                @Override
+                public int getSlotLimit(int slot) {
+                    return inventory.getSlotLimit(slot);
+                }
+
+                @Override
+                public boolean isItemValid(int slot, ItemStack stack) {
+                    return side != outputDirection && inventory.isItemValid(slot, stack);
+                }
+            });
+        }
+    }
+
+    /**
+     * Sided automation view: five faces accept filtered items and only the
+     * selected output face allows extraction. Null-side access is deliberately
+     * not exposed to avoid bypassing the face configuration.
+     */
+    public IItemHandler getSidedItemHandler(Direction side) {
+        return side == null ? null : sidedHandlers.get(side);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, TerminalLoggerBlockEntity logger) {
