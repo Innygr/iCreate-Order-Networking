@@ -63,6 +63,25 @@ class OrderDataTest {
     }
 
     @Test
+    void loadFinalizesReceiptWhenDurableProgressMarkerAlreadyExists() {
+        OrderData original = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        original.add(new Order(orderId, ownerId, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                10, 5, 0, claimantId, OrderStatus.IN_PROGRESS, 1L));
+        assertTrue(original.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 5));
+        original.markAutomatedProgressApplied(transactionId);
+        assertFalse(original.deliveryReceipt(transactionId).progressApplied());
+
+        OrderData restored = OrderData.load(original.save(new CompoundTag(), null), null);
+
+        assertTrue(restored.deliveryReceipt(transactionId).progressApplied());
+        assertFalse(restored.hasPendingDeliveryForOrder(orderId));
+    }
+
+    @Test
     void legacyReceiptPathAcceptsOnlyManualHandoffs() {
         OrderData data = new OrderData();
         UUID orderId = UUID.randomUUID();
