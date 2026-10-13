@@ -23,10 +23,11 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * Six-way Create logistics junction. Five faces are input faces and pull from
- * adjacent item-handler capabilities; the configured face is output-only.
- * PSI and Docking Connector endpoints are handled through their exposed item
- * capability when docked. Route-specific order verification remains separate.
+ * Six-way inventory junction. Five faces pull from adjacent NeoForge item-handler
+ * capabilities; the configured face is output-only. This generic capability path
+ * does not inspect PSI connection state or Aeronautics docking lifecycle, and is
+ * not a substitute for either transport adapter. Route-specific order verification
+ * remains separate.
  */
 public final class TerminalLoggerBlockEntity extends BlockEntity {
     private static final int SLOT_COUNT = 18;
