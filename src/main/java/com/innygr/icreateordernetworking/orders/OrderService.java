@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.economy.EconomyService;
+import DeliveryRoute;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -154,10 +155,10 @@ public final class OrderService {
      * This deliberately does not inspect player inventory or credit currency.
      */
     public static boolean recordAutomatedFulfilment(ServerLevel level, UUID orderId,
-                                                     com.innygr.icreateordernetworking.delivery.DeliveryRoute route,
+                                                     DeliveryRoute route,
                                                      UUID claimantId, int count, UUID transactionId) {
         if (level == null || orderId == null || route == null
-                || route == com.innygr.icreateordernetworking.delivery.DeliveryRoute.MANUAL
+                || route == DeliveryRoute.MANUAL
                 || claimantId == null || transactionId == null
                 || count < 1 || count > MAX_ORDER_COUNT) return false;
         OrderData data = OrderData.get(level);
