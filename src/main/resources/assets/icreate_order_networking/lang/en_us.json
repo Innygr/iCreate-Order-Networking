@@ -10,6 +10,8 @@
   "item.icreate_order_networking.missile_tag": "Missile Tag",
   "item.icreate_order_networking.nuclear_core": "Nuclear Core",
   "effect.icreate_order_networking.radiation": "Radiation",
+  "death.attack.icreate_order_networking.missile": "%1$s was exploded via missile",
+  "death.attack.icreate_order_networking.team_missile": "%1$s was exploded via %2$s’s missile",
   "subtitles.icreate_order_networking.grinder_idle": "Scrapper idles",
   "subtitles.icreate_order_networking.grinder_begin": "Scrapper starts grinding",
   "subtitles.icreate_order_networking.grinder_active": "Scrapper grinds",
