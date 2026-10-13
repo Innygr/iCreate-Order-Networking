@@ -38,11 +38,25 @@ Examples:
 
 For a block target, measure 3D distance from the launch position to the center of the target block. For a heat-seeking target, measure 3D distance from the launch position to the player's current position. If the target exceeds the missile's maximum range during flight, shut the thruster off immediately.
 
-After the thruster cuts out, do not magically stop the missile: preserve its current velocity and let it coast under the flight physics until it collides or comes to rest. A missile must have at least one valid tank to have non-zero range.
+After the thruster cuts out, preserve the missile's current velocity and let it coast under the flight physics until it collides or comes to rest. A missile must have at least one valid tank to have non-zero range.
+
+## Water landing and flotation
+
+Water contact takes priority over the normal impact-detonation check:
+
+- If the missile lands in water, it must not explode, regardless of impact speed.
+- Transition it into a floating, inert state on the water surface.
+- Stop propulsion and disable impact detonation while it is floating.
+- Keep the missile entity or dud recoverable rather than deleting it.
+- Use buoyancy and water-surface positioning so it floats on top instead of sinking. Avoid repeatedly triggering the impact handler while it bobs on the surface.
+
+Sable may be used for physics if it is compatible with the project's Minecraft/NeoForge version and licensing. Treat it as an optional physics integration until its exact dependency and API are verified; keep the missile's water-state logic independent so a fallback buoyancy implementation remains possible.
 
 ## Impact and dud behaviour
 
-On collision, determine the missile's impact speed:
+On collision, first determine whether the collision is a water landing. Water landings never detonate and instead enter the floating inert state.
+
+For non-water impacts, determine the missile's impact speed:
 
 - If impact speed meets or exceeds the configured impact-speed threshold, detonate the explosive payload.
 - If impact speed is below the threshold, the missile does not detonate and remains as a dud at the impact location.
