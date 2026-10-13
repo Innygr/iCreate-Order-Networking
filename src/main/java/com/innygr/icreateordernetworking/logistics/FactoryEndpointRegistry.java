@@ -67,24 +67,23 @@ public final class FactoryEndpointRegistry {
         for (Map.Entry<EndpointKey, FactoryEndpoint> entry : ENDPOINTS.entrySet()) {
             EndpointKey endpointKey = entry.getKey();
             FactoryEndpoint endpoint = entry.getValue();
-            if (!endpointKey.dimension().equals(dimension)
-                    || !networkId.equals(endpoint.networkId())) {
-                continue;
-            }
-
-            int available;
             try {
-                available = Math.max(0, endpoint.availableCount(itemId));
-            } catch (RuntimeException ignored) {
-                // A broken/unavailable endpoint must not prevent other factories
-                // from being considered.
-                continue;
-            }
-            if (available == 0) continue;
+                if (!endpointKey.dimension().equals(dimension)
+                        || !networkId.equals(endpoint.networkId())) {
+                    continue;
+                }
 
-            BlockPos source = endpoint.position();
-            offers.add(new StockOffer(source, itemId, available,
-                    source.distSqr(requester), endpoint));
+                int available = Math.max(0, endpoint.availableCount(itemId));
+                if (available == 0) continue;
+
+                BlockPos source = endpoint.position();
+                if (source == null) continue;
+                offers.add(new StockOffer(source, itemId, available,
+                        source.distSqr(requester), endpoint));
+            } catch (RuntimeException | LinkageError ignored) {
+                // An unloaded/incompatible optional endpoint must not prevent
+                // healthy factories from being considered for this request.
+            }
         }
 
         offers.sort(Comparator.comparingDouble(StockOffer::distanceSquared)
