@@ -2,6 +2,8 @@ package com.innygr.icreateordernetworking;
 
 import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
+import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
+import com.innygr.icreateordernetworking.logistics.FactoryEndpointRegistry;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.registry.ModBlocks;
@@ -18,14 +20,18 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 /** Main entry point for iCreate: Order Networking. */
 @Mod(ICreateOrderNetworking.MOD_ID)
 public final class ICreateOrderNetworking {
     public static final String MOD_ID = "icreate_order_networking";
 
+    private final RedstoneRequesterOrderBridge requesterOrderBridge = new RedstoneRequesterOrderBridge();
+
     public ICreateOrderNetworking(IEventBus modBus) {
-        NeoForge.EVENT_BUS.register(new RedstoneRequesterOrderBridge());
+        NeoForge.EVENT_BUS.register(requesterOrderBridge);
+        NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
         ModItems.register(modBus);
@@ -35,6 +41,12 @@ public final class ICreateOrderNetworking {
         modBus.addListener(this::registerCapabilities);
         modBus.addListener(this::registerDisplaySources);
         modBus.addListener(this::registerDisplaySourceBindings);
+    }
+
+    private void onServerStopped(ServerStoppedEvent event) {
+        requesterOrderBridge.clear();
+        AutomatedDeliveryRegistry.clear();
+        FactoryEndpointRegistry.clear();
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
