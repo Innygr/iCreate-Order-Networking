@@ -161,7 +161,8 @@ public final class OrderData extends SavedData {
 
     /** Legacy/finalized receipt path for manual deliveries. */
     public boolean recordDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route) {
-        if (deliveryId == null || orderId == null || route == null || processedDeliveries.containsKey(deliveryId)) return false;
+        if (deliveryId == null || orderId == null || route != DeliveryRoute.MANUAL
+                || processedDeliveries.containsKey(deliveryId)) return false;
         processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route));
         setDirty();
         return true;
