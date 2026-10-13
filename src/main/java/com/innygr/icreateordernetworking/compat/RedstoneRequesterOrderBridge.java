@@ -78,9 +78,24 @@ public final class RedstoneRequesterOrderBridge {
         UUID ownerId = terminal.getFactoryOwnerId();
         if (ownerId == null) return false;
         ServerPlayer onlineOwner = level.getServer().getPlayerList().getPlayer(ownerId);
-        String ownerName = onlineOwner == null ? "Factory " + ownerId.toString().substring(0, 8)
-                : onlineOwner.getGameProfile().getName();
-        String ownerTeamKey = onlineOwner == null ? null : OrderTeamAccess.teamKey(onlineOwner);
+        String ownerName;
+        String ownerTeamKey;
+        if (onlineOwner != null) {
+            ownerName = onlineOwner.getGameProfile().getName();
+            ownerTeamKey = OrderTeamAccess.teamKey(onlineOwner);
+        } else {
+            // Offline factory owners still have cached profiles on most servers.
+            // Resolve their scoreboard team by cached name instead of silently
+            // turning a team order into a private order whenever they log out.
+            var cachedProfile = level.getServer().getProfileCache().get(ownerId);
+            ownerName = cachedProfile.map(profile -> profile.getName())
+                    .orElse("Factory " + ownerId.toString().substring(0, 8));
+            ownerTeamKey = cachedProfile
+                    .map(profile -> level.getServer().getScoreboard()
+                            .getPlayersTeam(profile.getName()))
+                    .map(team -> team.getName())
+                    .orElse(null);
+        }
 
         boolean hasValidRequest = false;
         for (BigItemStack entry : requester.encodedRequest.stacks()) {
