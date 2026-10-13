@@ -276,8 +276,13 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         }
         String detail = (reason == null || reason.isBlank() ? "Transfer" : reason)
                 + " " + count + "x " + itemId;
-        if (accepted) recordAccepted(detail);
-        else recordRejected(detail);
+        if (accepted) {
+            recordAccepted(detail);
+        } else {
+            recordRejected(detail);
+            recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.REJECTED, count,
+                    reason == null || reason.isBlank() ? "Rejected transfer" : reason);
+        }
     }
 
     public boolean setFilterItemId(ResourceLocation itemId) {
