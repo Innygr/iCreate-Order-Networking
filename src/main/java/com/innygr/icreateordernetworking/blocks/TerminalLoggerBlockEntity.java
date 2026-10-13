@@ -304,7 +304,16 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     /** Records diagnostics after an observed transfer; does not itself fulfil an order. */
     public void recordTransfer(boolean accepted, ResourceLocation itemId, int count, String reason) {
         if (level == null || level.isClientSide || count < 1 || !acceptsItem(itemId)) {
-            if (level != null && !level.isClientSide) recordRejected("Rejected transfer: invalid item/filter/count");
+            if (level != null && !level.isClientSide) {
+                recordRejected("Rejected transfer: invalid item/filter/count");
+                // Keep filter rejections visible in Network Stats when the attempted
+                // item and quantity are valid enough to identify a real transfer attempt.
+                // Invalid/null item IDs and non-positive quantities cannot form a useful event.
+                if (itemId != null && count > 0) {
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.REJECTED,
+                            count, "Rejected transfer: invalid item/filter/count");
+                }
+            }
             return;
         }
         String detail = (reason == null || reason.isBlank() ? "Transfer" : reason)
