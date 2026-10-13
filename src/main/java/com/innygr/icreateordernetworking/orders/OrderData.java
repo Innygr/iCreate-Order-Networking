@@ -195,7 +195,16 @@ public final class OrderData extends SavedData {
     /** Records an automated transaction before cargo commit so retries can recover it safely. */
     public boolean reserveDelivery(UUID deliveryId, UUID orderId, DeliveryRoute route, UUID claimantId, int count) {
         if (deliveryId == null || orderId == null || route == null || route == DeliveryRoute.MANUAL
-                || claimantId == null || count < 1 || processedDeliveries.containsKey(deliveryId)) return false;
+                || claimantId == null || count < 1 || count > OrderService.MAX_ORDER_COUNT
+                || processedDeliveries.containsKey(deliveryId)) return false;
+
+        Order order = orders.get(orderId);
+        if (order == null || (order.status() != OrderStatus.OPEN && order.status() != OrderStatus.IN_PROGRESS)
+                || !claimantId.equals(order.claimedBy())
+                || count > order.remainingCount() - pendingDeliveryCountForOrder(orderId, null)) {
+            return false;
+        }
+
         processedDeliveries.put(deliveryId, new DeliveryReceipt(orderId, route, claimantId, count, false));
         setDirty();
         return true;
