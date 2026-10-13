@@ -52,7 +52,7 @@ public final class DeliveryService {
         OrderData data = OrderData.get(level);
         if (data.hasProcessedDelivery(transactionId)
                 || !data.recordDelivery(transactionId, orderId, DeliveryRoute.MANUAL)) return DeliveryResult.ORDER_REJECTED;
-        if (!OrderService.fulfil(player, orderId, count)) {
+        if (!OrderService.fulfil(player, orderId, count, transactionId)) {
             data.forgetDelivery(transactionId);
             return DeliveryResult.ORDER_REJECTED;
         }
