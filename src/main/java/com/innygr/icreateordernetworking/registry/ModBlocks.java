@@ -4,6 +4,7 @@ import com.innygr.icreateordernetworking.ICreateOrderNetworking;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlock;
 import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlock;
+import com.innygr.icreateordernetworking.blocks.OrderTerminalBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -38,6 +39,13 @@ public final class ModBlocks {
     public static final DeferredItem<BlockItem> NETWORK_STATISTICS_ITEM =
             ITEMS.register("network_statistics",
                     () -> new BlockItem(NETWORK_STATISTICS.get(), new Item.Properties()));
+
+    public static final DeferredBlock<OrderTerminalBlock> ORDER_TERMINAL =
+            BLOCKS.register("order_terminal",
+                    () -> new OrderTerminalBlock(BlockBehaviour.Properties.of().strength(3.0F)));
+    public static final DeferredItem<BlockItem> ORDER_TERMINAL_ITEM =
+            ITEMS.register("order_terminal",
+                    () -> new BlockItem(ORDER_TERMINAL.get(), new Item.Properties()));
 
     public static final DeferredBlock<ScrapperBlock> SCRAPPER =
             BLOCKS.register("scrapper",

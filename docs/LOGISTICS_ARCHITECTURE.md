@@ -178,3 +178,10 @@ The stats service currently measures item movement, not verified order completio
 - A `FactoryIdentityProvider` contract and `bindFactoryFrom` hook define the trusted server-side seam for an Order Terminal to provide its stable factory UUID, owner, party, and access check. The Order Terminal block/identity provider is not registered yet, so binding is not end-to-end wired.
 - Create Display Link now has a registered single-line source that reports `IN`, `OUT`, and `REJ` totals from the same authoritative snapshot source as the block interaction.
 - These remain observed inventory transfer metrics. They are not confirmed shipments, completed orders, or paid rewards. Those require order-bound shipment receipts and the existing idempotent delivery service.
+
+### Order Terminal factory identity
+
+- The Order Terminal block entity now creates and persists a stable factory UUID on placement, then claims an owner and captures the owner's current FTB party on first interaction.
+- Right-clicking an already-claimed Order Terminal attempts to bind every adjacent, already-claimed Network Statistics block to that factory. Each target independently checks its owner/team permissions; unclaimed or unauthorized displays are not overwritten.
+- The factory identity implements `FactoryIdentityProvider`, which is the shared trusted contract used by the Network Statistics block. This is the first in-world path connecting the terminal's identity to factory-scoped statistics.
+- The block currently has placeholder vanilla art and no order UI/menu yet. This patch implements identity and stats binding, not order creation, order management, shipment tracking, or payout logic.
