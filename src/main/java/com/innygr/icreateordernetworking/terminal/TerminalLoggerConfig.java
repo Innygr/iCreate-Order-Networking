@@ -33,8 +33,14 @@ public final class TerminalLoggerConfig {
 
     /** Configure which side emits accepted cargo. Output side cannot also be an input. */
     public void setOutput(Direction side) {
-        output = Objects.requireNonNull(side, "side");
-        enabledInputs.put(side, false);
+        Direction next = Objects.requireNonNull(side, "side");
+        if (next == output) return;
+
+        // The former output face becomes an input again so exactly one side is
+        // excluded by default. Preserve explicit input settings on all other faces.
+        enabledInputs.put(output, true);
+        output = next;
+        enabledInputs.put(output, false);
     }
 
     public void setInputEnabled(Direction side, boolean enabled) {
