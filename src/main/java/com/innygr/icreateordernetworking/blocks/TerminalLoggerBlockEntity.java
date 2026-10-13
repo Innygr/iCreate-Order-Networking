@@ -234,9 +234,15 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
      * Bind this logger to a stable factory identity. Intended for a trusted
      * Order Terminal/factory interaction after the factory owner is authorized.
      */
-    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId, UUID selectedFactoryTeamId) {
+    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId,
+                               UUID selectedFactoryOwnerId, UUID selectedFactoryTeamId) {
         if (level == null || level.isClientSide || selectedFactoryId == null
-                || !hasAccess(requesterId)) return false;
+                || selectedFactoryOwnerId == null || !hasAccess(requesterId)) return false;
+        boolean factoryOwner = selectedFactoryOwnerId.equals(requesterId);
+        boolean sameLiveParty = selectedFactoryTeamId != null
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null))
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(selectedFactoryOwnerId).orElse(null));
+        if (!factoryOwner && !sameLiveParty) return false;
         if (selectedFactoryTeamId != null
                 && !selectedFactoryTeamId.equals(ownerPartyTeamId)) return false;
         factoryId = selectedFactoryId;
