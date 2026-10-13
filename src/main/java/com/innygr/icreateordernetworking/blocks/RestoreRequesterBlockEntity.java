@@ -77,6 +77,19 @@ public final class RestoreRequesterBlockEntity extends BlockEntity {
 
     private void checkStock(ServerLevel serverLevel) {
         if (!isConfigured() || ownerId == null) return;
+        boolean attachedToFactory = false;
+        for (Direction direction : Direction.values()) {
+            BlockEntity adjacent = level.getBlockEntity(worldPosition.relative(direction));
+            if (adjacent instanceof OrderTerminalBlockEntity terminal && terminal.canAccessFactory(ownerId)) {
+                attachedToFactory = true;
+                break;
+            }
+        }
+        if (!attachedToFactory) {
+            status = "Waiting for an accessible Order Terminal directly beside this block";
+            setChanged();
+            return;
+        }
         int stock = 0;
         boolean foundInventory = false;
         for (Direction direction : Direction.values()) {
