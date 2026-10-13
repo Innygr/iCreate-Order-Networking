@@ -50,8 +50,7 @@ public final class RedstoneRequesterOrderBridge {
         OrderTerminalBlockEntity terminal = null;
         for (Direction direction : Direction.values()) {
             if (level.getBlockEntity(requesterPos.relative(direction)) instanceof OrderTerminalBlockEntity candidate
-                    && candidate.isConfigured()
-                    && candidate.canAccessFactory(candidate.getFactoryOwnerId())) {
+                    && candidate.isConfigured()) {
                 terminal = candidate;
                 break;
             }
@@ -65,12 +64,15 @@ public final class RedstoneRequesterOrderBridge {
                 : onlineOwner.getGameProfile().getName();
         String ownerTeamKey = onlineOwner == null ? null : OrderTeamAccess.teamKey(onlineOwner);
 
+        boolean hasValidRequest = false;
         for (BigItemStack entry : requester.encodedRequest.stacks()) {
-            if (entry == null || entry.stack == null || entry.stack.isEmpty() || entry.count < 1) continue;
+            if (entry == null || entry.stack == null || entry.stack.isEmpty()
+                    || entry.count < 1 || entry.count > OrderService.MAX_ORDER_COUNT) continue;
             var itemId = BuiltInRegistries.ITEM.getKey(entry.stack.getItem());
             if (itemId == null || itemId.equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
+            hasValidRequest = true;
             OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, entry.count);
         }
-        return true;
+        return hasValidRequest;
     }
 }
