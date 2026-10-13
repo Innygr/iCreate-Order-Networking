@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -15,8 +16,15 @@ import net.minecraft.world.level.block.state.BlockState;
  * Unlike Terminal Logger blocks, the Scrapper intentionally emits light.
  */
 public final class ScrapperBlock extends BaseEntityBlock {
+    public static final MapCodec<ScrapperBlock> CODEC = simpleCodec(ScrapperBlock::new);
+
     public ScrapperBlock(BlockBehaviour.Properties properties) {
         super(properties.lightLevel(state -> 12));
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
     }
 
     @Override
