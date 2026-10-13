@@ -75,6 +75,12 @@ A missile may contain a nuclear core instead of, or in addition to, a convention
 - Keep radiation damage and duration configurable, and apply the effect server-side. The green tint is visual feedback, not the source of the damage.
 - Water-landing safety still takes priority: a missile that lands in water does not detonate, so it must not create a nuclear blast or radiation zone.
 
+### Implementation status
+
+The current code implements the persistent per-dimension radiation-zone data, rain cleanup, green dust cloud particles, server-side exposure checks, the Radiation status effect, and the Nuclear Core assembly-marker item. The zone entry point is `RadiationService.createBlastZone(ServerLevel, BlockPos, int)`; a missile detonation handler should call it once the missile-flight system exists.
+
+The repository does not yet contain the missile assembly, targeting remote, flight entity, impact handling, or detonation pipeline. Therefore the Nuclear Core is registered but is not yet wired into a launchable missile. The Radiation effect currently communicates contamination with green effect particles and applies damage over time; a full green tint over the player's rendered model still needs a client-render implementation.
+
 ### Existing mod compatibility
 
 The current `build.gradle` dependencies list NeoForge, Create, Ponder, Flywheel, and Registrate; they do not show a nuclear or radiation mod dependency. If another mod in the intended modpack already provides nuclear cores, radiation clouds, or a radiation effect, check its actual mod ID, API, and version before integrating it. Otherwise, implement the core marker, radiation-zone state, cloud visuals, and custom Radiation effect in this mod without requiring an unverified dependency.

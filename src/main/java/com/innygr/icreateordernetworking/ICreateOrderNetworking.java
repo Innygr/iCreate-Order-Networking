@@ -4,6 +4,8 @@ import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.registry.ModBlocks;
+import com.innygr.icreateordernetworking.registry.ModEffects;
+import com.innygr.icreateordernetworking.registry.ModItems;
 import com.innygr.icreateordernetworking.registry.ModSounds;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
@@ -23,6 +25,8 @@ public final class ICreateOrderNetworking {
     public ICreateOrderNetworking(IEventBus modBus) {
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
+        ModItems.register(modBus);
+        ModEffects.register(modBus);
         ModSounds.register(modBus);
         modBus.addListener(ModNetwork::registerPayloads);
         modBus.addListener(this::registerCapabilities);
