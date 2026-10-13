@@ -125,3 +125,8 @@ If any check fails, do not launch and report the reason. For a player target, ha
 ## Optional Missile Tag
 
 The optional Missile Tag is an identity marker for a missile assembly. Its block entity persists a stable missile UUID, team name, and a copy of the team's banner item stack. Assembly code can assign these through `MissileTagBlockEntity.configureIdentity(...)`; a missile's death message can use `MissileDeathMessages.explodedByTeam(...)` to produce “player was exploded via Team's missile”, falling back to “player was exploded via missile” when the tag has no team name. This identity data is ready for the future missile entity/impact handler. The current repository still has no missile entity to call the death-message helper, and the tag's small banner/sign-style in-world renderer remains a follow-up client-rendering task.
+
+
+## Orbital missile variant
+
+An orbital missile is a separate assembly mode: its designated structure must be assembled upside down, with the trigger/anchor block at or above Y=250. The structure checker should reject normal orientation, missing required blocks, and anchor positions below Y=250 before launch. Orbital kills use dedicated death-message translation keys: `%1$s was orbitally struck by missile` for an untagged missile and `%1$s was struck by %2$s’s orbital missile` for a tagged missile. The current patch adds the assembly validator and message helper; wiring them into a live missile entity/assembly interaction remains dependent on the not-yet-implemented missile launch system.
