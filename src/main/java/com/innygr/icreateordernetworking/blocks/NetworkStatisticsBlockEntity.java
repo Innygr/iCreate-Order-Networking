@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.logistics.NetworkStatsData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -19,6 +21,7 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
     private UUID ownerId;
     private UUID ownerPartyTeamId;
     private UUID factoryId;
+    private UUID factoryOwnerId;
     private UUID factoryPartyTeamId;
     private Mode mode = Mode.FACTORY;
 
@@ -70,10 +73,18 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
      * Server-side hook for the Order Terminal interaction. The caller must
      * authorize the player against the selected factory before invoking this.
      */
-    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId, UUID selectedFactoryTeamId) {
+    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId,
+                               UUID selectedFactoryOwnerId, UUID selectedFactoryTeamId) {
         if (level == null || level.isClientSide || selectedFactoryId == null
-                || !hasAccess(requesterId)) return false;
+                || selectedFactoryOwnerId == null || !hasAccess(requesterId)) return false;
+
+        boolean isFactoryOwner = selectedFactoryOwnerId.equals(requesterId);
+        boolean sharesFactoryTeam = selectedFactoryTeamId != null
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null));
+        if (!isFactoryOwner && !sharesFactoryTeam) return false;
+
         factoryId = selectedFactoryId;
+        factoryOwnerId = selectedFactoryOwnerId;
         factoryPartyTeamId = selectedFactoryTeamId;
         mode = Mode.FACTORY;
         setChanged();
@@ -81,8 +92,36 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
         return true;
     }
 
+    /**
+     * Returns the selected view's persisted snapshot, or null when unconfigured,
+     * unauthorized, or the target factory/team can no longer be accessed.
+     */
+    public NetworkStatsData.Snapshot getStats(UUID requesterId) {
+        if (level == null || level.isClientSide
+                || !(level instanceof ServerLevel serverLevel) || !hasAccess(requesterId)) return null;
+        NetworkStatsData data = NetworkStatsData.get(serverLevel);
+        if (mode == Mode.TEAM_GLOBAL) {
+            UUID currentTeam = FTBTeamsCompat.partyTeamId(requesterId).orElse(null);
+            if (currentTeam == null || !canViewTeamGlobal(requesterId)
+                    || !currentTeam.equals(ownerPartyTeamId)) return null;
+            return data.snapshotTeam(currentTeam);
+        }
+        if (factoryId == null || factoryOwnerId == null) return null;
+        if (factoryPartyTeamId != null) {
+            UUID currentTeam = FTBTeamsCompat.partyTeamId(requesterId).orElse(null);
+            if (!factoryPartyTeamId.equals(currentTeam)
+                    || !factoryPartyTeamId.equals(FTBTeamsCompat.partyTeamId(factoryOwnerId).orElse(null))) {
+                return null;
+            }
+        } else if (!factoryOwnerId.equals(requesterId)) {
+            return null;
+        }
+        return data.snapshotFactory(factoryId);
+    }
+
     public boolean isConfigured() { return ownerId != null; }
     public UUID getFactoryId() { return factoryId; }
+    public UUID getFactoryOwnerId() { return factoryOwnerId; }
     public UUID getFactoryPartyTeamId() { return factoryPartyTeamId; }
     public Mode getMode() { return mode; }
     public UUID getOwnerId() { return ownerId; }
@@ -99,6 +138,7 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
         putUuid(tag, "OwnerId", ownerId);
         putUuid(tag, "OwnerPartyTeamId", ownerPartyTeamId);
         putUuid(tag, "FactoryId", factoryId);
+        putUuid(tag, "FactoryOwnerId", factoryOwnerId);
         putUuid(tag, "FactoryPartyTeamId", factoryPartyTeamId);
         tag.putString("Mode", mode.name());
     }
@@ -109,6 +149,7 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
         ownerId = getUuid(tag, "OwnerId");
         ownerPartyTeamId = getUuid(tag, "OwnerPartyTeamId");
         factoryId = getUuid(tag, "FactoryId");
+        factoryOwnerId = getUuid(tag, "FactoryOwnerId");
         factoryPartyTeamId = getUuid(tag, "FactoryPartyTeamId");
         try {
             mode = Mode.valueOf(tag.getString("Mode"));
