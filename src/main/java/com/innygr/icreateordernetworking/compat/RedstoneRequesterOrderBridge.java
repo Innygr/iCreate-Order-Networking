@@ -29,6 +29,11 @@ public final class RedstoneRequesterOrderBridge {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedstoneRequesterOrderBridge.class);
     private final Set<String> latchedRequesters = new HashSet<>();
 
+    /** Clear edge-trigger state when the logical server stops or reloads. */
+    public void clear() {
+        latchedRequesters.clear();
+    }
+
     @net.neoforged.bus.api.SubscribeEvent
     public void onNeighborNotify(BlockEvent.NeighborNotifyEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
