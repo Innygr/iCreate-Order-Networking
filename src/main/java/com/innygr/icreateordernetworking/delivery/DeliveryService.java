@@ -63,6 +63,13 @@ public final class DeliveryService {
                 return DeliveryResult.ORDER_REJECTED;
             }
             if (prior.progressApplied()) return DeliveryResult.DUPLICATE;
+            // Crash window: order progress may already be durable while receipt
+            // finalization is not. Close that window before preparing/committing
+            // cargo again, otherwise a non-idempotent adapter could ship twice.
+            if (data.hasAppliedAutomatedProgress(request.transactionId())) {
+                data.markDeliveryProgressApplied(request.transactionId());
+                return DeliveryResult.SUCCESS;
+            }
         }
 
         Order order = data.find(request.orderId());
