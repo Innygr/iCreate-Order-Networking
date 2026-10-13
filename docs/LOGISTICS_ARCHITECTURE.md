@@ -153,10 +153,36 @@ Show rolling throughput (such as items moved over the last 60 seconds and 5 minu
 
 ### Suggested first release
 
-1. Add a server-side stats service/data model with typed counters and a bounded recent-event buffer.
-2. Instrument logger transfer outcomes and the shared delivery/job lifecycle with explicit event types.
-3. Expose a permission-checked snapshot API for the future Terminal Logger stats screen.
-4. Add the UI after the snapshot model is stable; label unavailable adapter metrics clearly.
-5. Test restart persistence, denied access, transfer retries, duplicate receipts, and the distinction between moved cargo and completed orders.
+1. **Implemented foundation:** `NetworkStatsData` persists per-owner cumulative input/output item totals and rejected-transfer counts in overworld SavedData, with a bounded 256-event history.
+2. **Implemented instrumentation:** actual accepted input/output item movement is recorded from the Terminal Logger transfer loop; explicitly rejected transfers reported through `recordTransfer` are recorded separately.
+3. **Implemented snapshot API:** `TerminalLoggerBlockEntity.getNetworkStats` returns the owner's read-only snapshot only when the requester passes the logger's existing owner/team access check.
+4. **Still needed:** wire the snapshot into a stats screen; add rolling-window rates and job/receipt/payout counters from the shared delivery services.
+5. **Verification needed:** test restart persistence, denied access, transfer retries, and the distinction between moved cargo and completed orders in a running game.
 
-Network Stats is a planned feature until the service, event instrumentation, persistence, and UI are implemented and tested. Existing accepted/rejected logger counters are diagnostics, not a complete network-wide stats system.
+The stats service currently measures item movement, not verified order completion. Existing endpoint detection remains diagnostic, and no transfer statistic is evidence of a fulfilled order or payout.
+
+## Network Statistics block (implementation foundation)
+
+- The `network_statistics` block and persistent block entity are registered. The block stores its owner, the selected factory UUID, the selected factory's party UUID, and a `FACTORY` / `TEAM_GLOBAL` view mode.
+- First interaction claims the display. Only its owner and currently authorized members of the bound FTB party can configure it.
+- Right-clicking with Create's wrench toggles between factory mode and Team Global. Team Global is rejected unless the display owner still belongs to the party captured when the display was claimed; no server-wide or cross-team fallback is permitted.
+- The block entity exposes a permission-checked server-side factory-binding API. The Order Terminal is now implemented and invokes this API when a claimed terminal is right-clicked beside a claimed display.
+- This remains a compact readout rather than a full statistics screen: right-click reports cumulative totals in chat, and the registered Create Display Link source exposes the same scope-labelled totals. The block model still uses a temporary vanilla iron-block texture; richer selectable channels and rolling-window metrics remain follow-up work.
+- Cargo movement remains distinct from order delivery. No delivery totals should be exposed until the delivery receipt service provides verified completion events.
+
+### Factory-scoped Network Statistics and Display Link output
+
+- `NetworkStatsData` keeps backward-compatible owner totals and now also stores bounded per-factory and per-party totals. Each transfer event records its optional factory/team UUID as well as the existing dimension, position, item, count, type, and game-time fields.
+- Terminal Loggers can persist a stable factory UUID and factory-party UUID. Once bound, actual accepted input/output movement and explicitly rejected transfer events update owner totals plus the matching factory/team aggregates. Unbound loggers continue to contribute to owner totals and may contribute to their live party aggregate.
+- The Network Statistics block entity exposes a permission-checked snapshot API for Factory or Team Global mode. The physical Display Link output is intentionally a public in-world readout, but it fails closed when the configured factory or party identity is no longer valid.
+- The `FactoryIdentityProvider` contract and `bindFactoryFrom` hook are wired to the registered Order Terminal, which persists a stable factory UUID and performs adjacent logger/display binding with per-target permission checks.
+- Create Display Link now has a registered single-line source that reports `IN`, `OUT`, and `REJ` totals from the same authoritative snapshot source as the block interaction.
+- These remain observed inventory transfer metrics. They are not confirmed shipments, completed orders, or paid rewards. Those require order-bound shipment receipts and the existing idempotent delivery service.
+
+### Order Terminal factory identity
+
+- The Order Terminal block entity now creates and persists a stable factory UUID on placement, then claims an owner and captures the owner's current FTB party on first interaction.
+- Right-clicking an already-claimed Order Terminal attempts to bind every adjacent, already-claimed Network Statistics block and Terminal Logger to that factory. Each target independently checks its owner/team permissions; unclaimed or unauthorized blocks are not overwritten.
+- The factory identity implements `FactoryIdentityProvider`, which is the shared trusted contract used by the Network Statistics block. This is the first in-world path connecting the terminal's identity to factory-scoped statistics.
+- The block currently has placeholder vanilla art and no order UI/menu yet. This patch implements identity and stats binding, not order creation, order management, shipment tracking, or payout logic.
+- A personal factory can only bind its owner's personal Terminal Logger; a party factory can bind loggers already owned by members of that same live FTB party. This prevents a terminal from silently reassigning another party's or player's inventory junction.

@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "lit=false": {
+      "model": "icreate_order_networking:block/missile_thruster"
+    },
+    "lit=true": {
+      "model": "icreate_order_networking:block/missile_thruster"
+    }
+  }
+}

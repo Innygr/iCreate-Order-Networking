@@ -1,8 +1,12 @@
 package com.innygr.icreateordernetworking.registry;
 
 import com.innygr.icreateordernetworking.ICreateOrderNetworking;
+import com.innygr.icreateordernetworking.blocks.MissileThrusterBlock;
+import com.innygr.icreateordernetworking.blocks.MissileTagBlock;
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import com.innygr.icreateordernetworking.blocks.ScrapperBlock;
+import com.innygr.icreateordernetworking.blocks.NetworkStatisticsBlock;
+import com.innygr.icreateordernetworking.blocks.OrderTerminalBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -31,12 +35,39 @@ public final class ModBlocks {
             ITEMS.register("brass_terminal_logger",
                     () -> new BlockItem(BRASS_TERMINAL_LOGGER.get(), new Item.Properties()));
 
+    public static final DeferredBlock<NetworkStatisticsBlock> NETWORK_STATISTICS =
+            BLOCKS.register("network_statistics",
+                    () -> new NetworkStatisticsBlock(BlockBehaviour.Properties.of().strength(2.5F)));
+    public static final DeferredItem<BlockItem> NETWORK_STATISTICS_ITEM =
+            ITEMS.register("network_statistics",
+                    () -> new BlockItem(NETWORK_STATISTICS.get(), new Item.Properties()));
+
+    public static final DeferredBlock<OrderTerminalBlock> ORDER_TERMINAL =
+            BLOCKS.register("order_terminal",
+                    () -> new OrderTerminalBlock(BlockBehaviour.Properties.of().strength(3.0F)));
+    public static final DeferredItem<BlockItem> ORDER_TERMINAL_ITEM =
+            ITEMS.register("order_terminal",
+                    () -> new BlockItem(ORDER_TERMINAL.get(), new Item.Properties()));
+
     public static final DeferredBlock<ScrapperBlock> SCRAPPER =
             BLOCKS.register("scrapper",
                     () -> new ScrapperBlock(BlockBehaviour.Properties.of().strength(2.5F)));
     public static final DeferredItem<BlockItem> SCRAPPER_ITEM =
             ITEMS.register("scrapper",
                     () -> new BlockItem(SCRAPPER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<MissileThrusterBlock> MISSILE_THRUSTER =
+            BLOCKS.register("missile_thruster",
+                    () -> new MissileThrusterBlock(BlockBehaviour.Properties.of()
+                            .strength(3.0F).lightLevel(state -> state.getValue(MissileThrusterBlock.LIT) ? 12 : 0)));
+    public static final DeferredItem<BlockItem> MISSILE_THRUSTER_ITEM =
+            ITEMS.register("missile_thruster",
+                    () -> new BlockItem(MISSILE_THRUSTER.get(), new Item.Properties()));
+
+    public static final DeferredBlock<MissileTagBlock> MISSILE_TAG =
+            BLOCKS.register("missile_tag", () -> new MissileTagBlock(BlockBehaviour.Properties.of().strength(2.0F)));
+    public static final DeferredItem<BlockItem> MISSILE_TAG_ITEM =
+            ITEMS.register("missile_tag", () -> new BlockItem(MISSILE_TAG.get(), new Item.Properties()));
 
     private ModBlocks() {}
 

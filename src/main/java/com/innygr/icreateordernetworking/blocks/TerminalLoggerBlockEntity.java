@@ -8,6 +8,7 @@ import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
+import com.innygr.icreateordernetworking.logistics.NetworkStatsData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -41,6 +42,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private ResourceLocation filterItemId;
     private UUID ownerId;
     private UUID ownerPartyTeamId;
+    private UUID factoryId;
+    private UUID factoryPartyTeamId;
 
     private final ItemStackHandler inventory = new ItemStackHandler(SLOT_COUNT) {
         @Override
@@ -159,9 +162,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 }
                 int accepted = extracted.getCount() - remainder.getCount();
                 if (accepted > 0) {
-                    recordAccepted("Pulled " + accepted + "x "
-                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(extracted.getItem())
-                            + " from " + side.getName());
+                    ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(extracted.getItem());
+                    recordAccepted("Pulled " + accepted + "x " + itemId + " from " + side.getName());
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.INPUT, accepted,
+                            "Input from " + side.getName());
                     return;
                 }
             }
@@ -182,12 +186,36 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 int moved = Math.min(TRANSFER_PER_TICK, stored.getCount()) - remainder.getCount();
                 if (moved > 0) {
                     inventory.extractItem(slot, moved, false);
-                    recordAccepted("Output " + moved + "x "
-                            + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stored.getItem()));
+                    ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stored.getItem());
+                    recordAccepted("Output " + moved + "x " + itemId);
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.OUTPUT, moved,
+                            "Output to " + outputDirection.getName());
                     return;
                 }
             }
         }
+    }
+
+    /**
+     * Returns this owner's network statistics only when the requester has access
+     * to this logger. A null result means access is denied or the logger is not
+     * attached to a server world.
+     */
+    public NetworkStatsData.Snapshot getNetworkStats(UUID requesterId) {
+        if (level == null || level.isClientSide || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)
+                || !hasAccess(requesterId) || ownerId == null) return null;
+        return NetworkStatsData.get(serverLevel).snapshot(ownerId);
+    }
+
+    private void recordNetworkTransfer(Level level, ResourceLocation itemId,
+                                       NetworkStatsData.EventType type, int count, String detail) {
+        if (ownerId == null || !(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        UUID currentOwnerTeam = ownerPartyTeamId != null
+                && ownerPartyTeamId.equals(FTBTeamsCompat.partyTeamId(ownerId).orElse(null))
+                ? ownerPartyTeamId : null;
+        UUID statsTeamId = factoryPartyTeamId != null ? factoryPartyTeamId : currentOwnerTeam;
+        NetworkStatsData.get(serverLevel).record(serverLevel, ownerId, factoryId, statsTeamId,
+                worldPosition, itemId, type, count, detail);
     }
 
     public ItemStackHandler getInventory() { return inventory; }
@@ -198,7 +226,33 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     public ResourceLocation getFilterItemId() { return filterItemId; }
     public UUID getOwnerId() { return ownerId; }
     public UUID getOwnerPartyTeamId() { return ownerPartyTeamId; }
+    public UUID getFactoryId() { return factoryId; }
+    public UUID getFactoryPartyTeamId() { return factoryPartyTeamId; }
     public boolean isConfigured() { return ownerId != null; }
+
+    /**
+     * Bind this logger to a stable factory identity. Intended for a trusted
+     * Order Terminal/factory interaction after the factory owner is authorized.
+     */
+    public boolean bindFactory(UUID requesterId, UUID selectedFactoryId,
+                               UUID selectedFactoryOwnerId, UUID selectedFactoryTeamId) {
+        if (level == null || level.isClientSide || selectedFactoryId == null
+                || selectedFactoryOwnerId == null || !hasAccess(requesterId)) return false;
+        boolean personalFactoryOwner = selectedFactoryTeamId == null
+                && selectedFactoryOwnerId.equals(requesterId)
+                && ownerId != null && ownerId.equals(requesterId)
+                && ownerPartyTeamId == null;
+        boolean sameLiveParty = selectedFactoryTeamId != null
+                && selectedFactoryTeamId.equals(ownerPartyTeamId)
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null))
+                && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(selectedFactoryOwnerId).orElse(null));
+        if (!personalFactoryOwner && !sameLiveParty) return false;
+        factoryId = selectedFactoryId;
+        factoryPartyTeamId = selectedFactoryTeamId;
+        setChanged();
+        sync();
+        return true;
+    }
 
     /**
      * Atomically claims an unconfigured logger for the first interacting player.
@@ -250,13 +304,27 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     /** Records diagnostics after an observed transfer; does not itself fulfil an order. */
     public void recordTransfer(boolean accepted, ResourceLocation itemId, int count, String reason) {
         if (level == null || level.isClientSide || count < 1 || !acceptsItem(itemId)) {
-            if (level != null && !level.isClientSide) recordRejected("Rejected transfer: invalid item/filter/count");
+            if (level != null && !level.isClientSide) {
+                recordRejected("Rejected transfer: invalid item/filter/count");
+                // Keep filter rejections visible in Network Stats when the attempted
+                // item and quantity are valid enough to identify a real transfer attempt.
+                // Invalid/null item IDs and non-positive quantities cannot form a useful event.
+                if (itemId != null && count > 0) {
+                    recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.REJECTED,
+                            count, "Rejected transfer: invalid item/filter/count");
+                }
+            }
             return;
         }
         String detail = (reason == null || reason.isBlank() ? "Transfer" : reason)
                 + " " + count + "x " + itemId;
-        if (accepted) recordAccepted(detail);
-        else recordRejected(detail);
+        if (accepted) {
+            recordAccepted(detail);
+        } else {
+            recordRejected(detail);
+            recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.REJECTED, count,
+                    reason == null || reason.isBlank() ? "Rejected transfer" : reason);
+        }
     }
 
     public boolean setFilterItemId(ResourceLocation itemId) {
@@ -314,6 +382,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (filterItemId != null) tag.putString("FilterItem", filterItemId.toString());
         if (ownerId != null) tag.putString("OwnerId", ownerId.toString());
         if (ownerPartyTeamId != null) tag.putString("OwnerPartyTeamId", ownerPartyTeamId.toString());
+        if (factoryId != null) tag.putString("FactoryId", factoryId.toString());
+        if (factoryPartyTeamId != null) tag.putString("FactoryPartyTeamId", factoryPartyTeamId.toString());
     }
 
     @Override
@@ -326,6 +396,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         lastStatus = safeStatus(tag.getString("LastStatus"));
         ownerId = parseUuid(tag, "OwnerId");
         ownerPartyTeamId = parseUuid(tag, "OwnerPartyTeamId");
+        factoryId = parseUuid(tag, "FactoryId");
+        factoryPartyTeamId = parseUuid(tag, "FactoryPartyTeamId");
         if (tag.contains("Inventory")) inventory.deserializeNBT(registries, tag.getCompound("Inventory"));
         filterItemId = null;
         if (tag.contains("FilterItem")) {
