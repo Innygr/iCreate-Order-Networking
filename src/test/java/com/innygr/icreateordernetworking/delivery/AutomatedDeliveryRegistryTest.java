@@ -63,6 +63,34 @@ class AutomatedDeliveryRegistryTest {
     }
 
     @Test
+    void routeResolutionFailureDisablesAdapterSafely() {
+        AutomatedDeliveryAdapter broken = new AutomatedDeliveryAdapter() {
+            @Override
+            public DeliveryRoute route() {
+                throw new LinkageError("optional route API is missing");
+            }
+
+            @Override
+            public boolean isAvailable() {
+                return true;
+            }
+
+            @Override
+            public boolean isAuthorized(ServerLevel level, DeliveryRequest request) {
+                return false;
+            }
+
+            @Override
+            public PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request) {
+                return null;
+            }
+        };
+
+        assertFalse(AutomatedDeliveryRegistry.register(broken));
+        assertTrue(AutomatedDeliveryRegistry.availableRoutes().isEmpty());
+    }
+
+    @Test
     void unregisterRequiresTheExactRegisteredInstance() {
         AutomatedDeliveryAdapter registered = adapter(DeliveryRoute.BELT, true);
         AutomatedDeliveryAdapter different = adapter(DeliveryRoute.BELT, true);
