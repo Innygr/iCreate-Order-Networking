@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.logistics.NetworkStatsData;
+import com.innygr.icreateordernetworking.logistics.FactoryIdentityProvider;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -90,6 +91,13 @@ public final class NetworkStatisticsBlockEntity extends BlockEntity {
         setChanged();
         sync();
         return true;
+    }
+
+    /** Bind directly from a factory block that exposes the trusted identity contract. */
+    public boolean bindFactoryFrom(UUID requesterId, FactoryIdentityProvider factory) {
+        if (factory == null || !factory.canAccessFactory(requesterId)) return false;
+        return bindFactory(requesterId, factory.getFactoryId(),
+                factory.getFactoryOwnerId(), factory.getFactoryPartyTeamId());
     }
 
     /**
