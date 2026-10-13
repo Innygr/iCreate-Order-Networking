@@ -239,7 +239,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (level == null || level.isClientSide || selectedFactoryId == null
                 || selectedFactoryOwnerId == null || !hasAccess(requesterId)) return false;
         boolean personalFactoryOwner = selectedFactoryTeamId == null
-                && selectedFactoryOwnerId.equals(requesterId);
+                && selectedFactoryOwnerId.equals(requesterId)
+                && ownerId != null && ownerId.equals(requesterId)
+                && ownerPartyTeamId == null;
         boolean sameLiveParty = selectedFactoryTeamId != null
                 && selectedFactoryTeamId.equals(ownerPartyTeamId)
                 && selectedFactoryTeamId.equals(FTBTeamsCompat.partyTeamId(requesterId).orElse(null))

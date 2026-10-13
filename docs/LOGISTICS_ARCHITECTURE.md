@@ -182,6 +182,7 @@ The stats service currently measures item movement, not verified order completio
 ### Order Terminal factory identity
 
 - The Order Terminal block entity now creates and persists a stable factory UUID on placement, then claims an owner and captures the owner's current FTB party on first interaction.
-- Right-clicking an already-claimed Order Terminal attempts to bind every adjacent, already-claimed Network Statistics block to that factory. Each target independently checks its owner/team permissions; unclaimed or unauthorized displays are not overwritten.
+- Right-clicking an already-claimed Order Terminal attempts to bind every adjacent, already-claimed Network Statistics block and Terminal Logger to that factory. Each target independently checks its owner/team permissions; unclaimed or unauthorized blocks are not overwritten.
 - The factory identity implements `FactoryIdentityProvider`, which is the shared trusted contract used by the Network Statistics block. This is the first in-world path connecting the terminal's identity to factory-scoped statistics.
 - The block currently has placeholder vanilla art and no order UI/menu yet. This patch implements identity and stats binding, not order creation, order management, shipment tracking, or payout logic.
+- A personal factory can only bind its owner's personal Terminal Logger; a party factory can bind loggers already owned by members of that same live FTB party. This prevents a terminal from silently reassigning another party's or player's inventory junction.

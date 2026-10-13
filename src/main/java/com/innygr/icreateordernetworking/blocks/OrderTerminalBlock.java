@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import com.mojang.serialization.MapCodec;
 
-/** Factory identity block and binding point for adjacent Network Statistics displays. */
+/** Factory identity block and binding point for adjacent loggers and Network Statistics displays. */
 public final class OrderTerminalBlock extends BaseEntityBlock {
     public OrderTerminalBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -79,32 +79,40 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
 
         int adjacentDisplays = 0;
         int boundDisplays = 0;
-        int inaccessibleDisplays = 0;
+        int adjacentLoggers = 0;
+        int boundLoggers = 0;
+        int inaccessibleTargets = 0;
         for (Direction direction : Direction.values()) {
             BlockPos adjacent = pos.relative(direction);
-            if (!(level.getBlockEntity(adjacent) instanceof NetworkStatisticsBlockEntity statistics)) continue;
-            adjacentDisplays++;
-            if (!statistics.isConfigured()) {
-                inaccessibleDisplays++;
-                continue;
-            }
-            if (statistics.bindFactoryFrom(player.getUUID(), terminal)) {
-                boundDisplays++;
-            } else {
-                inaccessibleDisplays++;
+            BlockEntity adjacentEntity = level.getBlockEntity(adjacent);
+            if (adjacentEntity instanceof NetworkStatisticsBlockEntity statistics) {
+                adjacentDisplays++;
+                if (statistics.isConfigured() && statistics.bindFactoryFrom(player.getUUID(), terminal)) {
+                    boundDisplays++;
+                } else {
+                    inaccessibleTargets++;
+                }
+            } else if (adjacentEntity instanceof TerminalLoggerBlockEntity logger) {
+                adjacentLoggers++;
+                if (logger.isConfigured() && logger.bindFactory(player.getUUID(), terminal.getFactoryId(),
+                        terminal.getFactoryOwnerId(), terminal.getFactoryPartyTeamId())) {
+                    boundLoggers++;
+                } else {
+                    inaccessibleTargets++;
+                }
             }
         }
 
-        if (adjacentDisplays == 0) {
+        if (adjacentDisplays == 0 && adjacentLoggers == 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
-                    + " is ready. Place a Network Statistics block directly beside this terminal and right-click again to bind it."), true);
-        } else if (boundDisplays > 0) {
+                    + " is ready. Place a claimed Network Statistics block and/or Terminal Logger directly beside this terminal, then right-click again to bind them."), true);
+        } else if (boundDisplays > 0 || boundLoggers > 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
-                    + " bound to " + boundDisplays + " Network Statistics display(s)."
-                    + (inaccessibleDisplays > 0 ? " " + inaccessibleDisplays
-                    + " adjacent display(s) were unclaimed or inaccessible." : "")), true);
+                    + ": bound " + boundDisplays + " statistics display(s) and " + boundLoggers
+                    + " Terminal Logger(s)." + (inaccessibleTargets > 0 ? " " + inaccessibleTargets
+                    + " adjacent target(s) were unclaimed or inaccessible." : "")), true);
         } else {
-            player.displayClientMessage(Component.literal("No adjacent Network Statistics displays could be bound. Claim each display first and check its owner/team permissions."), true);
+            player.displayClientMessage(Component.literal("No adjacent targets could be bound. Claim each display/logger first and check owner/team permissions."), true);
         }
     }
 
