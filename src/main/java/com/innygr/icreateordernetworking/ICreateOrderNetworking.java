@@ -22,7 +22,7 @@ public final class ICreateOrderNetworking {
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK,
-                (blockEntity, side) -> blockEntity.getSidedItemHandler(side),
-                ModBlockEntities.TERMINAL_LOGGER.get());
+                ModBlockEntities.TERMINAL_LOGGER.get(),
+                (blockEntity, side) -> blockEntity.getSidedItemHandler(side));
     }
 }
