@@ -21,7 +21,7 @@ These are goals, not claims that the features are already implemented. This repo
 
 ## Current backend status
 
-The current branch has a passing GitHub Actions Java/Gradle build. The backend includes persistent orders, server-side order validation, the shared delivery-service boundary, and a bridge from Create's built-in Redstone Requester to adjacent configured Order Terminals.
+The repository includes a GitHub Actions Java/Gradle build workflow and JUnit 5 regression tests for delivery-receipt transaction matching and finalization. The latest commits have no reported status checks available to confirm a fresh pass. The backend includes persistent orders, server-side order validation, the shared delivery-service boundary, and a bridge from Create's built-in Redstone Requester to adjacent configured Order Terminals.
 
 When activated, a valid Redstone Requester can publish zero-reward restock orders to the order board. Duplicate active orders for the same owner and item are suppressed. This bridge still requires live-world verification against the pinned Create version; CI success confirms compilation, not that redstone event timing and block interactions work in-game.
 
