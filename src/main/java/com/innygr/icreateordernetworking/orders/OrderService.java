@@ -107,8 +107,7 @@ public final class OrderService {
      * but the order receipt was not yet persisted.
      */
     public static boolean fulfil(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
-        if (!(player.level() instanceof ServerLevel level) || count < 1
-                || (transactionId != null && transactionId.equals(new UUID(0L, 0L)))) return false;
+        if (!(player.level() instanceof ServerLevel level) || count < 1) return false;
 
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
