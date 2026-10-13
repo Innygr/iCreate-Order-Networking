@@ -169,3 +169,12 @@ The stats service currently measures item movement, not verified order completio
 - The block entity exposes a server-side `bindFactory` hook intended for the Order Terminal interaction. The Order Terminal block is not yet implemented, so in-world factory binding is not wired up in this patch.
 - This is configuration scaffolding, not a functioning statistics screen yet. The block model currently uses a temporary vanilla iron-block texture. Display Link source registration, selectable statistic channels, factory-keyed counter aggregation, and a proper model/texture remain follow-up work.
 - Cargo movement remains distinct from order delivery. No delivery totals should be exposed until the delivery receipt service provides verified completion events.
+
+### Factory-scoped Network Statistics and Display Link output
+
+- `NetworkStatsData` keeps backward-compatible owner totals and now also stores bounded per-factory and per-party totals. Each transfer event records its optional factory/team UUID as well as the existing dimension, position, item, count, type, and game-time fields.
+- Terminal Loggers can persist a stable factory UUID and factory-party UUID. Once bound, actual accepted input/output movement and explicitly rejected transfer events update owner totals plus the matching factory/team aggregates. Unbound loggers continue to contribute to owner totals and may contribute to their live party aggregate.
+- The Network Statistics block entity exposes a permission-checked snapshot API for Factory or Team Global mode. The physical Display Link output is intentionally a public in-world readout, but it fails closed when the configured factory or party identity is no longer valid.
+- A `FactoryIdentityProvider` contract and `bindFactoryFrom` hook define the trusted server-side seam for an Order Terminal to provide its stable factory UUID, owner, party, and access check. The Order Terminal block/identity provider is not registered yet, so binding is not end-to-end wired.
+- Create Display Link now has a registered single-line source that reports `IN`, `OUT`, and `REJ` totals from the same authoritative snapshot source as the block interaction.
+- These remain observed inventory transfer metrics. They are not confirmed shipments, completed orders, or paid rewards. Those require order-bound shipment receipts and the existing idempotent delivery service.
