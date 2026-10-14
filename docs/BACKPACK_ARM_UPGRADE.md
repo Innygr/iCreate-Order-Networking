@@ -13,6 +13,20 @@ Example:
 
 The arm is not an item magnet and does not automatically collect drops. Its supplied item stays in a dedicated upgrade slot and is used by the arm's configured behavior.
 
+## Arm-slot quick transfer
+
+Use a rapid double-tap of the vanilla swap-hands/offhand keybind as the quick-transfer gesture:
+- A single press retains vanilla swap-hands behavior.
+- A second press within a short configurable window (default target: 250 ms) requests transfer to/from the arm slot instead of performing a second vanilla swap.
+- If the arm slot is empty and the offhand contains an item, move the offhand stack into the arm slot and leave the offhand empty.
+- If the arm slot contains an item and the offhand is empty, move the arm stack into the offhand.
+- If both slots contain items, swap the arm and offhand stacks.
+- If both are empty, do nothing.
+- Transfer the full stack, preserving item data, enchantments, durability, and components. Do not clone or delete items.
+- The operation must be server-authoritative and work only when the player has the compatible Mechanical Arm upgrade installed.
+- Respect screen/menu state: do not trigger while typing in chat or while an unrelated container/menu has focus. Provide a configurable keybind fallback if another mod conflicts with the swap-hands key.
+- If a single press already triggered vanilla swapping, the implementation must handle the double-tap without a confusing or irreversible extra swap. Verify the correct event/input interception for the target NeoForge version before implementing; do not implement by simply detecting two key events after both vanilla swaps have already happened.
+
 ## Item-aware behavior
 
 The arm selects behavior based on the supplied item and the selected mode. Autonomous actions must be bounded, server-authoritative, configurable, and interruptible.
@@ -68,6 +82,8 @@ Use a Create Mechanical Arm, a chestplate, and a chest as the core crafting ingr
 
 - [ ] Upgrade installs in Sophisticated Backpacks.
 - [ ] Dedicated arm slot accepts, persists, and returns an item without loss or duplication.
+- [ ] Double-tap offhand/swap-hands key transfers the offhand item to the arm slot; reverse transfer and swap rules work without item loss.
+- [ ] Single-tap swap-hands retains vanilla behavior and double-tap detection does not cause accidental extra swaps.
 - [ ] Player can simultaneously hold a torch offhand, pickaxe main hand, and sword in the arm slot.
 - [ ] Sword defense and shield projectile blocking are configurable and server-validated.
 - [ ] Bow aims automatically but only fires after player authorization, consuming valid ammunition.
