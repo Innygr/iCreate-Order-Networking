@@ -2,6 +2,20 @@
 
 This document records the initial design for the factory logistics layer in iCreate: Order Networking. It is a design target, not a claim that every feature below is already implemented.
 
+## Edition and distribution model: Standard vs Mythic Server
+
+Mythic Edition is the **server edition** of iCreate: Order Networking, not a client-side feature pack. The intended distribution and trust boundary is:
+
+- **Standard edition (players):** player-facing menus, rendering, and the client networking needed to communicate with a compatible server. It must not contain or execute Mythic backend services, Discord bot credentials, or server-only integrations.
+- **Mythic Server edition (dedicated server):** authoritative order/economy/delivery processing, server administration and diagnostics, Mythic-only systems, and server-side Discord/FTB Teams integrations.
+- **Dedicated-server-only activation:** Mythic services must not start in single-player or an integrated/LAN host. Gate activation on the dedicated-server environment, not a client-visible toggle.
+- **Server authority:** validate permissions, orders, inventory changes, delivery receipts, and Mythic actions on the server. Client packets are requests, never proof of authorization or completion.
+- **Secrets:** Discord tokens and other credentials must remain in server-side configuration/environment variables and must never be synced to clients or committed to source control.
+- **Protocol compatibility:** if Mythic features affect client-visible gameplay or screens, expose only the minimum required network messages and client presentation code. The client does not need the Mythic backend to display authorized server-provided state.
+- **Optional dependencies:** keep Create-family and Discord/FTB integrations isolated behind safe server-side compatibility boundaries so missing optional mods/services fail closed without crashing the standard client.
+
+This is the target architecture, not a claim that a separate Mythic Server artifact or all activation guards already exist. Before release, implement and test the edition boundary: dedicated server activates Mythic services; integrated server and client do not; credentials never enter client packets/logs; and incompatible clients cannot invoke privileged server actions.
+
 ## Terminal first-use binding
 
 - **Implemented foundation:** the first server-side right-click on an unconfigured Terminal Logger binds the player's UUID and their current FTB party-team UUID (when available) into the block entity's persistent data. The first click claims the logger rather than also changing its settings.
