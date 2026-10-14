@@ -29,9 +29,16 @@ public final class AutomatedDeliveryRegistry {
             // A broken optional adapter must not crash common setup.
             return false;
         }
-        if (route == null || route == DeliveryRoute.MANUAL
-                || !isAvailable(adapter) || ADAPTERS.containsKey(route)) {
+        if (route == null || route == DeliveryRoute.MANUAL || !isAvailable(adapter)) {
             return false;
+        }
+        AutomatedDeliveryAdapter existing = ADAPTERS.get(route);
+        if (existing != null) {
+            if (isAvailable(existing)) return false;
+            // An optional API can become unavailable after registration (for
+            // example, during a compatibility reload). Do not let a stale,
+            // unusable adapter permanently block a healthy replacement.
+            ADAPTERS.remove(route);
         }
         ADAPTERS.put(route, adapter);
         return true;
