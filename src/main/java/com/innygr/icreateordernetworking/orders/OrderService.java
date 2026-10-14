@@ -173,7 +173,7 @@ public final class OrderService {
     public static boolean recordAutomatedFulfilment(ServerLevel level, UUID orderId,
                                                      DeliveryRoute route,
                                                      UUID claimantId, int count, UUID transactionId) {
-        if (level == null || orderId == null || route == null
+        if (level == null || !level.getServer().isSameThread() || orderId == null || route == null
                 || route == DeliveryRoute.MANUAL
                 || claimantId == null || transactionId == null
                 || count < 1 || count > MAX_ORDER_COUNT) return false;
