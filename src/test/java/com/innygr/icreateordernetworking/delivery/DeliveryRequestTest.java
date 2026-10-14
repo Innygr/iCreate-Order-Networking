@@ -35,6 +35,18 @@ class DeliveryRequestTest {
     }
 
     @Test
+    void rejectsMissingBlankOrOversizedSourceReference() {
+        assertFalse(new DeliveryRequest(orderId, itemId, 1, DeliveryRoute.TRAIN,
+                actorId, null, transactionId).isWellFormed());
+        assertFalse(new DeliveryRequest(orderId, itemId, 1, DeliveryRoute.TRAIN,
+                actorId, "   ", transactionId).isWellFormed());
+        assertFalse(new DeliveryRequest(orderId, itemId, 1, DeliveryRoute.TRAIN,
+                actorId, "x".repeat(257), transactionId).isWellFormed());
+        assertTrue(new DeliveryRequest(orderId, itemId, 1, DeliveryRoute.TRAIN,
+                actorId, "psi:12,34,56", transactionId).isWellFormed());
+    }
+
+    @Test
     void rejectsMissingItemRouteAndNonPositiveCounts() {
         assertFalse(new DeliveryRequest(orderId, null, 1, DeliveryRoute.TRAIN,
                 actorId, null, transactionId).isWellFormed());
