@@ -247,7 +247,18 @@ An adapter is not complete merely because its transport block exists or a source
 
 If a route cannot prove the actual transfer or safely recover after a restart, it must remain unavailable. This is intentional fail-closed behavior, not a reason to register a placeholder adapter.
 
-### Terminal Logger identity and visibility
+#### Create Redstone Requester bridge contract
+
+The current bridge listens for logical-server neighbor notifications and inspects the changed position plus its six adjacent positions. A powered Create Redstone Requester next to a configured Order Terminal may create zero-reward restock orders under that terminal's factory owner. Each valid encoded item/count entry is checked against the item registry and order-count limit; an existing active order for the same owner and item suppresses another one.
+
+- The requester must be powered and directly adjacent to a configured Order Terminal. The bridge must not infer a terminal from distance or create an order without a stable factory owner.
+- Triggering is edge-like: a requester position is latched after a valid request is processed and is eligible again after it is observed unpowered. This prevents repeated neighbor notifications from spamming orders.
+- If no configured terminal is adjacent, or the request is empty/invalid, the bridge does not latch the requester; a later neighbor update can retry after the setup is corrected.
+- Offline owners retain their UUID identity; the bridge uses the cached profile name and scoreboard team when available. If no team can be resolved, the order falls back to the owner's personal visibility rather than trusting client-supplied identity.
+- These orders intentionally have no reward escrow. This bridge creates requests only; it does not extract items, dispatch cargo, claim an order, or mark a delivery complete.
+- Live-world verification remains required for Create's event timing, block placement/removal behavior, encoded request edits, power cycling, and duplicate suppression. Unit/CI coverage does not replace that test.
+
+## Terminal Logger identity and visibility
 
 A factory may contain many Terminal Loggers. Each logger's routing, filter, buffer, and transfer diagnostics belong to that individual block. Factory-level order and stock totals belong to the Order Terminal/network service. Do not sum logger buffers to calculate factory stock: the same items may be observed at multiple points as they move through a production line. A logger's local Display Link must identify the selected logger's own state and must not reveal another factory's private order data.
 
