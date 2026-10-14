@@ -13,6 +13,11 @@ public record DeliveryPreparation(
     public enum Status {
         PREPARED,
         INVALID_REQUEST,
+        WRONG_THREAD,
+        ORDER_UNAVAILABLE,
+        ORDER_NOT_CLAIMED,
+        ORDER_ITEM_MISMATCH,
+        ORDER_QUANTITY_UNAVAILABLE,
         ROUTE_UNAVAILABLE,
         NOT_AUTHORIZED,
         CARGO_UNAVAILABLE
