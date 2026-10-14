@@ -2,45 +2,49 @@
 
 Target: Minecraft 1.21.1, NeoForge 21.1.x, Create 6.x, Sophisticated Backpacks.
 
-## Goal
+## Core concept
 
-Add a custom Mechanical Arm Upgrade for Sophisticated Backpacks. The upgrade is installed in a Sophisticated Backpacks upgrade slot and uses a Create Mechanical Arm as its defining component. It periodically collects nearby dropped item entities into the backpack, subject to the backpack's insertion rules and remaining capacity.
+The Mechanical Arm Upgrade adds an **extra main-hand slot** to the wearer, but the arm itself is not supplied with the upgrade. The player must supply an item for the arm to hold/use. Treat it as a second hand/tool mount, not as an automatic item vacuum.
 
-## Gameplay behavior
+## Intended behavior
 
-- Only operate server-side; client code is visual only.
-- Search a small configurable radius around the backpack wearer (initial target: 3 blocks) at a throttled interval (initial target: every 10 ticks), rather than every game tick.
-- Insert through Sophisticated Backpacks' normal upgrade/storage handling so filters and inventory rules are respected.
-- Remove only the amount successfully inserted from each dropped item entity.
-- If the backpack cannot accept an item, leave the remainder in the world.
-- Do not collect items through solid blocks or from unloaded chunks; use entities in the wearer's current level and a bounded AABB.
-- Respect the upgrade's enabled state and avoid duplicate processing if multiple callbacks happen in one tick.
-- The first version should not include a custom energy system; keep it early-game and simple.
+- The upgrade is installed in a Sophisticated Backpack upgrade slot.
+- The player supplies a held item into a dedicated arm slot in the upgrade's UI/configuration.
+- The arm uses that supplied item as an additional main-hand item for explicitly supported interactions.
+- The supplied item is not consumed merely by being equipped. Normal durability/consumption rules apply when the arm uses it.
+- The arm must not duplicate items or bypass vanilla server-side interaction, permission, cooldown, durability, or inventory rules.
+- If no item is supplied, the arm remains idle.
+- Define supported actions and activation rules before implementing use: e.g. whether it can attack, mine, place blocks, use tools, or interact with blocks. Avoid assuming every player action can be safely replayed for a second hand.
+- Keep the behavior server-authoritative and make the upgrade safe with other Sophisticated Backpacks upgrades.
 
 ## Recipe direction
 
-The user proposed combining a Create Mechanical Arm, a chestplate, and a chest. Use those as the core recipe ingredients, but confirm the final shaped arrangement and item IDs against the pinned Create build before shipping. Keep the recipe survival-accessible and avoid late-game materials.
+The user proposed combining a Create Mechanical Arm, a chestplate, and a chest as the core ingredients. Confirm exact item IDs and final shaped arrangement against the pinned Create build before shipping. Keep it survival-accessible.
 
 ## Integration approach
 
-- Keep Sophisticated Backpacks integration isolated behind a compatibility layer so the mod can still load when that optional mod is absent, unless the release deliberately makes Sophisticated Backpacks a required dependency.
-- Implement a genuine Sophisticated Backpacks upgrade item using its supported upgrade API; do not merely register a standalone item and claim it works in a backpack slot.
-- Pin and verify the Sophisticated Backpacks and Sophisticated Core API versions for Minecraft 1.21.1 / NeoForge.
-- Register item/model/localization/recipe resources and add an upgrade-specific test or test checklist.
-- Consider a backpack-mounted arm model/animation as a separate presentation step after server-side pickup behavior is working.
+- Use Sophisticated Backpacks' actual upgrade API for a real installable upgrade, not just a standalone item.
+- Isolate the optional integration unless Sophisticated Backpacks is deliberately made a required dependency.
+- Pin and verify Sophisticated Backpacks and Sophisticated Core versions for Minecraft 1.21.1 / NeoForge.
+- Register the upgrade item, dedicated supplied-item slot, menu/interaction behavior, recipe, model, and localization.
+- Treat backpack-mounted arm model/animation as presentation work after the server-side slot and action behavior are secure.
 
 ## Acceptance checklist
 
-- [ ] Mod launches with the intended Sophisticated Backpacks + Sophisticated Core versions.
-- [ ] Upgrade can be crafted and inserted into a compatible backpack upgrade slot.
-- [ ] Nearby dropped items enter the backpack.
-- [ ] Backpack filters and inventory capacity are respected.
-- [ ] Full backpack leaves uninserted items in the world.
-- [ ] Pickup is server-authoritative and does not duplicate or delete items.
-- [ ] Behavior is throttled and bounded to a small radius.
-- [ ] Verify optional-mod loading policy and recipe in a clean survival world.
-- [ ] Test with the exact modpack version before marking the feature complete.
+- [ ] Upgrade installs in Sophisticated Backpacks.
+- [ ] Player can supply and remove an item in the arm's dedicated slot.
+- [ ] The supplied item persists across save/reload without duplication or loss.
+- [ ] No item is used when the slot is empty.
+- [ ] Only explicitly supported actions can be triggered through the arm.
+- [ ] Server validates permissions, target, cooldown, item count, durability, and resulting inventory changes.
+- [ ] Upgrade doesn't duplicate vanilla main-hand events or fire interactions twice unintentionally.
+- [ ] Recipe works in survival using the intended Create/vanilla item IDs.
+- [ ] Test with the exact modpack versions before marking complete.
+
+## Open design decision
+
+The phrase “extra main hand” is not sufficient to safely implement all possible actions. Choose the first supported behavior set: **combat only**, **tools (mining/harvesting) only**, **block/item use only**, or **all of these with explicit per-action activation controls**. The last option is more complex and needs careful event/interaction design.
 
 ## Status
 
-Specification only. The runtime upgrade, item registration, recipe, model, and tests have not yet been implemented or CI-verified.
+Specification only. The runtime upgrade, item registration, supplied-item slot, interaction handling, recipe, model, and tests have not yet been implemented or CI-verified.
