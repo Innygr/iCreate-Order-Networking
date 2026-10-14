@@ -68,7 +68,11 @@ Do not ship a fake implementation that simply fires ordinary main-hand events tw
 
 ## Recipe and presentation
 
-Recipe: 1 Create Mechanical Arm, 1 Oak Planks, and 1 Iron Ingot. Keep the recipe survival-accessible and verify the exact item IDs against the pinned Create build. Add a backpack-mounted arm model/animation after the actual upgrade and action logic work.
+## Upgrade recipe
+
+The Mechanical Arm is a **Sophisticated Backpacks upgrade**, not a custom backpack. Its recipe is 1 Create Mechanical Arm, 1 Oak Planks, and 1 Iron Ingot. Keep it survival-accessible and verify the exact item IDs against the pinned Create build. The upgrade mounts onto a compatible Sophisticated Backpack; it does not require crafting a new backpack.
+
+A separate custom backpack item is only a possible future idea and is **not part of the current plan**. Do not implement a custom backpack unless that decision is revisited explicitly. The upgrade may receive a backpack-mounted arm model/animation after its actual upgrade and action logic work.
 
 ## Compatibility
 
