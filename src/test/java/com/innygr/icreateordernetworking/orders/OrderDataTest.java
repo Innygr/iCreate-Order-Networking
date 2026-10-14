@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
 
@@ -82,6 +83,27 @@ class OrderDataTest {
         assertTrue(restored.hasAppliedAutomatedProgress(transactionId));
         assertTrue(restored.applyAutomatedDeliveryProgress(transactionId));
         assertFalse(restored.markDeliveryProgressApplied(transactionId) == false);
+    }
+
+    @Test
+    void pendingAutomatedDeliveriesExposeImmutableRecoverySnapshot() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID pendingId = UUID.randomUUID();
+        UUID completedId = UUID.randomUUID();
+        data.add(new Order(orderId, UUID.randomUUID(), "owner",
+                ResourceLocation.parse("minecraft:iron_ingot"), 10, 0, 0,
+                claimantId, OrderStatus.IN_PROGRESS, 1L));
+        assertTrue(data.reserveDelivery(pendingId, orderId, DeliveryRoute.TRAIN, claimantId, 4));
+        assertTrue(data.reserveDelivery(completedId, orderId, DeliveryRoute.BELT, claimantId, 3));
+        assertTrue(data.markDeliveryProgressApplied(completedId));
+
+        var pending = data.pendingAutomatedDeliveries();
+        assertEquals(1, pending.size());
+        assertTrue(pending.containsKey(pendingId));
+        assertFalse(pending.containsKey(completedId));
+        assertThrows(UnsupportedOperationException.class, pending::clear);
     }
 
     @Test
