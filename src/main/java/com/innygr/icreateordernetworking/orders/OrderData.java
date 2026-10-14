@@ -84,25 +84,14 @@ public final class OrderData extends SavedData {
             }
         }
 
-        // Recover the narrow crash window where order progress was saved but the
-        // matching receipt was not finalized yet. The durable progress marker proves
-        // cargo/progress must not be replayed; finalize the receipt during load.
-        boolean recoveredReceipt = false;
-        for (Map.Entry<UUID, DeliveryReceipt> entry : data.processedDeliveries.entrySet()) {
-            DeliveryReceipt receipt = entry.getValue();
-            if (!receipt.progressApplied() && data.appliedAutomatedProgress.contains(entry.getKey())) {
-                entry.setValue(receipt.finalized());
-                recoveredReceipt = true;
-            }
-        }
-        // Once a receipt is finalized, its own durable state is sufficient for
-        // idempotency. Keep progress markers only for unfinished receipts; this
-        // bounds marker growth and discards orphaned markers from interrupted writes.
+        // A progress marker is not proof that the reward was paid. Keep the receipt
+        // pending until completeAfterDestinationReceipt retries the idempotent payout
+        // and explicitly finalizes it. Only orphan/finalized markers are safe to prune.
         boolean cleanedMarkers = data.appliedAutomatedProgress.removeIf(transactionId -> {
             DeliveryReceipt receipt = data.processedDeliveries.get(transactionId);
             return receipt == null || receipt.progressApplied();
         });
-        if (recoveredReceipt || cleanedMarkers) data.setDirty();
+        if (cleanedMarkers) data.setDirty();
         return data;
     }
 
