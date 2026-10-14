@@ -1,50 +1,60 @@
 # Mechanical Arm Backpack Upgrade
 
-Target: Minecraft 1.21.1, NeoForge 21.1.x, Create 6.x, Sophisticated Backpacks.
+Target: Minecraft 1.21.1, NeoForge 21.1.x, Create 6.x, Sophisticated Backpacks + Sophisticated Core.
 
-## Core concept
+## Player-facing design
 
-The Mechanical Arm Upgrade adds an **extra main-hand slot** to the wearer, but the arm itself is not supplied with the upgrade. The player must supply an item for the arm to hold/use. Treat it as a second hand/tool mount, not as an automatic item vacuum.
+The Mechanical Arm Upgrade adds a third held-item slot, separate from the vanilla main hand and offhand. The player must supply the arm's item.
 
-## Intended behavior
+Example:
+- Offhand: Torch
+- Main hand: Pickaxe
+- Backpack arm: Sword
 
-- The upgrade is installed in a Sophisticated Backpack upgrade slot.
-- The player supplies a held item into a dedicated arm slot in the upgrade's UI/configuration.
-- The arm uses that supplied item as an additional main-hand item for explicitly supported interactions.
-- The supplied item is not consumed merely by being equipped. Normal durability/consumption rules apply when the arm uses it.
-- The arm must not duplicate items or bypass vanilla server-side interaction, permission, cooldown, durability, or inventory rules.
-- If no item is supplied, the arm remains idle.
-- Define supported actions and activation rules before implementing use: e.g. whether it can attack, mine, place blocks, use tools, or interact with blocks. Avoid assuming every player action can be safely replayed for a second hand.
-- Keep the behavior server-authoritative and make the upgrade safe with other Sophisticated Backpacks upgrades.
+The arm is not an item magnet and does not automatically collect drops. Its supplied item is used only when the player explicitly activates the arm for a supported action.
 
-## Recipe direction
+## Activation model
 
-The user proposed combining a Create Mechanical Arm, a chestplate, and a chest as the core ingredients. Confirm exact item IDs and final shaped arrangement against the pinned Create build before shipping. Keep it survival-accessible.
+Keep the three action categories separate so the arm does not unexpectedly repeat every vanilla action:
 
-## Integration approach
+- **Combat:** explicit arm-attack input. Attack uses the supplied weapon, validates target/range/server state, and respects attack cooldown and item durability. Do not automatically duplicate the vanilla main-hand attack.
+- **Tools:** explicit arm-tool input while targeting a block. Only allow a defined list of safe block-breaking/harvesting interactions; validate reach, hardness, permissions, tool durability, drops, and block updates server-side.
+- **Item use:** explicit arm-use input while targeting a block or entity. Invoke only supported item-use behavior through server-authoritative game interaction paths; validate permissions, reach, cooldowns, item consumption, and resulting inventory changes.
 
-- Use Sophisticated Backpacks' actual upgrade API for a real installable upgrade, not just a standalone item.
-- Isolate the optional integration unless Sophisticated Backpacks is deliberately made a required dependency.
+The input bindings and exact client/server interaction APIs must be verified against the project's Minecraft 1.21.1 NeoForge mappings before implementation. Do not ship a fake implementation that simply fires a second ordinary main-hand event: that can duplicate block placement, attacks, item consumption, or interaction side effects.
+
+## Slot and persistence
+
+- Implement a genuine Sophisticated Backpacks upgrade through the supported upgrade API, not just a standalone item.
+- Provide a dedicated arm-item slot in the upgrade's configuration UI. The item can be inserted, removed, and swapped by the owner.
+- Persist the item stack through the upgrade/backpack save lifecycle. Never duplicate the item during menu transfer, death handling, or save/reload.
+- When the slot is empty, the arm is inactive.
+- Avoid mutating the player's vanilla main-hand or offhand stacks to simulate the extra slot.
+- Server validates all arm actions; clients request actions but cannot claim hits, block breaks, or successful item uses.
+
+## Recipe and presentation
+
+Use a Create Mechanical Arm, a chestplate, and a chest as the core crafting ingredients, with the exact recipe arrangement and item IDs checked against the pinned Create build. Keep it survival-accessible. Add a backpack-mounted arm model/animation after the actual upgrade and action logic work.
+
+## Compatibility
+
 - Pin and verify Sophisticated Backpacks and Sophisticated Core versions for Minecraft 1.21.1 / NeoForge.
-- Register the upgrade item, dedicated supplied-item slot, menu/interaction behavior, recipe, model, and localization.
-- Treat backpack-mounted arm model/animation as presentation work after the server-side slot and action behavior are secure.
+- Isolate Sophisticated Backpacks integration behind a compatibility boundary if it remains optional.
+- Do not import client-only classes into common/server code.
+- If the optional dependency is absent, the mod must still load unless project policy deliberately makes it required.
 
 ## Acceptance checklist
 
 - [ ] Upgrade installs in Sophisticated Backpacks.
-- [ ] Player can supply and remove an item in the arm's dedicated slot.
-- [ ] The supplied item persists across save/reload without duplication or loss.
-- [ ] No item is used when the slot is empty.
-- [ ] Only explicitly supported actions can be triggered through the arm.
-- [ ] Server validates permissions, target, cooldown, item count, durability, and resulting inventory changes.
-- [ ] Upgrade doesn't duplicate vanilla main-hand events or fire interactions twice unintentionally.
-- [ ] Recipe works in survival using the intended Create/vanilla item IDs.
-- [ ] Test with the exact modpack versions before marking complete.
-
-## Open design decision
-
-The phrase “extra main hand” is not sufficient to safely implement all possible actions. Choose the first supported behavior set: **combat only**, **tools (mining/harvesting) only**, **block/item use only**, or **all of these with explicit per-action activation controls**. The last option is more complex and needs careful event/interaction design.
+- [ ] Dedicated arm slot accepts, persists, and returns an item without loss or duplication.
+- [ ] Player can simultaneously hold a torch offhand, pickaxe main hand, and sword in the arm slot.
+- [ ] Combat, tool, and item-use actions each have separate explicit activation.
+- [ ] No automatic duplicate of vanilla main-hand attacks/interactions.
+- [ ] Server checks reach, target/block permissions, cooldown, durability, item count, and resulting inventory changes.
+- [ ] Failed/denied actions do not consume or duplicate the supplied item.
+- [ ] Recipe, item model, localization, UI, and backpack rendering work.
+- [ ] Build and test with the exact modpack versions in a clean world.
 
 ## Status
 
-Specification only. The runtime upgrade, item registration, supplied-item slot, interaction handling, recipe, model, and tests have not yet been implemented or CI-verified.
+Design specification only. Runtime implementation, Sophisticated Backpacks API wiring, arm slot UI, action input handling, recipe/model, and in-game tests are not yet complete. The repo's existing CI does not verify this feature until implementation is added.
