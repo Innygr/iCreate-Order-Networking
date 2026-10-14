@@ -22,6 +22,8 @@ public record DeliveryRequest(
     public boolean isWellFormed() {
         return orderId != null && itemId != null && count > 0
                 && count <= OrderService.MAX_ORDER_COUNT && route != null
-                && route != DeliveryRoute.MANUAL && actorId != null && transactionId != null;
+                && route != DeliveryRoute.MANUAL && actorId != null && transactionId != null
+                && sourceReference != null && !sourceReference.isBlank()
+                && sourceReference.length() <= 256;
     }
 }
