@@ -47,6 +47,7 @@ Frogport is treated as Create's built-in package Frogport, not a separate mod. D
 - `delivery/DeliveryRequest` carries transport-neutral request metadata. It is not proof that cargo arrived.
 - `delivery/AutomatedDeliveryAdapter` defines the server-side adapter boundary and requires route authorization before cargo removal.
 - `delivery/DeliveryService` is the shared route entry point. Manual delivery currently delegates to `OrderService.fulfil`; automated routes deliberately fail closed with `NOT_IMPLEMENTED` until a safe transaction can consume real cargo, progress the order, pay escrow, and persist an idempotency receipt.
+- The legacy mutable-stack `orders/DeliveryService.deliver` entry point explicitly rejects non-manual routes with `NOT_IMPLEMENTED`; automated deliveries cannot accidentally fall through to the manual-only receipt writer. Implemented adapters must use the reservation/commit/progress/finalization transaction instead.
 - `orders/OrderData` persists delivery receipt IDs, order IDs, and route names for idempotency tracking.
 
 The transport-specific adapters for trains, airships, and Frogports are not implemented yet. The current generic service is not proof that those integrations already work. The receipt ledger is not yet connected to an atomic automated-delivery transaction, and crash consistency/payout rollback need explicit testing.

@@ -29,6 +29,10 @@ public final class DeliveryService {
                 || cargo.isEmpty() || count < 1 || route == null || deliveryId == null) {
             return DeliveryResult.INVALID_REQUEST;
         }
+        // This legacy stack handoff has no automated reservation/receipt recovery
+        // transaction. Never let an automated route bypass that boundary.
+        if (route != DeliveryRoute.MANUAL) return DeliveryResult.NOT_IMPLEMENTED;
+
         OrderData data = OrderData.get(level);
         if (data.hasProcessedDelivery(deliveryId)) return DeliveryResult.DUPLICATE;
 
