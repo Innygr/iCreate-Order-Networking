@@ -3,7 +3,10 @@ package com.innygr.icreateordernetworking.delivery;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -106,6 +109,23 @@ class AutomatedDeliveryRegistryTest {
 
         assertDoesNotThrow(() -> DeliveryService.registerAdapter(broken));
         assertTrue(AutomatedDeliveryRegistry.availableRoutes().isEmpty());
+    }
+
+    @Test
+    void unavailableRegisteredAdapterCanBeReplaced() {
+        AtomicBoolean available = new AtomicBoolean(true);
+        AutomatedDeliveryAdapter original = new AutomatedDeliveryAdapter() {
+            @Override public DeliveryRoute route() { return DeliveryRoute.BELT; }
+            @Override public boolean isAvailable() { return available.get(); }
+            @Override public boolean isAuthorized(ServerLevel level, DeliveryRequest request) { return false; }
+            @Override public PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request) { return null; }
+        };
+        AutomatedDeliveryAdapter replacement = adapter(DeliveryRoute.BELT, true);
+
+        assertTrue(AutomatedDeliveryRegistry.register(original));
+        available.set(false);
+        assertTrue(AutomatedDeliveryRegistry.register(replacement));
+        assertSame(replacement, AutomatedDeliveryRegistry.find(DeliveryRoute.BELT).orElseThrow());
     }
 
     @Test
