@@ -30,16 +30,18 @@ Train, airship, Frogport, and belt delivery adapters remain unavailable until ea
 
 ## Create Display and Stock integrations
 
-The planned Create-facing integrations are split by Create's **Display Link** and **Stock Link** systems:
+The planned Create-facing integrations are split by Create's **Display Link** and **Stock Link** systems. The Order Terminal represents the factory-wide view; each Terminal Logger represents one physical routing point. A factory can have multiple loggers, so logger displays must be local to the selected block rather than aggregated as if they were the whole factory.
 
 | Create integration | iCreate block | Intended role | Status |
 |---|---|---|---|
 | Display Link | Network Statistics | Show network statistics, such as item input/output and rejected transfers | A Display Link source class exists; registration and live-world behavior still need verification |
-| Display Link | Order Terminal | Show useful order details, such as order status and progress | Planned; not yet implemented/verified |
-| Stock Link | Order Terminal | Expose order-terminal stock/request information to Create's stock network | Planned; not yet implemented/verified |
-| Stock Link | Terminal Logger | Optional stock integration if it can represent the logger's filtered/routed inventory accurately | Exploratory; not committed to as required behavior |
+| Display Link | Order Terminal | Show factory order information, such as active order counts, status, and progress | Planned; not yet implemented/verified |
+| Display Link | Terminal Logger | Show this logger's own routing configuration, filter, buffer/transfer state, and diagnostic status where available | Proposed; not yet implemented/verified |
+| Stock Link | Order Terminal | Expose factory stock/request information to Create's stock network, with clear rules for what counts as available stock | Planned; semantics and implementation still need verification |
 
-These are distinct from crafting recipes and block models. Do not assume that a block supports Display or Stock just because its recipe exists. Each integration must use the pinned Create 6.x API, register safely, handle missing/unconfigured data, and be tested in a live Minecraft world. Create is an optional dependency, so Create-specific classes must remain isolated behind the mod's compatibility boundary.
+The Terminal Logger is **not currently planned as a Stock Link source**: its local buffer and routing role do not necessarily represent the factory's overall stock. Multiple loggers may observe different parts of the same flow, so summing their inventories could double-count items. Any future stock integration would need explicit accounting rules to avoid that.
+
+These integrations are distinct from crafting recipes and block models. Do not assume that a block supports Display or Stock just because its recipe exists. Each integration must use the pinned Create 6.x API, register safely, handle missing/unconfigured data, and be tested in a live Minecraft world. Create is an optional dependency, so Create-specific classes must remain isolated behind the mod's compatibility boundary.
 
 ## Logistics design
 
