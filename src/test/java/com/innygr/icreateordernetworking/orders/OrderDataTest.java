@@ -169,6 +169,48 @@ class OrderDataTest {
         assertTrue(restored.deliveryReceipt(transactionId).progressApplied());
     }
 
+
+    @Test
+    void malformedDeliveryReceiptsAreIgnoredWithoutLosingValidReservations() {
+        OrderData original = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID validTransaction = UUID.randomUUID();
+        UUID invalidCountTransaction = UUID.randomUUID();
+        original.add(new Order(orderId, ownerId, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                10, 0, 0, claimantId, OrderStatus.IN_PROGRESS, 1L));
+        assertTrue(original.reserveDelivery(validTransaction, orderId, DeliveryRoute.TRAIN, claimantId, 4));
+
+        CompoundTag saved = original.save(new CompoundTag(), null);
+        ListTag receipts = saved.getList("ProcessedDeliveries", net.minecraft.nbt.Tag.TAG_COMPOUND);
+
+        CompoundTag badUuid = new CompoundTag();
+        badUuid.putString("Id", "not-a-uuid");
+        badUuid.putString("Order", orderId.toString());
+        badUuid.putString("Route", DeliveryRoute.TRAIN.name());
+        badUuid.putString("Claimant", claimantId.toString());
+        badUuid.putInt("Count", 2);
+        badUuid.putBoolean("ProgressApplied", false);
+        receipts.add(badUuid);
+
+        CompoundTag invalidCount = new CompoundTag();
+        invalidCount.putString("Id", invalidCountTransaction.toString());
+        invalidCount.putString("Order", orderId.toString());
+        invalidCount.putString("Route", DeliveryRoute.TRAIN.name());
+        invalidCount.putString("Claimant", claimantId.toString());
+        invalidCount.putInt("Count", OrderService.MAX_ORDER_COUNT + 1);
+        invalidCount.putBoolean("ProgressApplied", false);
+        receipts.add(invalidCount);
+        saved.put("ProcessedDeliveries", receipts);
+
+        OrderData restored = OrderData.load(saved, null);
+
+        assertTrue(restored.hasProcessedDelivery(validTransaction));
+        assertFalse(restored.hasProcessedDelivery(invalidCountTransaction));
+        assertEquals(4L, restored.pendingDeliveryCountForOrder(orderId, null));
+    }
+
     private static CompoundTag validOrder(String id) {
         CompoundTag order = new CompoundTag();
         order.putString("Id", id);
