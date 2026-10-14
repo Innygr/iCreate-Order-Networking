@@ -4,7 +4,9 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 
 ## Compatibility policy
 
-- Create is a required dependency for the intended Create-focused release.
+- Create is a soft/optional dependency: the mod must load without it. Without Create, the core mod can run, but most of the intended gameplay and Create-specific integrations are unavailable.
+- If Create is absent at startup, print a clear informational message to the log (not an error), such as: `This mod doesn't truly require the Create mod to run, but it very much improves the usefulness of this mod.` The message should make clear that this is an expected configuration, not a crash or a hard dependency failure.
+- Keep Create-specific registrations and class references isolated behind mod-presence checks so the no-Create startup path cannot load missing Create classes or register Create-only content.
 - Create: Aeronautics is optional. The mod must remain loadable without Aeronautics.
 - Aeronautics-specific classes must not be referenced from common code unless they are isolated behind a verified optional integration.
 - The core marketplace stores vanilla registry item IDs and uses server-authoritative order/economy services. It must not assume an order terminal is stationary; Aeronautics vehicles can move contraptions through the world.
