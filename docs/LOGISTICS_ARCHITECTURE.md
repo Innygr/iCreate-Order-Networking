@@ -16,6 +16,21 @@ Mythic Edition is the **server edition** of iCreate: Order Networking, not a cli
 
 This is the target architecture, not a claim that a separate Mythic Server artifact or all activation guards already exist. Before release, implement and test the edition boundary: dedicated server activates Mythic services; integrated server and client do not; credentials never enter client packets/logs; and incompatible clients cannot invoke privileged server actions.
 
+## Headless dedicated-server distribution
+
+The Mythic Server distribution should be headless: it must not require client rendering classes, screens, HUDs, or client-only visual assets to run on a dedicated server.
+
+- Keep authoritative gameplay and logistics logic, block/block-entity registration, server-side menu/container logic, packet validation, saved data, permissions, order/economy services, and server integrations on the server side.
+- Keep screens, renderers, HUD overlays, key mappings, client-only models, and other presentation code in the Standard client distribution or a clearly isolated client source set.
+- Share only the minimum protocol/data definitions needed by both sides. The server returns authorized state; the client is responsible for presenting it.
+- Do not make server startup depend on loading net.minecraft.client classes. Verify classloading and mod startup in an actual dedicated-server environment.
+- A headless server may still need block/item models and textures in the client resource pack, but those resources must not require server-side rendering code to load.
+- If the same mod artifact is temporarily used on both sides, isolate client code using the loader's supported distribution checks and client-only registration mechanisms. The longer-term target is a dedicated server artifact plus the compatible Standard client artifact.
+
+This distribution boundary does not remove server-side menu/container or networking responsibilities. A UI-less server still needs secure handlers for every action requested by a player client, and must reject malformed, unauthorized, stale, or duplicate requests.
+
+Release gate: launch a dedicated server with no client classes available, connect a Standard client, and test order/menu packets, permission failures, disconnect/reconnect, and restart persistence. Confirm that no Discord credentials or Mythic-only backend internals are sent to clients.
+
 ## Terminal first-use binding
 
 - **Implemented foundation:** the first server-side right-click on an unconfigured Terminal Logger binds the player's UUID and their current FTB party-team UUID (when available) into the block entity's persistent data. The first click claims the logger rather than also changing its settings.
