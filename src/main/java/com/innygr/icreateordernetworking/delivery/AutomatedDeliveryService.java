@@ -31,6 +31,20 @@ public final class AutomatedDeliveryService {
         // Validate against authoritative order state before an adapter can reserve
         // any physical cargo. Request metadata alone is never sufficient authority.
         OrderData data = OrderData.get(level);
+        // Never ask an adapter to reserve the same physical cargo twice. A retry
+        // with an existing transaction must be reconciled against its durable receipt
+        // by the transport, not treated as a fresh preparation attempt.
+        DeliveryReceipt existingReceipt = data.deliveryReceipt(request.transactionId());
+        if (existingReceipt != null) {
+            boolean sameTransaction = existingReceipt.matches(request.orderId(), request.route(),
+                    request.actorId(), request.count());
+            return DeliveryPreparation.failure(
+                    sameTransaction ? DeliveryPreparation.Status.ORDER_UNAVAILABLE
+                            : DeliveryPreparation.Status.INVALID_REQUEST,
+                    sameTransaction
+                            ? "This transaction is already reserved; resume or reconcile its existing shipment."
+                            : "The transaction ID is already bound to a different delivery.");
+        }
         Order order = data.find(request.orderId());
         if (order == null || (order.status() != OrderStatus.OPEN
                 && order.status() != OrderStatus.IN_PROGRESS)) {
