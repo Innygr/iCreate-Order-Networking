@@ -4,33 +4,53 @@ Target: Minecraft 1.21.1, NeoForge 21.1.x, Create 6.x, Sophisticated Backpacks +
 
 ## Player-facing design
 
-The Mechanical Arm Upgrade adds a third held-item slot, separate from the vanilla main hand and offhand. The player must supply the arm's item.
+The Mechanical Arm Upgrade adds a third held-item slot, separate from the vanilla main hand and offhand. The player supplies the item; the arm applies item-aware behavior rather than acting as a generic duplicate mouse button.
 
 Example:
 - Offhand: Torch
 - Main hand: Pickaxe
 - Backpack arm: Sword
 
-The arm is not an item magnet and does not automatically collect drops. Its supplied item is used only when the player explicitly activates the arm for a supported action.
+The arm is not an item magnet and does not automatically collect drops. Its supplied item stays in a dedicated upgrade slot and is used by the arm's configured behavior.
 
-## Activation model
+## Item-aware behavior
 
-Keep the three action categories separate so the arm does not unexpectedly repeat every vanilla action:
+The arm selects behavior based on the supplied item and the selected mode. Autonomous actions must be bounded, server-authoritative, configurable, and interruptible.
 
-- **Combat:** explicit arm-attack input. Attack uses the supplied weapon, validates target/range/server state, and respects attack cooldown and item durability. Do not automatically duplicate the vanilla main-hand attack.
-- **Tools:** explicit arm-tool input while targeting a block. Only allow a defined list of safe block-breaking/harvesting interactions; validate reach, hardness, permissions, tool durability, drops, and block updates server-side.
-- **Item use:** explicit arm-use input while targeting a block or entity. Invoke only supported item-use behavior through server-authoritative game interaction paths; validate permissions, reach, cooldowns, item consumption, and resulting inventory changes.
+- **Sword — automatic defense:** Detect nearby hostile mobs and attack eligible threats within configured range. Respect attack cooldown, reach, target validity, item durability, and server-side permissions. Prioritize immediate threats; do not blindly attack neutral/passive entities or repeat the vanilla main-hand attack.
+- **Shield — projectile defense:** Detect incoming projectiles that threaten the player and raise the shield when the arm can plausibly block them. Account for facing, timing, cooldown, and shield durability. Do not claim a block succeeded until the server validates the result.
+- **Bow — aim, then player-authorized fire:** Aim at a valid target while equipped. The player right-clicks to authorize firing; the arm handles the draw/release cycle. Require real ammunition, respect bow draw time, line of sight, cooldowns, durability, and server validation. Aiming alone must not consume arrows or fire.
+- **Pickaxe — mining:** Mine eligible targeted/designated blocks while mining is enabled. Respect reach, block hardness, tool effectiveness, harvest requirements, permissions, drops, durability, and block updates. Never mine continuously without a valid target and active configuration.
+- **Axe — mode-dependent chop or combat:** In chop mode, break eligible axe-appropriate blocks; in combat mode, attack eligible hostile targets. Keep modes explicit to prevent accidental chopping or attacks.
+- **Shovel — mode-dependent dig or path:** In dig mode, break eligible shovel-appropriate blocks. In path mode, use the supported path-making interaction on valid blocks. Do not silently substitute one mode for the other.
+- **Hoe — farming interactions:** Perform supported hoe actions such as tilling valid soil. Validate block conditions, permissions, durability, and resulting block state.
+- **Blocks — configurable placement:** Support a look-at-target placement mode and configurable patterns such as lines, walls, and floors. Consume real blocks from an explicitly defined inventory source; validate reach, replaceability, collision, permissions, and each placement server-side. Pattern placement must stop safely when blocked or out of materials.
+- **Torches — lighting:** Support an optional lighting mode that places torches at configured intervals or when suitable dark areas are encountered, using actual torches and valid placement checks. Held-item dynamic lighting is a separate optional feature and must not be implied by ordinary torch behavior.
 
-The input bindings and exact client/server interaction APIs must be verified against the project's Minecraft 1.21.1 NeoForge mappings before implementation. Do not ship a fake implementation that simply fires a second ordinary main-hand event: that can duplicate block placement, attacks, item consumption, or interaction side effects.
+Unsupported items should remain inert or offer only explicitly supported generic use behavior. Do not guess at arbitrary modded-item behavior.
+
+## Configuration and controls
+
+Provide per-upgrade settings for:
+- Enable/disable autonomous behavior.
+- Behavior mode where an item has multiple roles (axe chop/combat, shovel dig/path).
+- Detection range and action limits, within safe server-enforced bounds.
+- Block placement mode (look-at-target or pattern) and pattern parameters.
+- Torch placement/light mode and interval.
+- Targeting/priority options where applicable.
+
+The bow uses a distinct player authorization input to fire. Mining and placement should have explicit enable/disable controls and a clear target rule. Defensive sword/shield behaviors may run automatically only when enabled. Inputs and exact interaction APIs must be verified against the project's Minecraft 1.21.1 NeoForge mappings before implementation.
+
+Do not ship a fake implementation that simply fires ordinary main-hand events twice: that can duplicate block placement, attacks, item consumption, or interaction side effects.
 
 ## Slot and persistence
 
 - Implement a genuine Sophisticated Backpacks upgrade through the supported upgrade API, not just a standalone item.
 - Provide a dedicated arm-item slot in the upgrade's configuration UI. The item can be inserted, removed, and swapped by the owner.
-- Persist the item stack through the upgrade/backpack save lifecycle. Never duplicate the item during menu transfer, death handling, or save/reload.
+- Persist the item stack and configuration through the upgrade/backpack save lifecycle. Never duplicate the item during menu transfer, death handling, or save/reload.
 - When the slot is empty, the arm is inactive.
 - Avoid mutating the player's vanilla main-hand or offhand stacks to simulate the extra slot.
-- Server validates all arm actions; clients request actions but cannot claim hits, block breaks, or successful item uses.
+- Server validates all arm actions; clients request actions but cannot claim hits, block breaks, successful blocks, or successful item uses.
 
 ## Recipe and presentation
 
@@ -42,13 +62,19 @@ Use a Create Mechanical Arm, a chestplate, and a chest as the core crafting ingr
 - Isolate Sophisticated Backpacks integration behind a compatibility boundary if it remains optional.
 - Do not import client-only classes into common/server code.
 - If the optional dependency is absent, the mod must still load unless project policy deliberately makes it required.
+- Ensure automated actions do not bypass protection claims, adventure-mode restrictions, server event hooks, or item/block interaction rules.
 
 ## Acceptance checklist
 
 - [ ] Upgrade installs in Sophisticated Backpacks.
 - [ ] Dedicated arm slot accepts, persists, and returns an item without loss or duplication.
 - [ ] Player can simultaneously hold a torch offhand, pickaxe main hand, and sword in the arm slot.
-- [ ] Combat, tool, and item-use actions each have separate explicit activation.
+- [ ] Sword defense and shield projectile blocking are configurable and server-validated.
+- [ ] Bow aims automatically but only fires after player authorization, consuming valid ammunition.
+- [ ] Pickaxe, axe, shovel, and hoe behaviors respect tool rules and their configured modes.
+- [ ] Block placement supports look-at-target and configured patterns with safe stopping conditions.
+- [ ] Torch behavior uses real torches; dynamic held-item lighting is treated separately.
+- [ ] Unsupported items do not trigger arbitrary or unsafe behavior.
 - [ ] No automatic duplicate of vanilla main-hand attacks/interactions.
 - [ ] Server checks reach, target/block permissions, cooldown, durability, item count, and resulting inventory changes.
 - [ ] Failed/denied actions do not consume or duplicate the supplied item.
