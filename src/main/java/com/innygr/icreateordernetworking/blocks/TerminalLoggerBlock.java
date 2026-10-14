@@ -131,9 +131,19 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
             player.displayClientMessage(Component.literal("You do not have access to this Terminal Logger."), true);
             return InteractionResult.FAIL;
         }
-        if (brass && player.isShiftKeyDown()) {
-            logger.setFilterItemId(null);
-            player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared"), true);
+        // Sneak + empty-hand click toggles the face that was actually clicked.
+        // The output face remains output-only; TerminalLoggerConfig enforces that invariant.
+        if (player.isShiftKeyDown()) {
+            Direction clickedFace = hit.getDirection();
+            if (clickedFace == logger.getOutputDirection()) {
+                player.displayClientMessage(Component.literal("That face is the output. Change the output first to use it as an input."), true);
+                return InteractionResult.SUCCESS;
+            }
+            boolean enable = !logger.isInputEnabled(clickedFace);
+            if (logger.setInputEnabled(clickedFace, enable)) {
+                player.displayClientMessage(Component.literal("Terminal Logger " + clickedFace.getName()
+                        + " input " + (enable ? "enabled" : "disabled") + "."), true);
+            }
             return InteractionResult.SUCCESS;
         }
         Direction next = switch (logger.getOutputDirection()) {
