@@ -186,3 +186,49 @@ The stats service currently measures item movement, not verified order completio
 - The factory identity implements `FactoryIdentityProvider`, which is the shared trusted contract used by the Network Statistics block. This is the first in-world path connecting the terminal's identity to factory-scoped statistics.
 - The block currently has placeholder vanilla art and no order UI/menu yet. This patch implements identity and stats binding, not order creation, order management, shipment tracking, or payout logic.
 - A personal factory can only bind its owner's personal Terminal Logger; a party factory can bind loggers already owned by members of that same live FTB party. This prevents a terminal from silently reassigning another party's or player's inventory junction.
+
+## Backend implementation boundary (current)
+
+This section distinguishes implemented scaffolding from functionality that must not be treated as complete.
+
+| Area | Current state | Completion gate |
+|---|---|---|
+| Persistent orders and order lifecycle | Implemented foundation with regression coverage | Expand lifecycle, permissions, and crash-recovery tests |
+| Delivery receipt matching and idempotency | Implemented foundation with regression coverage | Exercise duplicate/reordered calls and save/reload boundaries end-to-end |
+| Automated adapter registry and request preparation | Implemented; unavailable/broken adapters fail closed | Add a real route adapter only when it can reserve, commit, and roll back actual server-side cargo |
+| Create Redstone Requester bridge | Implemented bridge foundation | Verify request timing, duplicate suppression, and block interactions in a live world |
+| Terminal Logger inventory routing | Implemented sided item-handler routing and bounded transfer loop | Verify adjacent capability edge cases and ensure order fulfilment is driven by confirmed destination receipt |
+| Train / airship / Frogport / belt delivery | Not complete; registry-only detection is not a delivery adapter | Each route must pass its own integration tests before it can register |
+| Player-facing Order Terminal GUI | Not complete | Add server-authoritative menu actions and client screens; validate all inputs on server |
+| Display Link: Network Statistics | Source class exists | Confirm source registration and output in Create 6.0.6 in a live world |
+| Display Link: Order Terminal and Terminal Logger | Planned | Add separate sources; logger output must be local to that block, not aggregated across every logger in a factory |
+| Stock Link: Order Terminal | Planned | Define precisely whether reported stock is available, reserved, in transit, or craftable; never count reserved stock as available |
+
+### Required automated-delivery transaction contract
+
+An adapter is not complete merely because its transport block exists or a source reference parses. Every automated route must obey this order:
+
+1. Validate the order, item registry ID, positive count, claimant, route, and transaction identity on the logical server thread.
+2. Re-check factory ownership/permissions and the live source/destination context. Client-provided coordinates or source strings are identifiers to resolve, not authorization.
+3. Reserve the exact requested quantity atomically. A reservation must prevent another order or adapter from promising the same stack.
+4. Move cargo using the transport's real server-side API. A planned shipment, scheduled train, connected belt, or docked airship is not proof of receipt.
+5. Verify the destination inventory contains the delivered item count. Partial delivery must record only the amount actually received.
+6. Commit order progress and any escrow payout through the shared order/delivery service, keyed by the persistent transaction ID. Route adapters must not edit order progress or pay currency directly.
+7. If transfer or finalization fails, retain enough durable state to retry safely or restore/release the reservation. Replaying the same transaction must neither duplicate cargo nor award payment twice.
+
+If a route cannot prove the actual transfer or safely recover after a restart, it must remain unavailable. This is intentional fail-closed behavior, not a reason to register a placeholder adapter.
+
+### Terminal Logger identity and visibility
+
+A factory may contain many Terminal Loggers. Each logger's routing, filter, buffer, and transfer diagnostics belong to that individual block. Factory-level order and stock totals belong to the Order Terminal/network service. Do not sum logger buffers to calculate factory stock: the same items may be observed at multiple points as they move through a production line. A logger's local Display Link must identify the selected logger's own state and must not reveal another factory's private order data.
+
+### Backend completion checklist
+
+- [ ] Add tests for manual handoff success, partial handoff, invalid item/count, unauthorized claimant, and repeated transaction.
+- [ ] Add crash/reload tests at each durable delivery boundary: reserved, cargo moved, receipt recorded, order progress applied, payout finalized.
+- [ ] Add a real server-side adapter and integration test for each route independently: train/Portable Storage Interface, Aeronautics/Docking Connector, Create Frogport, and belt/Terminal Logger.
+- [ ] Verify Redstone Requester event timing and duplicate-order suppression in-game.
+- [ ] Implement and test server-authoritative Order Terminal menu actions before exposing the GUI.
+- [ ] Verify Display Link sources and any Stock Link integration against the pinned Create version in a live world.
+- [ ] Run the full CI suite after backend changes; CI compilation alone does not prove live-world transport behavior.
+
