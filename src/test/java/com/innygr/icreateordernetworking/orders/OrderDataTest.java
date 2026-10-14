@@ -63,7 +63,7 @@ class OrderDataTest {
     }
 
     @Test
-    void loadFinalizesReceiptWhenDurableProgressMarkerAlreadyExists() {
+    void loadKeepsReceiptPendingWhenProgressMarkerNeedsPayoutRetry() {
         OrderData original = new OrderData();
         UUID orderId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
@@ -77,8 +77,11 @@ class OrderDataTest {
 
         OrderData restored = OrderData.load(original.save(new CompoundTag(), null), null);
 
-        assertTrue(restored.deliveryReceipt(transactionId).progressApplied());
-        assertFalse(restored.hasPendingDeliveryForOrder(orderId));
+        assertFalse(restored.deliveryReceipt(transactionId).progressApplied());
+        assertTrue(restored.hasPendingDeliveryForOrder(orderId));
+        assertTrue(restored.hasAppliedAutomatedProgress(transactionId));
+        assertTrue(restored.applyAutomatedDeliveryProgress(transactionId));
+        assertFalse(restored.markDeliveryProgressApplied(transactionId) == false);
     }
 
     @Test
