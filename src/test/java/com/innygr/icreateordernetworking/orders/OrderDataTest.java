@@ -211,6 +211,28 @@ class OrderDataTest {
         assertEquals(4L, restored.pendingDeliveryCountForOrder(orderId, null));
     }
 
+    @Test
+    void automatedProgressApplicationIsIdempotent() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        Order order = new Order(orderId, UUID.randomUUID(), "owner",
+                ResourceLocation.parse("minecraft:iron_ingot"), 10, 2, 1,
+                claimantId, OrderStatus.IN_PROGRESS, 1L);
+        data.add(order);
+        assertTrue(data.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 3));
+
+        assertTrue(data.applyAutomatedDeliveryProgress(transactionId));
+        assertTrue(data.applyAutomatedDeliveryProgress(transactionId));
+
+        assertEquals(5, order.fulfilledCount());
+        assertEquals(5, order.remainingCount());
+        assertTrue(data.hasAppliedAutomatedProgress(transactionId));
+        assertTrue(data.markDeliveryProgressApplied(transactionId));
+        assertEquals(5, order.fulfilledCount());
+    }
+
     private static CompoundTag validOrder(String id) {
         CompoundTag order = new CompoundTag();
         order.putString("Id", id);
