@@ -62,6 +62,39 @@ class EconomyDataTest {
     }
 
     @Test
+    void malformedCreditReceiptsAreIgnoredWithoutBreakingValidRetryReceipts() {
+        EconomyData original = new EconomyData();
+        UUID player = UUID.randomUUID();
+        UUID transaction = UUID.randomUUID();
+
+        assertTrue(original.creditOnce(transaction, player, 321, "delivery"));
+        CompoundTag saved = original.save(new CompoundTag(), null);
+        ListTag receipts = saved.getList("CreditReceipts", Tag.TAG_COMPOUND);
+
+        CompoundTag malformedScope = new CompoundTag();
+        malformedScope.putString("Transaction", UUID.randomUUID().toString());
+        malformedScope.putString("Player", player.toString());
+        malformedScope.putString("Scope", "");
+        malformedScope.putLong("Amount", 50);
+        receipts.add(malformedScope);
+
+        CompoundTag invalidAmount = new CompoundTag();
+        invalidAmount.putString("Transaction", UUID.randomUUID().toString());
+        invalidAmount.putString("Player", player.toString());
+        invalidAmount.putString("Scope", "delivery");
+        invalidAmount.putLong("Amount", 0);
+        receipts.add(invalidAmount);
+        saved.put("CreditReceipts", receipts);
+
+        EconomyData restored = EconomyData.load(saved, null);
+
+        assertEquals(321L, restored.balance(player));
+        assertTrue(restored.creditOnce(transaction, player, 321, "delivery"));
+        assertFalse(restored.creditOnce(transaction, player, 322, "delivery"));
+        assertEquals(321L, restored.balance(player));
+    }
+
+    @Test
     void balanceMutationRejectsUnderflowAndOverflowWithoutChangingBalance() {
         EconomyData data = new EconomyData();
         UUID player = UUID.randomUUID();
