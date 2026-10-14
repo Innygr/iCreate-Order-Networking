@@ -3,6 +3,8 @@ package com.innygr.icreateordernetworking.delivery;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
 import com.innygr.icreateordernetworking.orders.OrderStatus;
+import com.innygr.icreateordernetworking.orders.DeliveryReceipt;
+import com.innygr.icreateordernetworking.economy.EconomyService;
 import com.innygr.icreateordernetworking.orders.DeliveryService;
 import net.minecraft.server.level.ServerLevel;
 
@@ -84,6 +86,53 @@ public final class AutomatedDeliveryService {
                     DeliveryPreparation.Status.CARGO_UNAVAILABLE,
                     "The adapter could not reserve cargo safely.");
         }
+
+        // Persist the transaction reservation only after the adapter has reserved
+        // the physical cargo. If durable order reservation fails, release the cargo.
+        if (!data.reserveDelivery(request.transactionId(), request.orderId(), request.route(),
+                request.actorId(), request.count())) {
+            try {
+                prepared.rollback();
+            } catch (RuntimeException | LinkageError ignored) {
+                // Adapter rollback is required to be idempotent and best-effort.
+            }
+            return DeliveryPreparation.failure(
+                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
+                    "The order quantity could not be reserved for this transaction.");
+        }
         return DeliveryPreparation.prepared(prepared);
+    }
+
+    /**
+     * Finalizes an automated shipment after the transport independently verifies
+     * destination receipt. The transaction ID must match the persisted reservation.
+     * This method does not commit cargo; the route owns that step.
+     */
+    public static boolean completeAfterDestinationReceipt(ServerLevel level,
+                                                           java.util.UUID transactionId) {
+        if (level == null || transactionId == null || level.getServer() == null
+                || !level.getServer().isSameThread()) return false;
+
+        OrderData data = OrderData.get(level);
+        DeliveryReceipt receipt = data.deliveryReceipt(transactionId);
+        if (receipt == null || receipt.route() == DeliveryRoute.MANUAL
+                || receipt.count() < 1 || receipt.claimantId() == null) return false;
+        if (receipt.progressApplied()) return true;
+
+        Order order = data.find(receipt.orderId());
+        if (order == null) return false;
+
+        // Persist the progress marker alongside the order mutation. If payout is
+        // interrupted, retries skip fulfilment and safely retry the idempotent credit.
+        if (!data.applyAutomatedDeliveryProgress(transactionId)) return false;
+
+        long reward = (long) receipt.count() * order.rewardPerItem();
+        if (reward > 0) {
+            if (!EconomyService.canCreditOnce(level, receipt.claimantId(), reward, transactionId)
+                    || !EconomyService.creditOnce(level, receipt.claimantId(), reward, transactionId)) {
+                return false;
+            }
+        }
+        return data.markDeliveryProgressApplied(transactionId);
     }
 }
