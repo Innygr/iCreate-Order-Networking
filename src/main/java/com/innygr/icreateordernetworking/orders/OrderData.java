@@ -153,6 +153,21 @@ public final class OrderData extends SavedData {
     public Collection<Order> all() { return new ArrayList<>(orders.values()); }
     public Order find(UUID id) { return orders.get(id); }
     public DeliveryReceipt deliveryReceipt(UUID id) { return processedDeliveries.get(id); }
+
+    /**
+     * Snapshot of automated transactions still requiring transport reconciliation.
+     * A receipt with applied order progress remains pending until payout/finalization
+     * completes, so adapters can safely resume the transaction after a restart.
+     */
+    public Map<UUID, DeliveryReceipt> pendingAutomatedDeliveries() {
+        Map<UUID, DeliveryReceipt> pending = new LinkedHashMap<>();
+        processedDeliveries.forEach((transactionId, receipt) -> {
+            if (receipt.route() != DeliveryRoute.MANUAL && !receipt.progressApplied()) {
+                pending.put(transactionId, receipt);
+            }
+        });
+        return java.util.Collections.unmodifiableMap(pending);
+    }
     public boolean hasProcessedDelivery(UUID id) { return processedDeliveries.containsKey(id); }
 
     /** Pending automated shipments must be recovered before their order can be cancelled/refunded. */
