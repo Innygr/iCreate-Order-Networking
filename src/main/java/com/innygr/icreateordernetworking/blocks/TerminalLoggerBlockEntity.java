@@ -9,6 +9,7 @@ import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
 import com.innygr.icreateordernetworking.logistics.NetworkStatsData;
+import com.innygr.icreateordernetworking.terminal.TerminalLoggerConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -35,7 +36,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private static final int SLOT_COUNT = 18;
     private static final int TRANSFER_PER_TICK = 4;
 
-    private Direction outputDirection = Direction.NORTH;
+    private final TerminalLoggerConfig routingConfig = new TerminalLoggerConfig();
     private long acceptedDeliveries;
     private long rejectedDeliveries;
     private String lastStatus = "Idle";
@@ -62,6 +63,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
     public TerminalLoggerBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.TERMINAL_LOGGER.get(), pos, state);
+        routingConfig.setOutput(Direction.NORTH);
         for (Direction side : Direction.values()) {
             sidedHandlers.put(side, new IItemHandler() {
                 @Override
@@ -76,7 +78,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-                    if (side == outputDirection || stack.isEmpty() || !acceptsItem(
+                    if (!routingConfig.isInputEnabled(side) || stack.isEmpty() || !acceptsItem(
                             net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
                         return stack;
                     }
@@ -85,7 +87,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public ItemStack extractItem(int slot, int amount, boolean simulate) {
-                    if (side != outputDirection) return ItemStack.EMPTY;
+                    if (side != routingConfig.output()) return ItemStack.EMPTY;
                     return inventory.extractItem(slot, amount, simulate);
                 }
 
@@ -96,7 +98,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public boolean isItemValid(int slot, ItemStack stack) {
-                    return side != outputDirection && inventory.isItemValid(slot, stack);
+                    return routingConfig.isInputEnabled(side) && inventory.isItemValid(slot, stack);
                 }
             });
         }
@@ -119,7 +121,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
     private void pullInputs(Level level) {
         for (Direction side : Direction.values()) {
-            if (side == outputDirection) continue;
+            if (!routingConfig.isInputEnabled(side)) continue;
             BlockPos sourcePos = worldPosition.relative(side);
             IItemHandler source = level.getCapability(Capabilities.ItemHandler.BLOCK, sourcePos, side.getOpposite());
             if (source == null) continue;
@@ -173,8 +175,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     private void pushOutput(Level level) {
-        BlockPos targetPos = worldPosition.relative(outputDirection);
-        IItemHandler target = level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, outputDirection.getOpposite());
+        BlockPos targetPos = worldPosition.relative(routingConfig.output());
+        IItemHandler target = level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, routingConfig.output().getOpposite());
         if (target == null) return;
 
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
@@ -189,7 +191,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                     ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stored.getItem());
                     recordAccepted("Output " + moved + "x " + itemId);
                     recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.OUTPUT, moved,
-                            "Output to " + outputDirection.getName());
+                            "Output to " + routingConfig.output().getName());
                     return;
                 }
             }
@@ -219,7 +221,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     public ItemStackHandler getInventory() { return inventory; }
-    public Direction getOutputDirection() { return outputDirection; }
+    public Direction getOutputDirection() { return routingConfig.output(); }
+    public boolean isInputEnabled(Direction side) { return routingConfig.isInputEnabled(side); }
     public long getAcceptedDeliveries() { return acceptedDeliveries; }
     public long getRejectedDeliveries() { return rejectedDeliveries; }
     public String getLastStatus() { return lastStatus; }
@@ -296,10 +299,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     public boolean canInputFrom(Direction side, ResourceLocation itemId) {
-        return side != null && side != outputDirection && acceptsItem(itemId);
+        return side != null && routingConfig.isInputEnabled(side) && acceptsItem(itemId);
     }
 
-    public boolean canOutputTo(Direction side) { return side != null && side == outputDirection; }
+    public boolean canOutputTo(Direction side) { return side != null && side == routingConfig.output(); }
 
     /** Records diagnostics after an observed transfer; does not itself fulfil an order. */
     public void recordTransfer(boolean accepted, ResourceLocation itemId, int count, String reason) {
@@ -346,10 +349,20 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     public void setOutputDirection(Direction direction) {
-        if (direction == null || direction == outputDirection) return;
-        outputDirection = direction;
+        if (direction == null || direction == routingConfig.output()) return;
+        routingConfig.setOutput(direction);
         setChanged();
         sync();
+    }
+
+    /** Enable or disable a physical input face; the output face is always excluded. */
+    public boolean setInputEnabled(Direction side, boolean enabled) {
+        if (side == null || (side == routingConfig.output() && enabled)) return false;
+        if (routingConfig.isInputEnabled(side) == enabled) return true;
+        routingConfig.setInputEnabled(side, enabled);
+        setChanged();
+        sync();
+        return true;
     }
 
     public void recordAccepted(String message) {
@@ -374,7 +387,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.putString("OutputDirection", outputDirection.getName());
+        tag.putString("OutputDirection", routingConfig.output().getName());
+        tag.put("RoutingConfig", routingConfig.save());
         tag.putLong("AcceptedDeliveries", acceptedDeliveries);
         tag.putLong("RejectedDeliveries", rejectedDeliveries);
         tag.putString("LastStatus", lastStatus);
@@ -390,7 +404,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         Direction loaded = Direction.byName(tag.getString("OutputDirection"));
-        outputDirection = loaded == null ? Direction.NORTH : loaded;
+        routingConfig.setOutput(loaded == null ? Direction.NORTH : loaded);
+        if (tag.contains("RoutingConfig", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            routingConfig.load(tag.getCompound("RoutingConfig"));
+        }
         acceptedDeliveries = Math.max(0, tag.getLong("AcceptedDeliveries"));
         rejectedDeliveries = Math.max(0, tag.getLong("RejectedDeliveries"));
         lastStatus = safeStatus(tag.getString("LastStatus"));
