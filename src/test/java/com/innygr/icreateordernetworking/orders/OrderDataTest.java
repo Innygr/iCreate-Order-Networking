@@ -141,6 +141,34 @@ class OrderDataTest {
         assertTrue(loaded.all().isEmpty());
     }
 
+
+    @Test
+    void finalizedReceiptsDiscardTemporaryProgressMarkers() {
+        OrderData data = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        data.add(new Order(orderId, ownerId, "owner", ResourceLocation.parse("minecraft:iron_ingot"),
+                10, 0, 0, claimantId, OrderStatus.IN_PROGRESS, 1L));
+        assertTrue(data.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 5));
+
+        data.markAutomatedProgressApplied(transactionId);
+        assertTrue(data.hasAppliedAutomatedProgress(transactionId));
+        assertTrue(data.markDeliveryProgressApplied(transactionId));
+
+        assertTrue(data.deliveryReceipt(transactionId).progressApplied());
+        assertFalse(data.hasAppliedAutomatedProgress(transactionId));
+
+        // Orphan markers can also be safely removed when SavedData is reloaded.
+        UUID orphanId = UUID.randomUUID();
+        data.markAutomatedProgressApplied(orphanId);
+        OrderData restored = OrderData.load(data.save(new CompoundTag(), null), null);
+        assertFalse(restored.hasAppliedAutomatedProgress(transactionId));
+        assertFalse(restored.hasAppliedAutomatedProgress(orphanId));
+        assertTrue(restored.deliveryReceipt(transactionId).progressApplied());
+    }
+
     private static CompoundTag validOrder(String id) {
         CompoundTag order = new CompoundTag();
         order.putString("Id", id);
