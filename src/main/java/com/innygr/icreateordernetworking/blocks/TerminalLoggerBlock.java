@@ -136,6 +136,12 @@ public final class TerminalLoggerBlock extends BaseEntityBlock {
         if (player.isShiftKeyDown()) {
             Direction clickedFace = hit.getDirection();
             if (clickedFace == logger.getOutputDirection()) {
+                if (brass) {
+                    // Preserve the brass variant's shift-click filter-clear shortcut.
+                    logger.setFilterItemId(null);
+                    player.displayClientMessage(Component.literal("Brass Terminal Logger filter cleared."), true);
+                    return InteractionResult.SUCCESS;
+                }
                 player.displayClientMessage(Component.literal("That face is the output. Change the output first to use it as an input."), true);
                 return InteractionResult.SUCCESS;
             }
