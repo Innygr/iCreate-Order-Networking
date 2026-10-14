@@ -199,6 +199,37 @@ public final class OrderData extends SavedData {
     public boolean hasAppliedAutomatedProgress(UUID transactionId) {
         return appliedAutomatedProgress.contains(transactionId);
     }
+
+    /**
+     * Applies order progress for a previously reserved automated transaction.
+     * This is deliberately separate from cargo commit: callers may invoke it only
+     * after the transport has verified destination receipt. Replays are idempotent.
+     */
+    public boolean applyAutomatedDeliveryProgress(UUID transactionId) {
+        if (transactionId == null) return false;
+        if (appliedAutomatedProgress.contains(transactionId)) return true;
+
+        DeliveryReceipt receipt = processedDeliveries.get(transactionId);
+        if (receipt == null || receipt.progressApplied() || receipt.route() == DeliveryRoute.MANUAL
+                || receipt.count() < 1 || receipt.claimantId() == null) {
+            return false;
+        }
+
+        Order order = orders.get(receipt.orderId());
+        if (order == null || (order.status() != OrderStatus.OPEN && order.status() != OrderStatus.IN_PROGRESS)
+                || !receipt.claimantId().equals(order.claimedBy())
+                || receipt.count() > order.remainingCount()) {
+            return false;
+        }
+
+        // SavedData persists both the order and marker together. If a later save
+        // records the marker before receipt finalization, load() completes the receipt
+        // rather than applying the same shipment to order progress twice.
+        order.fulfil(receipt.count());
+        appliedAutomatedProgress.add(transactionId);
+        setDirty();
+        return true;
+    }
     public void markAutomatedProgressApplied(UUID transactionId) {
         if (transactionId != null && appliedAutomatedProgress.add(transactionId)) setDirty();
     }
