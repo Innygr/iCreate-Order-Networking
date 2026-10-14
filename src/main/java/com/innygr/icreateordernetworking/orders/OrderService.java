@@ -27,7 +27,8 @@ public final class OrderService {
     private OrderService() {}
 
     public static Order create(ServerPlayer owner, ItemStack exampleItem, int count, int rewardPerItem) {
-        if (!(owner.level() instanceof ServerLevel level) || exampleItem.isEmpty()
+        if (owner == null || !(owner.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread() || exampleItem == null || exampleItem.isEmpty()
                 || count < 1 || count > MAX_ORDER_COUNT
                 || rewardPerItem < 0 || rewardPerItem > MAX_REWARD_PER_ITEM) return null;
 
@@ -55,7 +56,7 @@ public final class OrderService {
     /** Creates a no-reward automated restock order from a configured Create Redstone Requester. */
     public static Order createRestockOrder(ServerLevel level, UUID ownerId, String ownerName,
                                            String ownerTeamKey, ResourceLocation itemId, int count) {
-        if (level == null || ownerId == null || itemId == null
+        if (level == null || !level.getServer().isSameThread() || ownerId == null || itemId == null
                 || !BuiltInRegistries.ITEM.containsKey(itemId)
                 || count < 1 || count > MAX_ORDER_COUNT
                 || hasActiveOrderForOwnerItem(level, ownerId, itemId)) return null;
@@ -81,7 +82,8 @@ public final class OrderService {
     }
 
     public static boolean claim(ServerPlayer player, UUID orderId) {
-        if (!(player.level() instanceof ServerLevel level)) return false;
+        if (player == null || !(player.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread()) return false;
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
         if (order == null || !OrderTeamAccess.canClaim(player, order.ownerId(), order.ownerTeamKey())
@@ -107,7 +109,8 @@ public final class OrderService {
      * but the order receipt was not yet persisted.
      */
     public static boolean fulfil(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
-        if (!(player.level() instanceof ServerLevel level) || count < 1) return false;
+        if (player == null || !(player.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread() || count < 1) return false;
 
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
@@ -202,7 +205,8 @@ public final class OrderService {
     }
 
     public static boolean cancel(ServerPlayer player, UUID orderId) {
-        if (!(player.level() instanceof ServerLevel level)) return false;
+        if (player == null || !(player.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread()) return false;
         OrderData data = OrderData.get(level);
         Order order = data.find(orderId);
         if (order == null || !order.ownerId().equals(player.getUUID())
