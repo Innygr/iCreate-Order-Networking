@@ -28,6 +28,19 @@ When activated, a valid Redstone Requester can publish zero-reward restock order
 Train, airship, Frogport, and belt delivery adapters remain unavailable until each route can verify real server-side cargo transfer and safely commit delivery receipts.
 
 
+## Create Display and Stock integrations
+
+The planned Create-facing integrations are split by Create's **Display Link** and **Stock Link** systems:
+
+| Create integration | iCreate block | Intended role | Status |
+|---|---|---|---|
+| Display Link | Network Statistics | Show network statistics, such as item input/output and rejected transfers | A Display Link source class exists; registration and live-world behavior still need verification |
+| Display Link | Order Terminal | Show useful order details, such as order status and progress | Planned; not yet implemented/verified |
+| Stock Link | Order Terminal | Expose order-terminal stock/request information to Create's stock network | Planned; not yet implemented/verified |
+| Stock Link | Terminal Logger | Optional stock integration if it can represent the logger's filtered/routed inventory accurately | Exploratory; not committed to as required behavior |
+
+These are distinct from crafting recipes and block models. Do not assume that a block supports Display or Stock just because its recipe exists. Each integration must use the pinned Create 6.x API, register safely, handle missing/unconfigured data, and be tested in a live Minecraft world. Create is an optional dependency, so Create-specific classes must remain isolated behind the mod's compatibility boundary.
+
 ## Logistics design
 
 The required delivery routes are **manual handoff, Create trains, Aeronautics airships, Create Frogports, and Create belts**. Train adapters are designed around Portable Storage Interfaces; airship adapters around Docking Connectors. Frogports are base Create package logistics, not an Aeronautics feature.
