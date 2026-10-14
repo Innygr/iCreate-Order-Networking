@@ -82,7 +82,7 @@ class OrderDataTest {
         assertTrue(restored.hasPendingDeliveryForOrder(orderId));
         assertTrue(restored.hasAppliedAutomatedProgress(transactionId));
         assertTrue(restored.applyAutomatedDeliveryProgress(transactionId));
-        assertFalse(restored.markDeliveryProgressApplied(transactionId) == false);
+        assertTrue(restored.markDeliveryProgressApplied(transactionId));
     }
 
     @Test
