@@ -68,7 +68,7 @@ Do not ship a fake implementation that simply fires ordinary main-hand events tw
 
 ## Recipe and presentation
 
-Use a Create Mechanical Arm, a chestplate, and a chest as the core crafting ingredients, with the exact recipe arrangement and item IDs checked against the pinned Create build. Keep it survival-accessible. Add a backpack-mounted arm model/animation after the actual upgrade and action logic work.
+Recipe: 1 Create Mechanical Arm, 1 Oak Planks, and 1 Iron Ingot. Keep the recipe survival-accessible and verify the exact item IDs against the pinned Create build. Add a backpack-mounted arm model/animation after the actual upgrade and action logic work.
 
 ## Compatibility
 
