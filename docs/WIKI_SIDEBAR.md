@@ -8,6 +8,11 @@
 - [Transport Integrations](Transport-Integrations)
 - [Troubleshooting](Troubleshooting)
 
+### Related Projects
+
+- [iCreate: Missile Tech](https://github.com/Innygr/iCreate-Missile-Tech)
+- [iCreate: Robotics](https://github.com/Innygr/iCreate-Robotics)
+
 ### Technical Reference
 
 - [Logistics Architecture](https://github.com/Innygr/iCreate-Order-Networking/blob/main/docs/LOGISTICS_ARCHITECTURE.md)
