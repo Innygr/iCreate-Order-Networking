@@ -126,6 +126,13 @@ For deeper technical documentation, see:
 - [Missile System](MISSILE_SYSTEM.md)
 - [Ponder Guide](PONDER_GUIDE.md)
 
+## Related iCreate projects
+
+These companion projects are developed separately from Order Networking:
+
+- [iCreate: Missile Tech](https://github.com/Innygr/iCreate-Missile-Tech) — the companion project for missile technology.
+- [iCreate: Robotics](https://github.com/Innygr/iCreate-Robotics) — the companion project for robotics.
+
 ## Contributing and feedback
 
 Bug reports, reproducible test cases, and suggestions are useful—especially for delivery recovery, Create compatibility, and in-game usability. When reporting a delivery issue, include the order state, transport type, what the destination observed, and whether the server restarted during the shipment.
