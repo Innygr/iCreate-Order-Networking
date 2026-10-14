@@ -95,7 +95,14 @@ public final class OrderData extends SavedData {
                 recoveredReceipt = true;
             }
         }
-        if (recoveredReceipt) data.setDirty();
+        // Once a receipt is finalized, its own durable state is sufficient for
+        // idempotency. Keep progress markers only for unfinished receipts; this
+        // bounds marker growth and discards orphaned markers from interrupted writes.
+        boolean cleanedMarkers = data.appliedAutomatedProgress.removeIf(transactionId -> {
+            DeliveryReceipt receipt = data.processedDeliveries.get(transactionId);
+            return receipt == null || receipt.progressApplied();
+        });
+        if (recoveredReceipt || cleanedMarkers) data.setDirty();
         return data;
     }
 
@@ -226,10 +233,15 @@ public final class OrderData extends SavedData {
     public boolean markDeliveryProgressApplied(UUID deliveryId) {
         DeliveryReceipt receipt = processedDeliveries.get(deliveryId);
         if (receipt == null) return false;
+        boolean changed = false;
         if (!receipt.progressApplied()) {
             processedDeliveries.put(deliveryId, receipt.finalized());
-            setDirty();
+            changed = true;
         }
+        // The finalized receipt now records that this transaction must not replay.
+        // Remove the temporary recovery marker to keep SavedData bounded.
+        changed |= appliedAutomatedProgress.remove(deliveryId);
+        if (changed) setDirty();
         return true;
     }
 
