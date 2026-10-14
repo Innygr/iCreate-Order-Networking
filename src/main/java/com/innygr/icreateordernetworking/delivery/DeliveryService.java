@@ -48,7 +48,8 @@ public final class DeliveryService {
 
     public static DeliveryResult deliverManually(ServerPlayer player, UUID orderId, int count, UUID transactionId) {
         if (player == null || orderId == null || count < 1 || transactionId == null
-                || !(player.level() instanceof ServerLevel level)) return DeliveryResult.INVALID_REQUEST;
+                || !(player.level() instanceof ServerLevel level)
+                || !level.getServer().isSameThread()) return DeliveryResult.INVALID_REQUEST;
         OrderData data = OrderData.get(level);
         if (data.hasProcessedDelivery(transactionId)
                 || !data.recordDelivery(transactionId, orderId, DeliveryRoute.MANUAL)) return DeliveryResult.ORDER_REJECTED;
@@ -70,7 +71,8 @@ public final class DeliveryService {
      */
     public static DeliveryResult deliverAutomated(ServerLevel level, DeliveryRequest request) {
         if (level == null || request == null || !request.isWellFormed()
-                || request.route() == DeliveryRoute.MANUAL) return DeliveryResult.INVALID_REQUEST;
+                || request.route() == DeliveryRoute.MANUAL
+                || !level.getServer().isSameThread()) return DeliveryResult.INVALID_REQUEST;
 
         OrderData data = OrderData.get(level);
         DeliveryReceipt prior = data.deliveryReceipt(request.transactionId());
