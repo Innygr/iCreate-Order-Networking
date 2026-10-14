@@ -5,7 +5,8 @@ Target platform: Minecraft 1.21.1, NeoForge 21.1.251, Java 21.
 ## Compatibility policy
 
 - Create is a soft/optional dependency: the mod must load without it. Without Create, the core mod can run, but most of the intended gameplay and Create-specific integrations are unavailable.
-- If Create is absent at startup, print a clear informational message to the log (not an error), such as: `This mod doesn't truly require the Create mod to run, but it very much improves the usefulness of this mod.` The message should make clear that this is an expected configuration, not a crash or a hard dependency failure.
+- If Create is absent, show the following informational chat message to each player when they enter a world (single-player or multiplayer): `This mod doesn't truly require the Create mod to run, but it very much improves the usefulness of this mod.` Treat this as a friendly notice, not an error. On a dedicated server, send it to players when they join; do not rely on a client-only startup log. Avoid spamming it repeatedly during the same world session, and keep server/client handling safe.
+- A startup log entry may also be useful for administrators, but it does not replace the in-game chat notice.
 - Keep Create-specific registrations and class references isolated behind mod-presence checks so the no-Create startup path cannot load missing Create classes or register Create-only content.
 - Create: Aeronautics is optional. The mod must remain loadable without Aeronautics.
 - Aeronautics-specific classes must not be referenced from common code unless they are isolated behind a verified optional integration.
