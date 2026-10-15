@@ -45,6 +45,27 @@ public final class DurableShipmentService {
         return finalizePayout(level, transactionId, journal);
     }
 
+    /**
+     * Startup recovery pass. Destination receipt is already durable at this stage,
+     * so payout can be retried safely without touching physical cargo. RESERVED and
+     * DISPATCHED transactions deliberately remain pending for their transport adapter
+     * to reconcile; this service must never invent a receipt for them.
+     *
+     * @return number of transactions successfully finalized during this pass
+     */
+    public static int recoverPendingPayouts(ServerLevel level) {
+        if (!onServerThread(level)) return 0;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        int recovered = 0;
+        for (ShipmentJournalData.Shipment shipment : journal.pending().values()) {
+            if (shipment.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED
+                    && retryPayout(level, shipment.transactionId())) {
+                recovered++;
+            }
+        }
+        return recovered;
+    }
+
     private static boolean finalizePayout(ServerLevel level, UUID transactionId, ShipmentJournalData journal) {
         ShipmentJournalData.Shipment shipment = journal.find(transactionId);
         if (shipment == null || shipment.stage() != ShipmentJournalData.Stage.DESTINATION_RECEIVED) return false;
