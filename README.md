@@ -63,3 +63,6 @@ This is a rough estimate of the **entire mod**, not just the backend. The backen
 
 
 The Order Terminal Display Link reports active orders and outstanding item quantity for the factory owner's orders. It is registered alongside the Terminal Logger and Network Statistics Display Links.
+
+
+The Order Terminal Display Link has regression tests for active-order counting, outstanding quantities, owner scoping, and unclaimed terminals.
