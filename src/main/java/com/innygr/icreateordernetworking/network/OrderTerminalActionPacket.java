@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.network;
 
 import java.util.UUID;
 import com.innygr.icreateordernetworking.delivery.DeliveryService;
+import com.innygr.icreateordernetworking.delivery.DeliveryResult;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderService;
 import com.innygr.icreateordernetworking.permission.OrderPermissions;
@@ -25,15 +26,27 @@ public record OrderTerminalActionPacket(BlockPos terminalPos, int action, String
     public static final int OPEN = 0, CREATE = 1, CLAIM = 2, FULFIL = 3, CANCEL = 4;
     public static final Type<OrderTerminalActionPacket> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("icreate_order_networking", "terminal_action"));
+    // StreamCodec.composite overloads support at most six fields in this target
+    // Minecraft version, so encode this seven-field payload explicitly.
     public static final StreamCodec<RegistryFriendlyByteBuf, OrderTerminalActionPacket> STREAM_CODEC =
-            StreamCodec.composite(BlockPos.STREAM_CODEC, OrderTerminalActionPacket::terminalPos,
-                    ByteBufCodecs.VAR_INT, OrderTerminalActionPacket::action,
-                    ByteBufCodecs.STRING_UTF8, OrderTerminalActionPacket::itemId,
-                    ByteBufCodecs.VAR_INT, OrderTerminalActionPacket::count,
-                    ByteBufCodecs.VAR_INT, OrderTerminalActionPacket::rewardPerItem,
-                    ByteBufCodecs.STRING_UTF8, OrderTerminalActionPacket::orderId,
-                    ByteBufCodecs.STRING_UTF8, OrderTerminalActionPacket::transactionId,
-                    OrderTerminalActionPacket::new);
+            StreamCodec.of(
+                    (RegistryFriendlyByteBuf buf, OrderTerminalActionPacket packet) -> {
+                        BlockPos.STREAM_CODEC.encode(buf, packet.terminalPos());
+                        ByteBufCodecs.VAR_INT.encode(buf, packet.action());
+                        ByteBufCodecs.STRING_UTF8.encode(buf, packet.itemId());
+                        ByteBufCodecs.VAR_INT.encode(buf, packet.count());
+                        ByteBufCodecs.VAR_INT.encode(buf, packet.rewardPerItem());
+                        ByteBufCodecs.STRING_UTF8.encode(buf, packet.orderId());
+                        ByteBufCodecs.STRING_UTF8.encode(buf, packet.transactionId());
+                    },
+                    (RegistryFriendlyByteBuf buf) -> new OrderTerminalActionPacket(
+                            BlockPos.STREAM_CODEC.decode(buf),
+                            ByteBufCodecs.VAR_INT.decode(buf),
+                            ByteBufCodecs.STRING_UTF8.decode(buf),
+                            ByteBufCodecs.VAR_INT.decode(buf),
+                            ByteBufCodecs.VAR_INT.decode(buf),
+                            ByteBufCodecs.STRING_UTF8.decode(buf),
+                            ByteBufCodecs.STRING_UTF8.decode(buf)));
 
     @Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
@@ -83,10 +96,11 @@ public record OrderTerminalActionPacket(BlockPos terminalPos, int action, String
                 || packet.transactionId() == null || packet.transactionId().length() > 36
                 || packet.count() < 1 || packet.count() > OrderService.MAX_ORDER_COUNT) return;
         try {
-            boolean success = DeliveryService.deliverManually(player, UUID.fromString(packet.orderId()),
+            DeliveryResult result = DeliveryService.deliverInventory(player, UUID.fromString(packet.orderId()),
                     packet.count(), UUID.fromString(packet.transactionId()));
+            boolean success = result == DeliveryResult.SUCCESS;
             player.displayClientMessage(Component.literal(success ? "Order delivery recorded."
-                    : "Delivery failed. Check the order, claimant, and inventory."), true);
+                    : "Delivery failed: " + result.name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ')), true);
         } catch (IllegalArgumentException ignored) { }
     }
 
