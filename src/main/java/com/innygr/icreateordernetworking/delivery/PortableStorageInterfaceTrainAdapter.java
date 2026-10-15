@@ -154,7 +154,8 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
             int amount = Math.min(remaining, stack.getCount());
             int target = slot;
             if (amount != stack.getCount()) {
-                target = emptySlots.stream().filter(candidate -> candidate != slot).findFirst().orElse(-1);
+                int sourceSlot = slot;
+                target = emptySlots.stream().filter(candidate -> candidate != sourceSlot).findFirst().orElse(-1);
                 if (target < 0) return false;
                 emptySlots.remove(Integer.valueOf(target));
             }
