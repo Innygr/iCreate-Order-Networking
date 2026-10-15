@@ -41,9 +41,12 @@ public final class ShipmentJournalData extends SavedData {
                 int count = n.getInt("Count");
                 String source = n.getString("Source");
                 String destination = n.getString("Destination");
+                boolean receiptStage = stage == Stage.DESTINATION_RECEIVED || stage == Stage.COMPLETED;
+                boolean destinationValid = destination.length() <= 256
+                        && (receiptStage ? !destination.isBlank() : destination.isEmpty());
                 if (route != DeliveryRoute.MANUAL && count > 0 && count <= 4096
                         && !source.isBlank() && source.length() <= 256
-                        && destination.length() <= 256 && !data.shipments.containsKey(tx)) {
+                        && destinationValid && !data.shipments.containsKey(tx)) {
                     data.shipments.put(tx, new Shipment(tx, order, route, claimant, count, source, destination, stage));
                 }
             } catch (RuntimeException ignored) {
