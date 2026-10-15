@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 
 class ShipmentJournalDataTest {
@@ -56,5 +59,34 @@ class ShipmentJournalDataTest {
 
         assertTrue(journal.pending().isEmpty());
         assertEquals(ShipmentJournalData.Stage.COMPLETED, journal.find(transactionId).stage());
+    }
+
+    @Test
+    void journalSurvivesSaveLoadAndSkipsMalformedRows() {
+        UUID transactionId = UUID.randomUUID();
+        UUID orderId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        ShipmentJournalData journal = new ShipmentJournalData();
+        DeliveryRequest request = new DeliveryRequest(orderId, ResourceLocation.parse("minecraft:stone"),
+                4, DeliveryRoute.TRAIN, claimantId, "overworld:10,64,10", transactionId);
+        assertTrue(journal.reserve(request));
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+
+        CompoundTag saved = journal.save(new CompoundTag(), null);
+        ListTag rows = saved.getList("Shipments", Tag.TAG_COMPOUND);
+        CompoundTag malformed = new CompoundTag();
+        malformed.putString("Transaction", "not-a-uuid");
+        rows.add(malformed);
+        saved.put("Shipments", rows);
+
+        ShipmentJournalData reloaded = ShipmentJournalData.load(saved, null);
+        ShipmentJournalData.Shipment restored = reloaded.find(transactionId);
+        assertNotNull(restored);
+        assertEquals(ShipmentJournalData.Stage.DISPATCHED, restored.stage());
+        assertEquals(orderId, restored.orderId());
+        assertEquals(claimantId, restored.claimantId());
+        assertEquals(4, restored.count());
+        assertEquals(1, reloaded.pending().size());
     }
 }
