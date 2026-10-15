@@ -29,9 +29,8 @@ public final class DurableShipmentService {
 
     /**
      * Commit the transport's idempotent cargo reservation, then record dispatch.
-     * If the server stops between these operations, the adapter must replay commit
-     * using the same transaction ID and call this method again; commit must not
-     * consume the same cargo twice.
+     * If the server stops between these operations, a destination receipt can
+     * independently reconcile the transaction from its physical cargo marker.
      */
     public static boolean commitDispatch(ServerLevel level, UUID transactionId, PreparedDelivery prepared) {
         if (!onServerThread(level) || transactionId == null || prepared == null) return false;
@@ -50,6 +49,34 @@ public final class DurableShipmentService {
             return false;
         }
         return markDispatched(level, transactionId);
+    }
+
+    /**
+     * Reconcile a shipment when its marked cargo is already at the verified
+     * destination but the server stopped after physical dispatch and before
+     * persisting DISPATCHED. Receipt verification is the evidence for recovery;
+     * a missing source stack alone is never treated as proof of dispatch.
+     */
+    public static boolean reconcileDestinationReceipt(ServerLevel level, UUID transactionId,
+                                                       String destinationReference) {
+        if (!onServerThread(level) || transactionId == null || destinationReference == null
+                || destinationReference.isBlank() || destinationReference.length() > 256) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment current = journal.find(transactionId);
+        if (current == null) return false;
+        if (current.stage() != ShipmentJournalData.Stage.RESERVED) {
+            return confirmDestinationReceipt(level, transactionId, destinationReference);
+        }
+        AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(current.route()).orElse(null);
+        if (adapter == null) return false;
+        try {
+            if (!adapter.verifyDestinationReceipt(level, current, destinationReference)) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        if (!journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null)) return false;
+        return confirmDestinationReceipt(level, transactionId, destinationReference);
     }
 
     /** Call only after the destination inventory/endpoint verifies the matching transaction and item count. */
