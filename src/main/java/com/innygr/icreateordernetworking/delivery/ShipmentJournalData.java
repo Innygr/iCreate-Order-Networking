@@ -115,6 +115,19 @@ public final class ShipmentJournalData extends SavedData {
         return true;
     }
 
+    /**
+     * Removes a reservation only while no dispatch or receipt has been recorded.
+     * Used to unwind preparation failures; later stages are never deletable here.
+     */
+    public boolean abandonReservation(UUID transactionId) {
+        if (transactionId == null) return false;
+        Shipment current = shipments.get(transactionId);
+        if (current == null || current.stage() != Stage.RESERVED) return false;
+        shipments.remove(transactionId);
+        setDirty();
+        return true;
+    }
+
     public Map<UUID, Shipment> pending() {
         Map<UUID, Shipment> result = new LinkedHashMap<>();
         shipments.forEach((id, shipment) -> { if (shipment.stage() != Stage.COMPLETED) result.put(id, shipment); });
