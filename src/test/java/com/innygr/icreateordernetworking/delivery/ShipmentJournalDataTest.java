@@ -131,4 +131,21 @@ class ShipmentJournalDataTest {
         assertEquals(ShipmentJournalData.Stage.DESTINATION_RECEIVED, journal.find(transactionId).stage());
     }
 
+    @Test
+    void onlyUndispatchedReservationsCanBeAbandoned() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID reservedId = UUID.randomUUID();
+        assertTrue(journal.reserve(request(reservedId)));
+        assertTrue(journal.abandonReservation(reservedId));
+        assertNull(journal.find(reservedId));
+        assertFalse(journal.abandonReservation(reservedId));
+
+        UUID dispatchedId = UUID.randomUUID();
+        assertTrue(journal.reserve(request(dispatchedId)));
+        assertTrue(journal.advance(dispatchedId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+        assertFalse(journal.abandonReservation(dispatchedId));
+        assertEquals(ShipmentJournalData.Stage.DISPATCHED, journal.find(dispatchedId).stage());
+    }
+
 }
