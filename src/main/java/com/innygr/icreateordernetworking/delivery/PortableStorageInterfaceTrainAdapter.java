@@ -3,6 +3,8 @@ package com.innygr.icreateordernetworking.delivery;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
+import com.innygr.icreateordernetworking.orders.Order;
+import com.innygr.icreateordernetworking.orders.OrderData;
 import com.simibubi.create.content.contraptions.actors.psi.PortableStorageInterfaceBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,7 +33,8 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
 
     @Override
     public boolean isAuthorized(ServerLevel level, DeliveryRequest request) {
-        if (!isAvailable() || level == null || request == null || request.route() != DeliveryRoute.TRAIN || !request.isWellFormed()) return false;
+        if (!isAvailable() || level == null || request == null
+                || request.route() != DeliveryRoute.TRAIN || !request.isWellFormed()) return false;
         EndpointPair pair = EndpointPair.parse(request.sourceReference());
         if (pair == null || pair.source().equals(pair.destination())
                 || !level.hasChunkAt(pair.source()) || !level.hasChunkAt(pair.destination())) return false;
@@ -47,7 +50,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         if (!isAuthorized(level, request)) return null;
         EndpointPair pair = EndpointPair.parse(request.sourceReference());
         TerminalLoggerBlockEntity source = (TerminalLoggerBlockEntity) level.getBlockEntity(pair.source());
-        if (request.count() > 64) return null; // This adapter intentionally ships one tagged stack per transaction.
+        if (request.count() > 64) return null; // One marked stack per shipment keeps receipt accounting exact.
         int sourceSlot = -1;
         int markerSlot = -1;
         for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
@@ -82,7 +85,34 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
             source.getInventory().insertItem(sourceSlot, remainder, false);
             return null;
         }
+        return preparedFor(level, request, pair);
+    }
 
+    @Override
+    public PreparedDelivery resumeCargo(ServerLevel level, ShipmentJournalData.Shipment shipment) {
+        if (level == null || shipment == null || shipment.route() != DeliveryRoute.TRAIN
+                || shipment.stage() != ShipmentJournalData.Stage.RESERVED || level.getServer() == null
+                || !level.getServer().isSameThread()) return null;
+        EndpointPair pair = EndpointPair.parse(shipment.sourceReference());
+        if (pair == null || !level.hasChunkAt(pair.source()) || !level.hasChunkAt(pair.destination())) return null;
+        if (!(level.getBlockEntity(pair.source()) instanceof TerminalLoggerBlockEntity source)
+                || !(level.getBlockEntity(pair.destination()) instanceof TerminalLoggerBlockEntity destination)
+                || !shipment.claimantId().equals(source.getOwnerId())
+                || !shipment.claimantId().equals(destination.getOwnerId())) return null;
+        Order order = OrderData.get(level).find(shipment.orderId());
+        if (order == null) return null;
+        DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
+                DeliveryRoute.TRAIN, shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
+        if (findMarkedSlot(source, shipment.transactionId()) < 0) return null;
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            if (TrainShipmentMarker.matches(source.getInventory().getStackInSlot(slot), shipment)) {
+                return preparedFor(level, request, pair);
+            }
+        }
+        return null;
+    }
+
+    private PreparedDelivery preparedFor(ServerLevel level, DeliveryRequest request, EndpointPair pair) {
         return new PreparedDelivery() {
             private boolean committed;
 
@@ -119,8 +149,6 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
                     remaining = target.insertItem(slot, remaining, false);
                 }
                 if (!remaining.isEmpty()) {
-                    // Restore the not-yet-transferred remainder. The simulation above
-                    // makes this exceptional, but never silently void items.
                     liveSource.getInventory().insertItem(markedSlot, remaining, false);
                     return false;
                 }
@@ -157,8 +185,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
                 || !shipment.claimantId().equals(destination.getOwnerId())) return false;
         if (TrainShipmentMarker.countIn(destination, shipment.transactionId()) < shipment.count()) return false;
         for (int slot = 0; slot < destination.getInventory().getSlots(); slot++) {
-            ItemStack stack = destination.getInventory().getStackInSlot(slot);
-            if (TrainShipmentMarker.matches(stack, shipment)) return true;
+            if (TrainShipmentMarker.matches(destination.getInventory().getStackInSlot(slot), shipment)) return true;
         }
         return false;
     }
