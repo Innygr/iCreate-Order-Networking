@@ -45,10 +45,11 @@ public final class ICreateOrderNetworking {
         modBus.addListener(this::registerCapabilities);
         modBus.addListener(this::registerDisplaySources);
         modBus.addListener(this::registerDisplaySourceBindings);
-        modBus.addListener(this::registerTransportAdapters);
     }
 
     private void onServerStarted(ServerStartedEvent event) {
+        // The registry is cleared on shutdown, so install stateless adapters for each server lifecycle.
+        AutomatedDeliveryRegistry.register(new PortableStorageInterfaceTrainAdapter());
         // Retry durable payouts only after a destination receipt was already recorded.
         // Transport adapters still own recovery for shipments awaiting physical reconciliation.
         DurableShipmentService.recoverPendingPayouts(event.getServer().overworld());
@@ -78,8 +79,4 @@ public final class ICreateOrderNetworking {
                 NetworkStatisticsDisplaySource.INSTANCE));
     }
 
-    private void registerTransportAdapters(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> AutomatedDeliveryRegistry.register(
-                new PortableStorageInterfaceTrainAdapter()));
-    }
 }
