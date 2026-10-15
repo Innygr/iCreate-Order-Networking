@@ -27,6 +27,31 @@ public final class DurableShipmentService {
                 .advance(transactionId, ShipmentJournalData.Stage.RESERVED, ShipmentJournalData.Stage.DISPATCHED, null);
     }
 
+    /**
+     * Commit the transport's idempotent cargo reservation, then record dispatch.
+     * If the server stops between these operations, the adapter must replay commit
+     * using the same transaction ID and call this method again; commit must not
+     * consume the same cargo twice.
+     */
+    public static boolean commitDispatch(ServerLevel level, UUID transactionId, PreparedDelivery prepared) {
+        if (!onServerThread(level) || transactionId == null || prepared == null) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment shipment = journal.find(transactionId);
+        if (shipment == null) return false;
+        if (shipment.stage() == ShipmentJournalData.Stage.DISPATCHED
+                || shipment.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED
+                || shipment.stage() == ShipmentJournalData.Stage.COMPLETED) {
+            return true;
+        }
+        if (shipment.stage() != ShipmentJournalData.Stage.RESERVED) return false;
+        try {
+            if (!prepared.commit()) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        return markDispatched(level, transactionId);
+    }
+
     /** Call only after the destination inventory/endpoint verifies the matching transaction and item count. */
     public static boolean confirmDestinationReceipt(ServerLevel level, UUID transactionId, String destinationReference) {
         if (!onServerThread(level)) return false;
