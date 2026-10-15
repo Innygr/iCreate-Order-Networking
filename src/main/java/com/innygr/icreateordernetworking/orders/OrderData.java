@@ -69,8 +69,18 @@ public final class OrderData extends SavedData {
                 UUID claimant = receipt.contains("Claimant") ? UUID.fromString(receipt.getString("Claimant")) : null;
                 int count = receipt.contains("Count") ? receipt.getInt("Count") : 0;
                 boolean applied = !receipt.contains("ProgressApplied") || receipt.getBoolean("ProgressApplied");
+                // Manual receipts use the legacy order/route-only shape. Automated
+                // receipts are recovery records and must contain a complete, bounded
+                // claimant/count tuple; malformed records must never reserve cargo or
+                // be interpreted as proof of a shipment.
+                boolean validReceipt = route == DeliveryRoute.MANUAL
+                        ? claimant == null && count == 0 && applied
+                        : claimant != null && count >= 1 && count <= OrderService.MAX_ORDER_COUNT;
+                if (!validReceipt || data.processedDeliveries.containsKey(deliveryId)) {
+                    continue;
+                }
                 DeliveryReceipt loaded = new DeliveryReceipt(orderId, route, claimant, count, applied);
-                data.processedDeliveries.putIfAbsent(deliveryId, loaded);
+                data.processedDeliveries.put(deliveryId, loaded);
             } catch (RuntimeException ignored) {
                 // Ignore malformed receipt records.
             }
