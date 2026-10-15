@@ -4,6 +4,7 @@ import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.compat.TerminalLoggerDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
+import com.innygr.icreateordernetworking.delivery.AeronauticsDockingConnectorAdapter;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
 import com.innygr.icreateordernetworking.delivery.PortableStorageInterfaceTrainAdapter;
 import com.innygr.icreateordernetworking.logistics.FactoryEndpointRegistry;
@@ -51,6 +52,7 @@ public final class ICreateOrderNetworking {
     private void onServerStarted(ServerStartedEvent event) {
         // The registry is cleared on shutdown, so install stateless adapters for each server lifecycle.
         AutomatedDeliveryRegistry.register(new PortableStorageInterfaceTrainAdapter());
+        AutomatedDeliveryRegistry.register(new AeronauticsDockingConnectorAdapter());
         // Retry durable payouts only after a destination receipt was already recorded.
         // Transport adapters still own recovery for shipments awaiting physical reconciliation.
         DurableShipmentService.recoverPendingPayouts(event.getServer().overworld());
