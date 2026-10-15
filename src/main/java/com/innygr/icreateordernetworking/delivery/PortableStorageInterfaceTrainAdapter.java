@@ -298,11 +298,11 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
                 || !level.hasChunkAt(pair.destination())) return false;
         if (!(level.getBlockEntity(pair.destination()) instanceof TerminalLoggerBlockEntity destination)
                 || !shipment.claimantId().equals(destination.getOwnerId())) return false;
-        if (TrainShipmentMarker.countIn(destination, shipment.transactionId()) < shipment.count()) return false;
-        for (int slot = 0; slot < destination.getInventory().getSlots(); slot++) {
-            if (TrainShipmentMarker.matches(destination.getInventory().getStackInSlot(slot), shipment)) return true;
-        }
-        return false;
+        // A receipt must be made up entirely of stacks whose full marker agrees
+        // with the durable transaction. Do not let a second, conflicting stack
+        // carrying the same UUID inflate the received quantity.
+        if (!TrainShipmentMarker.hasOnlyMatchingStacks(destination, shipment)) return false;
+        return TrainShipmentMarker.countMatchingIn(destination, shipment) == shipment.count();
     }
 
     private static int findMarkedSlot(TerminalLoggerBlockEntity logger, UUID transactionId) {
