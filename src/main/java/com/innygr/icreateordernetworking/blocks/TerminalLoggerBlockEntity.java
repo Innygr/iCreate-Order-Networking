@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.delivery.TrainShipmentMarker;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
@@ -168,6 +169,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                     recordAccepted("Pulled " + accepted + "x " + itemId + " from " + side.getName());
                     recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.INPUT, accepted,
                             "Input from " + side.getName());
+                    if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        TrainShipmentMarker.tryConfirmAtDestination(serverLevel, this);
+                    }
                     return;
                 }
             }
