@@ -35,7 +35,7 @@ The planned Create-facing integrations are split by Create's **Display Link** an
 | Create integration | iCreate block | Intended role | Status |
 |---|---|---|---|
 | Display Link | Network Statistics | Show network statistics, such as item input/output and rejected transfers | A Display Link source class exists; registration and live-world behavior still need verification |
-| Display Link | Order Terminal | Show factory order information, such as active order counts, status, and progress | Planned; not yet implemented/verified |
+| Display Link | Order Terminal | Show factory order information, such as active order counts and outstanding item quantity | Source implemented, registered, and covered by summary tests; live-world verification remains |
 | Display Link | Terminal Logger | Show this logger's own routing configuration, filter, buffer/transfer state, and diagnostic status where available | Source implemented and registered; live-world verification remains |
 | Stock Link | Order Terminal | Expose factory stock/request information to Create's stock network, with clear rules for what counts as available stock | Planned; semantics and implementation still need verification |
 
@@ -55,14 +55,14 @@ Automated route support is adapter-specific. The train route has a Portable Stor
 
 The backend now includes persistent orders and delivery receipts, server-authoritative validation, claim/fulfil/cancel flows, idempotent payout/refund accounting, pending-delivery quantity reservations, manual inventory fulfilment, a Create Redstone Requester restock-order bridge, and a durable shipment journal with `RESERVED → DISPATCHED → DESTINATION_RECEIVED → COMPLETED` milestones. The Create PSI train adapter supports multi-stack shipments within the Terminal Logger buffer's available slots, verifies the full marked quantity at destination before applying progress/reward, and recovers reserved shipments and payout retries after restart. Regression tests cover transaction validation, journal transitions, malformed saved rows, and receipt persistence.
 
-**Still outstanding before calling the backend complete:** live-world verification of the train/PSI flow and Redstone Requester event behavior; broader end-to-end tests for interrupted dispatch, destination receipt, and payout recovery; and additional transport adapters for Frogports and belts. The Aeronautics Docking Connector adapter is implemented but needs live-world verification. Unsupported routes fail closed. A passing GitHub Actions build verifies compilation/tests, not in-game behavior. The order-terminal GUI, Order Terminal Display Link, and Stock Link integrations remain separate implementation work. The Terminal Logger Display Link source is implemented but needs live-world verification.
+**Still outstanding before calling the backend complete:** live-world verification of the train/PSI flow and Redstone Requester event behavior; broader end-to-end tests for interrupted dispatch, destination receipt, and payout recovery; and additional transport adapters for Frogports and belts. The Aeronautics Docking Connector adapter is implemented but needs live-world verification. Unsupported routes fail closed. A passing GitHub Actions build verifies compilation/tests, not in-game behavior. The order-terminal GUI and Stock Link integration remain separate implementation work. The Order Terminal Display Link source and summary regression tests are implemented; it still needs live-world verification. The Terminal Logger Display Link source is implemented but needs live-world verification.
 
 ## Total project completion: 45%
 
 This is a rough estimate of the **entire mod**, not just the backend. The backend has substantial implemented foundations and a code/CI-tested train adapter, but the player-facing order-terminal GUI, Frogport/belt adapters, full Create logistics verification, and broader end-to-end/in-game testing remain incomplete. The percentage is a planning estimate and should be revised as these major milestones land; a successful CI build alone does not mean the mod is playable or release-ready.
 
 
-The Order Terminal Display Link reports active orders and outstanding item quantity for the factory owner's orders. It is registered alongside the Terminal Logger and Network Statistics Display Links.
+The Order Terminal Display Link reports active orders and outstanding item quantity for the factory owner's orders. It is registered alongside the Terminal Logger and Network Statistics Display Links. Create Frogport compatibility detection now requires Create's item, block, and block-entity type registry entries to be present; this is deliberately only a prerequisite check, not a working Frogport shipment adapter.
 
 
 The Order Terminal Display Link has regression tests for active-order counting, outstanding quantities, owner scoping, and unclaimed terminals.
