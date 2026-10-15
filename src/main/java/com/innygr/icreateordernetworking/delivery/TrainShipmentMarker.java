@@ -26,6 +26,7 @@ public final class TrainShipmentMarker {
     private static final String COUNT = "Count";
     private static final String SOURCE = "Source";
     private static final String DESTINATION = "Destination";
+    private static final String ROUTE = "Route";
 
     private TrainShipmentMarker() {}
 
@@ -39,6 +40,7 @@ public final class TrainShipmentMarker {
         marker.putInt(COUNT, request.count());
         marker.putString(SOURCE, request.sourceReference().substring(0, request.sourceReference().indexOf('>')));
         marker.putString(DESTINATION, request.sourceReference().substring(request.sourceReference().indexOf('>') + 1));
+        marker.putString(ROUTE, request.route().name());
         tag.put(ROOT, marker);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
@@ -57,7 +59,7 @@ public final class TrainShipmentMarker {
             return shipment.transactionId().equals(UUID.fromString(marker.getString(TX)))
                     && shipment.orderId().equals(UUID.fromString(marker.getString(ORDER)))
                     && shipment.claimantId().equals(UUID.fromString(marker.getString(CLAIMANT)))
-                    && shipment.route() == DeliveryRoute.TRAIN
+                    && markerRoute(marker) == shipment.route()
                     && shipment.count() == marker.getInt(COUNT)
                     && shipment.sourceReference().equals(marker.getString(SOURCE) + ">" + marker.getString(DESTINATION))
                     && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(ResourceLocation.parse(marker.getString(ITEM)));
@@ -68,6 +70,13 @@ public final class TrainShipmentMarker {
 
     public static boolean matches(ItemStack stack, UUID transactionId) {
         return transactionId != null && transactionId.equals(transactionId(stack));
+    }
+
+    private static DeliveryRoute markerRoute(CompoundTag marker) {
+        // Markers written before route tagging were train-only.
+        if (!marker.contains(ROUTE)) return DeliveryRoute.TRAIN;
+        try { return DeliveryRoute.valueOf(marker.getString(ROUTE)); }
+        catch (IllegalArgumentException ignored) { return null; }
     }
 
     public static int countIn(TerminalLoggerBlockEntity logger, UUID transactionId) {
