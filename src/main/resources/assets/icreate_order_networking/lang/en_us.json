@@ -18,5 +18,6 @@
   "subtitles.icreate_order_networking.grinder_idle": "Scrapper idles",
   "subtitles.icreate_order_networking.grinder_begin": "Scrapper starts grinding",
   "subtitles.icreate_order_networking.grinder_active": "Scrapper grinds",
-  "subtitles.icreate_order_networking.grinder_metal": "Scrapper clanks"
+  "subtitles.icreate_order_networking.grinder_metal": "Scrapper clanks",
+  "icreate_order_networking.display_source.order_terminal": "Order Terminal Orders"
 }
