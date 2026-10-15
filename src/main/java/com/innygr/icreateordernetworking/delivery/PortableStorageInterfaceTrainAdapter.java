@@ -50,40 +50,65 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         if (!isAuthorized(level, request)) return null;
         EndpointPair pair = EndpointPair.parse(request.sourceReference());
         TerminalLoggerBlockEntity source = (TerminalLoggerBlockEntity) level.getBlockEntity(pair.source());
-        if (request.count() > 64) return null; // One marked stack per shipment keeps receipt accounting exact.
-        int sourceSlot = -1;
-        int markerSlot = -1;
-        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+        // Reserve the requested quantity across multiple source stacks. Each stack
+        // carries the same transaction marker and the total requested count.
+        java.util.List<StackAllocation> allocations = new java.util.ArrayList<>();
+        int remaining = request.count();
+        for (int slot = 0; slot < source.getInventory().getSlots() && remaining > 0; slot++) {
             ItemStack stack = source.getInventory().getStackInSlot(slot);
             if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())
-                    || TrainShipmentMarker.transactionId(stack) != null
-                    || stack.getCount() < request.count()) continue;
-            sourceSlot = slot;
-            if (stack.getCount() == request.count()) {
-                markerSlot = slot;
-            } else {
-                for (int target = 0; target < source.getInventory().getSlots(); target++) {
-                    if (target != slot && source.getInventory().getStackInSlot(target).isEmpty()) {
-                        markerSlot = target;
-                        break;
-                    }
-                }
-            }
-            if (markerSlot >= 0) break;
+                    || TrainShipmentMarker.transactionId(stack) != null) continue;
+            int amount = Math.min(remaining, stack.getCount());
+            allocations.add(new StackAllocation(slot, amount, stack.getCount()));
+            remaining -= amount;
         }
-        if (sourceSlot < 0 || markerSlot < 0) return null;
+        if (remaining != 0) return null;
 
-        ItemStack reserved = source.getInventory().extractItem(sourceSlot, request.count(), false);
-        if (reserved.isEmpty() || reserved.getCount() != request.count()) {
-            if (!reserved.isEmpty()) source.getInventory().insertItem(sourceSlot, reserved, false);
-            return null;
+        java.util.Set<Integer> fullyReservedSlots = new java.util.HashSet<>();
+        for (StackAllocation allocation : allocations) {
+            if (allocation.amount() == allocation.originalCount()) fullyReservedSlots.add(allocation.sourceSlot());
         }
-        TrainShipmentMarker.mark(reserved, request);
-        ItemStack remainder = source.getInventory().insertItem(markerSlot, reserved, false);
-        if (!remainder.isEmpty()) {
-            TrainShipmentMarker.clear(remainder);
-            source.getInventory().insertItem(sourceSlot, remainder, false);
-            return null;
+        java.util.List<Integer> availableTargets = new java.util.ArrayList<>();
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            if (source.getInventory().getStackInSlot(slot).isEmpty() || fullyReservedSlots.contains(slot)) {
+                availableTargets.add(slot);
+            }
+        }
+        java.util.List<StackAllocation> finalized = new java.util.ArrayList<>();
+        for (StackAllocation allocation : allocations) {
+            int targetSlot = allocation.sourceSlot();
+            if (allocation.amount() != allocation.originalCount()) {
+                targetSlot = availableTargets.stream().filter(slot -> slot != allocation.sourceSlot())
+                        .findFirst().orElse(-1);
+                if (targetSlot < 0) return null;
+            }
+            availableTargets.remove(Integer.valueOf(targetSlot));
+            finalized.add(new StackAllocation(allocation.sourceSlot(), targetSlot,
+                    allocation.amount(), allocation.originalCount()));
+        }
+
+        java.util.List<ItemStack> reservedStacks = new java.util.ArrayList<>();
+        for (StackAllocation allocation : finalized) {
+            ItemStack extracted = source.getInventory().extractItem(allocation.sourceSlot(), allocation.amount(), false);
+            if (extracted.isEmpty() || extracted.getCount() != allocation.amount()) {
+                if (!extracted.isEmpty()) {
+                    TrainShipmentMarker.clear(extracted);
+                    ItemStack remainderStack = source.getInventory().insertItem(allocation.sourceSlot(), extracted, false);
+                    if (!remainderStack.isEmpty()) source.getInventory().insertItem(allocation.targetSlot(), remainderStack, false);
+                }
+                restoreReservation(source, finalized, reservedStacks);
+                return null;
+            }
+            TrainShipmentMarker.mark(extracted, request);
+            reservedStacks.add(extracted);
+        }
+        for (int i = 0; i < finalized.size(); i++) {
+            int targetSlot = finalized.get(i).targetSlot();
+            if (!source.getInventory().getStackInSlot(targetSlot).isEmpty()) {
+                restoreReservation(source, finalized, reservedStacks);
+                return null;
+            }
+            source.getInventory().setStackInSlot(targetSlot, reservedStacks.get(i));
         }
         return preparedFor(level, request, pair);
     }
@@ -103,13 +128,11 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         if (order == null) return null;
         DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
                 DeliveryRoute.TRAIN, shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
-        if (findMarkedSlot(source, shipment.transactionId()) < 0) return null;
-        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
-            if (TrainShipmentMarker.matches(source.getInventory().getStackInSlot(slot), shipment)) {
-                return preparedFor(level, request, pair);
-            }
-        }
-        return null;
+        java.util.List<Integer> markedSlots = findMarkedSlots(source, shipment.transactionId());
+        if (markedSlots.isEmpty()) return null;
+        int markedCount = markedSlots.stream()
+                .mapToInt(slot -> source.getInventory().getStackInSlot(slot).getCount()).sum();
+        return markedCount == shipment.count() ? preparedFor(level, request, pair) : null;
     }
 
     private PreparedDelivery preparedFor(ServerLevel level, DeliveryRequest request, EndpointPair pair) {
@@ -129,27 +152,69 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
                         liveSource.getOutputDirection().getOpposite());
                 if (target == null) return false;
 
-                int markedSlot = findMarkedSlot(liveSource, request.transactionId());
-                if (markedSlot < 0) return false;
-                ItemStack marked = liveSource.getInventory().getStackInSlot(markedSlot);
-                if (marked.getCount() != request.count()) return false;
-                ItemStack simulated = marked.copy();
-                for (int slot = 0; slot < target.getSlots() && !simulated.isEmpty(); slot++) {
-                    simulated = target.insertItem(slot, simulated, true);
-                }
-                if (!simulated.isEmpty()) return false;
+                java.util.List<Integer> markedSlots = findMarkedSlots(liveSource, request.transactionId());
+                if (markedSlots.isEmpty()) return false;
+                int markedCount = markedSlots.stream()
+                        .mapToInt(slot -> liveSource.getInventory().getStackInSlot(slot).getCount()).sum();
+                if (markedCount != request.count()) return false;
 
-                ItemStack toSend = liveSource.getInventory().extractItem(markedSlot, request.count(), false);
-                if (toSend.isEmpty() || !TrainShipmentMarker.matches(toSend, request.transactionId())) {
-                    if (!toSend.isEmpty()) liveSource.getInventory().insertItem(markedSlot, toSend, false);
-                    return false;
+                // Simulate the complete multi-stack transfer before mutating either endpoint.
+                java.util.List<ItemStack> virtualSlots = new java.util.ArrayList<>();
+                for (int slot = 0; slot < target.getSlots(); slot++) {
+                    virtualSlots.add(target.getStackInSlot(slot).copy());
                 }
-                ItemStack remaining = toSend;
-                for (int slot = 0; slot < target.getSlots() && !remaining.isEmpty(); slot++) {
-                    remaining = target.insertItem(slot, remaining, false);
+                for (int sourceSlot : markedSlots) {
+                    ItemStack cargo = liveSource.getInventory().getStackInSlot(sourceSlot).copy();
+                    for (int slot = 0; slot < target.getSlots() && !cargo.isEmpty(); slot++) {
+                        ItemStack current = virtualSlots.get(slot);
+                        if (!current.isEmpty()) {
+                            if (!ItemStack.isSameItemSameComponents(current, cargo)) continue;
+                            int room = Math.min(current.getMaxStackSize(), target.getSlotLimit(slot)) - current.getCount();
+                            int moved = Math.min(Math.max(0, room), cargo.getCount());
+                            if (moved > 0) {
+                                current.grow(moved);
+                                cargo.shrink(moved);
+                            }
+                        } else if (target.isItemValid(slot, cargo)) {
+                            int moved = Math.min(cargo.getCount(), Math.min(cargo.getMaxStackSize(), target.getSlotLimit(slot)));
+                            if (moved > 0) {
+                                virtualSlots.set(slot, cargo.copyWithCount(moved));
+                                cargo.shrink(moved);
+                            }
+                        }
+                    }
+                    if (!cargo.isEmpty()) return false;
                 }
-                if (!remaining.isEmpty()) {
-                    liveSource.getInventory().insertItem(markedSlot, remaining, false);
+
+                java.util.List<ItemStack> cargoStacks = new java.util.ArrayList<>();
+                for (int sourceSlot : markedSlots) {
+                    ItemStack extracted = liveSource.getInventory().extractItem(sourceSlot, Integer.MAX_VALUE, false);
+                    if (extracted.isEmpty() || !TrainShipmentMarker.matches(extracted, request.transactionId())) {
+                        if (!extracted.isEmpty()) liveSource.getInventory().insertItem(sourceSlot, extracted, false);
+                        restoreCargoToSource(liveSource, markedSlots, cargoStacks);
+                        return false;
+                    }
+                    cargoStacks.add(extracted);
+                }
+
+                java.util.Map<Integer, Integer> insertedBySlot = new java.util.LinkedHashMap<>();
+                boolean transferComplete = true;
+                for (ItemStack stack : cargoStacks) {
+                    ItemStack remainder = stack;
+                    for (int slot = 0; slot < target.getSlots() && !remainder.isEmpty(); slot++) {
+                        int before = target.getStackInSlot(slot).getCount();
+                        remainder = target.insertItem(slot, remainder, false);
+                        int after = target.getStackInSlot(slot).getCount();
+                        if (after > before) insertedBySlot.merge(slot, after - before, Integer::sum);
+                    }
+                    if (!remainder.isEmpty()) {
+                        transferComplete = false;
+                        break;
+                    }
+                }
+                if (!transferComplete) {
+                    insertedBySlot.forEach((slot, count) -> target.extractItem(slot, count, false));
+                    restoreCargoToSource(liveSource, markedSlots, cargoStacks);
                     return false;
                 }
                 liveSource.recordTransfer(true, request.itemId(), request.count(),
@@ -164,11 +229,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
                 TerminalLoggerBlockEntity liveSource = level.getBlockEntity(pair.source()) instanceof TerminalLoggerBlockEntity logger
                         ? logger : null;
                 if (liveSource == null) return;
-                int slot = findMarkedSlot(liveSource, request.transactionId());
-                if (slot < 0) return;
-                ItemStack clean = liveSource.getInventory().getStackInSlot(slot).copy();
-                TrainShipmentMarker.clear(clean);
-                liveSource.getInventory().setStackInSlot(slot, clean);
+                TrainShipmentMarker.clearTransaction(liveSource, request.transactionId());
             }
         };
     }
@@ -191,10 +252,56 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
     }
 
     private static int findMarkedSlot(TerminalLoggerBlockEntity logger, UUID transactionId) {
+        java.util.List<Integer> slots = findMarkedSlots(logger, transactionId);
+        return slots.isEmpty() ? -1 : slots.get(0);
+    }
+
+    private static java.util.List<Integer> findMarkedSlots(TerminalLoggerBlockEntity logger, UUID transactionId) {
+        java.util.List<Integer> slots = new java.util.ArrayList<>();
         for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
-            if (TrainShipmentMarker.matches(logger.getInventory().getStackInSlot(slot), transactionId)) return slot;
+            if (TrainShipmentMarker.matches(logger.getInventory().getStackInSlot(slot), transactionId)) slots.add(slot);
         }
-        return -1;
+        return slots;
+    }
+
+    private static void restoreReservation(TerminalLoggerBlockEntity source,
+            java.util.List<StackAllocation> allocations, java.util.List<ItemStack> extracted) {
+        for (int i = 0; i < extracted.size(); i++) {
+            ItemStack stack = extracted.get(i).copy();
+            TrainShipmentMarker.clear(stack);
+            int preferred = allocations.get(i).sourceSlot();
+            if (source.getInventory().getStackInSlot(preferred).isEmpty()) {
+                source.getInventory().setStackInSlot(preferred, stack);
+            } else {
+                ItemStack remainder = source.getInventory().insertItem(preferred, stack, false);
+                for (int slot = 0; slot < source.getInventory().getSlots() && !remainder.isEmpty(); slot++) {
+                    remainder = source.getInventory().insertItem(slot, remainder, false);
+                }
+            }
+        }
+    }
+
+    private static void restoreCargoToSource(TerminalLoggerBlockEntity source,
+            java.util.List<Integer> sourceSlots, java.util.List<ItemStack> cargoStacks) {
+        for (int i = 0; i < cargoStacks.size(); i++) {
+            ItemStack stack = cargoStacks.get(i);
+            if (stack.isEmpty()) continue;
+            int preferred = sourceSlots.get(i);
+            if (source.getInventory().getStackInSlot(preferred).isEmpty()) {
+                source.getInventory().setStackInSlot(preferred, stack);
+            } else {
+                ItemStack remainder = source.getInventory().insertItem(preferred, stack, false);
+                for (int slot = 0; slot < source.getInventory().getSlots() && !remainder.isEmpty(); slot++) {
+                    remainder = source.getInventory().insertItem(slot, remainder, false);
+                }
+            }
+        }
+    }
+
+    private record StackAllocation(int sourceSlot, int targetSlot, int amount, int originalCount) {
+        StackAllocation(int sourceSlot, int amount, int originalCount) {
+            this(sourceSlot, -1, amount, originalCount);
+        }
     }
 
     private static PortableStorageInterfaceBlockEntity sourceInterface(ServerLevel level,
