@@ -1,7 +1,7 @@
 package com.innygr.icreateordernetworking.network;
 
 import java.util.UUID;
-import com.innygr.icreateordernetworking.delivery.DeliveryService;
+import com.innygr.icreateordernetworking.orders.DeliveryService;
 import com.innygr.icreateordernetworking.delivery.DeliveryResult;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderService;
