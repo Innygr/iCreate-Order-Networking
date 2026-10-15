@@ -4,6 +4,7 @@
   "block.icreate_order_networking.brass_terminal_logger": "Brass Terminal Logger",
   "block.icreate_order_networking.network_statistics": "Network Statistics",
   "icreate_order_networking.display_source.network_statistics": "Network Statistics",
+  "icreate_order_networking.display_source.terminal_logger": "Terminal Logger Diagnostics",
   "block.icreate_order_networking.scrapper": "Scrapper",
   "block.icreate_order_networking.missile_thruster": "Missile Thruster",
   "block.icreate_order_networking.missile_tag": "Missile Tag",
