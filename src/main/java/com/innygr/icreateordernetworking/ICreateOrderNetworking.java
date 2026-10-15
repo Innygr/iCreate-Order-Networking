@@ -4,6 +4,7 @@ import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
+import com.innygr.icreateordernetworking.delivery.PortableStorageInterfaceTrainAdapter;
 import com.innygr.icreateordernetworking.logistics.FactoryEndpointRegistry;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
@@ -44,6 +45,7 @@ public final class ICreateOrderNetworking {
         modBus.addListener(this::registerCapabilities);
         modBus.addListener(this::registerDisplaySources);
         modBus.addListener(this::registerDisplaySourceBindings);
+        modBus.addListener(this::registerTransportAdapters);
     }
 
     private void onServerStarted(ServerStartedEvent event) {
@@ -74,5 +76,10 @@ public final class ICreateOrderNetworking {
         event.enqueueWork(() -> DisplaySource.BY_BLOCK_ENTITY.add(
                 ModBlockEntities.NETWORK_STATISTICS.get(),
                 NetworkStatisticsDisplaySource.INSTANCE));
+    }
+
+    private void registerTransportAdapters(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> AutomatedDeliveryRegistry.register(
+                new PortableStorageInterfaceTrainAdapter()));
     }
 }
