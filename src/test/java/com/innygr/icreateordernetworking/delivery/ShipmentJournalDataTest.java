@@ -104,4 +104,31 @@ class ShipmentJournalDataTest {
         assertEquals(4, restored.count());
         assertEquals(1, reloaded.pending().size());
     }
+    @Test
+    void transitionsRejectEndpointDataOutsideReceiptBoundary() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID transactionId = UUID.randomUUID();
+        assertTrue(journal.reserve(request(transactionId)));
+
+        assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, "destination-A"));
+        assertEquals(ShipmentJournalData.Stage.RESERVED, journal.find(transactionId).stage());
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+
+        assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, ""));
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, "destination-A"));
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, "destination-A"));
+        assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, "destination-B"));
+        assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.DESTINATION_RECEIVED,
+                ShipmentJournalData.Stage.COMPLETED, "destination-A"));
+        assertEquals(ShipmentJournalData.Stage.DESTINATION_RECEIVED, journal.find(transactionId).stage());
+    }
+
 }
