@@ -54,8 +54,16 @@ public final class DurableShipmentService {
 
     /** Call only after the destination inventory/endpoint verifies the matching transaction and item count. */
     public static boolean confirmDestinationReceipt(ServerLevel level, UUID transactionId, String destinationReference) {
-        if (!onServerThread(level)) return false;
+        if (!onServerThread(level) || transactionId == null
+                || destinationReference == null || destinationReference.isBlank()
+                || destinationReference.length() > 256) return false;
         ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment current = journal.find(transactionId);
+        if (current == null) return false;
+        // Duplicate receipt notifications are idempotent only for the same endpoint.
+        if (current.stage() == ShipmentJournalData.Stage.COMPLETED) {
+            return current.destinationReference().equals(destinationReference);
+        }
         if (!journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
                 ShipmentJournalData.Stage.DESTINATION_RECEIVED, destinationReference)) return false;
         return finalizePayout(level, transactionId, journal);
