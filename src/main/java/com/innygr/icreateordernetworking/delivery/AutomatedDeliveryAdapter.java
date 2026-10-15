@@ -23,6 +23,14 @@ public interface AutomatedDeliveryAdapter {
     PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request);
 
     /**
+     * Rebuilds an idempotent handle for a persisted RESERVED shipment after restart.
+     * Implementations must locate the existing reservation, never reserve new cargo.
+     */
+    default PreparedDelivery resumeCargo(ServerLevel level, ShipmentJournalData.Shipment shipment) {
+        return null;
+    }
+
+    /**
      * Independently verifies that the exact transaction's cargo has arrived at
      * the named destination. Implementations must inspect server-owned endpoint
      * state; a caller-provided string alone is never evidence of receipt.
