@@ -72,6 +72,8 @@ class ShipmentJournalDataTest {
         assertTrue(journal.reserve(request));
         assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
                 ShipmentJournalData.Stage.DISPATCHED, null));
+        assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, "10,64,20"));
 
         CompoundTag saved = journal.save(new CompoundTag(), null);
         ListTag rows = saved.getList("Shipments", Tag.TAG_COMPOUND);
@@ -83,7 +85,8 @@ class ShipmentJournalDataTest {
         ShipmentJournalData reloaded = ShipmentJournalData.load(saved, null);
         ShipmentJournalData.Shipment restored = reloaded.find(transactionId);
         assertNotNull(restored);
-        assertEquals(ShipmentJournalData.Stage.DISPATCHED, restored.stage());
+        assertEquals(ShipmentJournalData.Stage.DESTINATION_RECEIVED, restored.stage());
+        assertEquals("10,64,20", restored.destinationReference());
         assertEquals(orderId, restored.orderId());
         assertEquals(claimantId, restored.claimantId());
         assertEquals(4, restored.count());
