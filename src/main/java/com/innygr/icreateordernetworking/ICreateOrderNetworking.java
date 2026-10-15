@@ -3,6 +3,7 @@ package com.innygr.icreateordernetworking;
 import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
+import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
 import com.innygr.icreateordernetworking.logistics.FactoryEndpointRegistry;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
@@ -20,6 +21,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 
 /** Main entry point for iCreate: Order Networking. */
@@ -31,6 +33,7 @@ public final class ICreateOrderNetworking {
 
     public ICreateOrderNetworking(IEventBus modBus) {
         NeoForge.EVENT_BUS.register(requesterOrderBridge);
+        NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
@@ -41,6 +44,12 @@ public final class ICreateOrderNetworking {
         modBus.addListener(this::registerCapabilities);
         modBus.addListener(this::registerDisplaySources);
         modBus.addListener(this::registerDisplaySourceBindings);
+    }
+
+    private void onServerStarted(ServerStartedEvent event) {
+        // Retry durable payouts only after a destination receipt was already recorded.
+        // Transport adapters still own recovery for shipments awaiting physical reconciliation.
+        DurableShipmentService.recoverPendingPayouts(event.getServer().overworld());
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
