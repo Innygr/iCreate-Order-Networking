@@ -6,6 +6,7 @@ import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -82,7 +83,7 @@ public final class TrainShipmentMarker {
     /** Clears only this mod's marker keys and preserves any other custom item data. */
     public static void clear(ItemStack stack) {
         CompoundTag tag = customTag(stack);
-        if (!tag.contains(ROOT, CompoundTag.TAG_COMPOUND)) return;
+        if (!tag.contains(ROOT, Tag.TAG_COMPOUND)) return;
         tag.remove(ROOT);
         if (tag.isEmpty()) stack.remove(DataComponents.CUSTOM_DATA);
         else stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
