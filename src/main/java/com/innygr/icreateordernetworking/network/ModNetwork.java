@@ -12,5 +12,6 @@ public final class ModNetwork {
         registrar.playToServer(CreateOrderPacket.TYPE, CreateOrderPacket.STREAM_CODEC, CreateOrderPacket::handle);
         registrar.playToServer(ClaimOrderPacket.TYPE, ClaimOrderPacket.STREAM_CODEC, ClaimOrderPacket::handle);
         registrar.playToServer(FulfilOrderPacket.TYPE, FulfilOrderPacket.STREAM_CODEC, FulfilOrderPacket::handle);
+        registrar.playToServer(OrderTerminalActionPacket.TYPE, OrderTerminalActionPacket.STREAM_CODEC, OrderTerminalActionPacket::handle);
     }
 }
