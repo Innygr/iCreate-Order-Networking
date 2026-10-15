@@ -35,7 +35,7 @@ class ShipmentJournalDataTest {
         assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
                 ShipmentJournalData.Stage.DESTINATION_RECEIVED, "destination-A"));
         assertFalse(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
-                ShipmentJournalData.Stage.DISPATCHED, null));
+                ShipmentJournalData.Stage.COMPLETED, null));
         assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
                 ShipmentJournalData.Stage.DISPATCHED, null));
         assertTrue(journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
