@@ -64,6 +64,18 @@ public final class DurableShipmentService {
         if (current.stage() == ShipmentJournalData.Stage.COMPLETED) {
             return current.destinationReference().equals(destinationReference);
         }
+        if (current.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED) {
+            return current.destinationReference().equals(destinationReference)
+                    && retryPayout(level, transactionId);
+        }
+        if (current.stage() != ShipmentJournalData.Stage.DISPATCHED) return false;
+        AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(current.route()).orElse(null);
+        if (adapter == null) return false;
+        try {
+            if (!adapter.verifyDestinationReceipt(level, current, destinationReference)) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
         if (!journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
                 ShipmentJournalData.Stage.DESTINATION_RECEIVED, destinationReference)) return false;
         return finalizePayout(level, transactionId, journal);
