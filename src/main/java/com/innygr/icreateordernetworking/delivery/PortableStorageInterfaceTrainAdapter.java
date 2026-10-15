@@ -126,10 +126,66 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
                 DeliveryRoute.TRAIN, shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
         java.util.List<Integer> markedSlots = findMarkedSlots(source, shipment.transactionId());
-        if (markedSlots.isEmpty()) return null;
         int markedCount = markedSlots.stream()
                 .mapToInt(slot -> source.getInventory().getStackInSlot(slot).getCount()).sum();
-        return markedCount == shipment.count() ? preparedFor(level, request, pair) : null;
+        if (markedCount > shipment.count()) return null;
+
+        // If the server stopped midway through prepareCargo(), finish the same
+        // durable reservation from remaining unmarked source stacks. Never create
+        // a second transaction or dispatch a partial marked shipment.
+        int remaining = shipment.count() - markedCount;
+        if (remaining > 0 && !completePartialReservation(source, request, remaining)) return null;
+        return preparedFor(level, request, pair);
+    }
+
+    private boolean completePartialReservation(TerminalLoggerBlockEntity source,
+            DeliveryRequest request, int needed) {
+        java.util.List<Integer> emptySlots = new java.util.ArrayList<>();
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            if (source.getInventory().getStackInSlot(slot).isEmpty()) emptySlots.add(slot);
+        }
+        java.util.List<StackAllocation> allocations = new java.util.ArrayList<>();
+        int remaining = needed;
+        for (int slot = 0; slot < source.getInventory().getSlots() && remaining > 0; slot++) {
+            ItemStack stack = source.getInventory().getStackInSlot(slot);
+            if (stack.isEmpty()
+                    || !BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())
+                    || TrainShipmentMarker.transactionId(stack) != null) continue;
+            int amount = Math.min(remaining, stack.getCount());
+            int target = slot;
+            if (amount != stack.getCount()) {
+                target = emptySlots.stream().filter(candidate -> candidate != slot).findFirst().orElse(-1);
+                if (target < 0) return false;
+                emptySlots.remove(Integer.valueOf(target));
+            }
+            allocations.add(new StackAllocation(slot, target, amount, stack.getCount()));
+            remaining -= amount;
+        }
+        if (remaining != 0) return false;
+
+        for (StackAllocation allocation : allocations) {
+            ItemStack extracted = source.getInventory().extractItem(allocation.sourceSlot(), allocation.amount(), false);
+            if (extracted.isEmpty() || extracted.getCount() != allocation.amount()) {
+                if (!extracted.isEmpty()) {
+                    ItemStack remainder = source.getInventory().insertItem(allocation.sourceSlot(), extracted, false);
+                    if (!remainder.isEmpty()) source.getInventory().insertItem(allocation.targetSlot(), remainder, false);
+                }
+                return false;
+            }
+            TrainShipmentMarker.mark(extracted, request);
+            if (allocation.targetSlot() == allocation.sourceSlot()) {
+                source.getInventory().setStackInSlot(allocation.sourceSlot(), extracted);
+            } else if (source.getInventory().getStackInSlot(allocation.targetSlot()).isEmpty()) {
+                source.getInventory().setStackInSlot(allocation.targetSlot(), extracted);
+            } else {
+                // Keep the marker in the source if an endpoint changed unexpectedly;
+                // a later recovery pass can continue without dispatching partial cargo.
+                ItemStack remainder = source.getInventory().insertItem(allocation.sourceSlot(), extracted, false);
+                if (!remainder.isEmpty()) source.getInventory().insertItem(allocation.targetSlot(), remainder, false);
+                return false;
+            }
+        }
+        return true;
     }
 
     private PreparedDelivery preparedFor(ServerLevel level, DeliveryRequest request, EndpointPair pair) {
