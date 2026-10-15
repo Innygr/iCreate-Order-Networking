@@ -114,6 +114,20 @@ public final class AutomatedDeliveryService {
                     DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
                     "The order quantity could not be reserved for this transaction.");
         }
+
+        // Couple the authoritative order reservation to the durable shipment journal.
+        // If the journal rejects the transaction, undo both reservations before returning.
+        if (!DurableShipmentService.recordReserved(level, request)) {
+            data.forgetDelivery(request.transactionId());
+            try {
+                prepared.rollback();
+            } catch (RuntimeException | LinkageError ignored) {
+                // Adapter rollback is required to be idempotent and best-effort.
+            }
+            return DeliveryPreparation.failure(
+                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
+                    "The shipment journal could not reserve this transaction.");
+        }
         return DeliveryPreparation.prepared(prepared);
     }
 
