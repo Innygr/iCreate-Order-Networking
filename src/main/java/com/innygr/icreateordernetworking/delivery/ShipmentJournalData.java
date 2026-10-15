@@ -89,17 +89,26 @@ public final class ShipmentJournalData extends SavedData {
     public boolean advance(UUID transactionId, Stage expected, Stage next, String destinationReference) {
         if (transactionId == null || expected == null || next == null
                 || next.ordinal() != expected.ordinal() + 1) return false;
+        // Only the receipt transition may carry a destination. Reject stray values
+        // instead of silently accepting a malformed or confused caller.
+        if (next == Stage.DESTINATION_RECEIVED) {
+            if (destinationReference == null || destinationReference.isBlank()
+                    || destinationReference.length() > 256) return false;
+        } else if (destinationReference != null) {
+            return false;
+        }
+
         Shipment current = shipments.get(transactionId);
         if (current == null) return false;
         if (current.stage() == next) {
-            return next != Stage.DESTINATION_RECEIVED || current.destinationReference().equals(destinationReference);
+            // A repeated transition is idempotent only when its receipt identity
+            // is exactly the same; non-receipt transitions must carry no endpoint.
+            return next != Stage.DESTINATION_RECEIVED
+                    || current.destinationReference().equals(destinationReference);
         }
         if (current.stage() != expected) return false;
-        String destination = current.destinationReference();
-        if (next == Stage.DESTINATION_RECEIVED) {
-            if (destinationReference == null || destinationReference.isBlank() || destinationReference.length() > 256) return false;
-            destination = destinationReference;
-        }
+        String destination = next == Stage.DESTINATION_RECEIVED
+                ? destinationReference : current.destinationReference();
         shipments.put(transactionId, new Shipment(current.transactionId(), current.orderId(), current.route(),
                 current.claimantId(), current.count(), current.sourceReference(), destination, next));
         setDirty();
