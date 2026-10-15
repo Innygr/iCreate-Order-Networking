@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.delivery;
 
 import com.innygr.icreateordernetworking.orders.Order;
+import net.minecraft.core.BlockPos;
 import com.innygr.icreateordernetworking.orders.OrderData;
 import com.innygr.icreateordernetworking.orders.OrderStatus;
 import com.innygr.icreateordernetworking.orders.DeliveryReceipt;
@@ -129,6 +130,35 @@ public final class AutomatedDeliveryService {
                     "The shipment journal could not reserve this transaction.");
         }
         return DeliveryPreparation.prepared(prepared);
+    }
+
+
+    /**
+     * Reconciles persisted RESERVED transactions whose tagged cargo is still held
+     * by this source logger. Safe to call periodically; the adapter and journal
+     * use the transaction UUID to avoid duplicate dispatch.
+     */
+    public static int resumeReservedAtSource(ServerLevel level, BlockPos sourcePosition) {
+        if (level == null || sourcePosition == null || level.getServer() == null
+                || !level.getServer().isSameThread()) return 0;
+        String prefix = sourcePosition.getX() + "," + sourcePosition.getY() + ","
+                + sourcePosition.getZ() + ">";
+        int resumed = 0;
+        for (ShipmentJournalData.Shipment shipment : ShipmentJournalData.get(level).pending().values()) {
+            if (shipment.stage() != ShipmentJournalData.Stage.RESERVED
+                    || !shipment.sourceReference().startsWith(prefix)) continue;
+            AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(shipment.route()).orElse(null);
+            if (adapter == null) continue;
+            PreparedDelivery prepared;
+            try {
+                prepared = adapter.resumeCargo(level, shipment);
+            } catch (RuntimeException | LinkageError ignored) {
+                prepared = null;
+            }
+            if (prepared != null && DurableShipmentService.commitDispatch(
+                    level, shipment.transactionId(), prepared)) resumed++;
+        }
+        return resumed;
     }
 
     /**
