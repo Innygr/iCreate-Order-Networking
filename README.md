@@ -60,3 +60,6 @@ The backend now includes persistent orders and delivery receipts, server-authori
 ## Total project completion: 45%
 
 This is a rough estimate of the **entire mod**, not just the backend. The backend has substantial implemented foundations and a code/CI-tested train adapter, but the player-facing order-terminal GUI, Frogport/belt adapters, full Create logistics verification, and broader end-to-end/in-game testing remain incomplete. The percentage is a planning estimate and should be revised as these major milestones land; a successful CI build alone does not mean the mod is playable or release-ready.
+
+
+The Order Terminal Display Link reports active orders and outstanding item quantity for the factory owner's orders. It is registered alongside the Terminal Logger and Network Statistics Display Links.
