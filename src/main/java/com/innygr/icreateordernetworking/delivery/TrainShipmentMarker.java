@@ -89,6 +89,36 @@ public final class TrainShipmentMarker {
         return count;
     }
 
+    /**
+     * Counts only stacks whose complete marker matches the durable shipment.
+     * A transaction UUID by itself is not proof of the correct order, item,
+     * claimant, route, endpoint pair, or quantity.
+     */
+    public static int countMatchingIn(TerminalLoggerBlockEntity logger,
+                                      ShipmentJournalData.Shipment shipment) {
+        if (logger == null || shipment == null) return 0;
+        int count = 0;
+        for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
+            ItemStack stack = logger.getInventory().getStackInSlot(slot);
+            if (matches(stack, shipment)) count += stack.getCount();
+        }
+        return count;
+    }
+
+    /** Reject a receipt if any stack carrying this transaction has a malformed or conflicting marker. */
+    public static boolean hasOnlyMatchingStacks(TerminalLoggerBlockEntity logger,
+                                                ShipmentJournalData.Shipment shipment) {
+        if (logger == null || shipment == null) return false;
+        boolean found = false;
+        for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
+            ItemStack stack = logger.getInventory().getStackInSlot(slot);
+            if (!matches(stack, shipment.transactionId())) continue;
+            found = true;
+            if (!matches(stack, shipment)) return false;
+        }
+        return found;
+    }
+
     /** Clears only this mod's marker keys and preserves any other custom item data. */
     public static void clear(ItemStack stack) {
         CompoundTag tag = customTag(stack);
