@@ -21,4 +21,14 @@ public interface AutomatedDeliveryAdapter {
      * Return null if cargo is absent, stale, or cannot be reserved.
      */
     PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request);
+
+    /**
+     * Independently verifies that the exact transaction's cargo has arrived at
+     * the named destination. Implementations must inspect server-owned endpoint
+     * state; a caller-provided string alone is never evidence of receipt.
+     */
+    default boolean verifyDestinationReceipt(ServerLevel level,
+            ShipmentJournalData.Shipment shipment, String destinationReference) {
+        return false;
+    }
 }
