@@ -106,18 +106,30 @@ public final class TrainShipmentMarker {
      */
     public static void tryConfirmAtDestination(ServerLevel level, TerminalLoggerBlockEntity logger) {
         if (level == null || logger == null) return;
+        String destination = EndpointReference.format(logger.getBlockPos());
         for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
             ItemStack stack = logger.getInventory().getStackInSlot(slot);
             UUID transactionId = transactionId(stack);
             if (transactionId == null) continue;
-            ShipmentJournalData.Shipment shipment = ShipmentJournalData.get(level).find(transactionId);
-            if (shipment == null || shipment.stage() != ShipmentJournalData.Stage.DISPATCHED
-                    || countIn(logger, transactionId) < shipment.count()) continue;
-            String destination = logger.getBlockPos().getX() + "," + logger.getBlockPos().getY()
-                    + "," + logger.getBlockPos().getZ();
-            if (DurableShipmentService.confirmDestinationReceipt(level, transactionId, destination)) {
-                clearTransaction(logger, transactionId);
-            }
+            ShipmentJournalData journal = ShipmentJournalData.get(level);
+            ShipmentJournalData.Shipment shipment = journal.find(transactionId);
+            if (shipment == null || countIn(logger, transactionId) < shipment.count()
+                    || !shipment.sourceReference().endsWith(">" + destination)) continue;
+
+            boolean finalized = switch (shipment.stage()) {
+                case DISPATCHED -> DurableShipmentService.confirmDestinationReceipt(
+                        level, transactionId, destination);
+                case DESTINATION_RECEIVED -> DurableShipmentService.retryPayout(level, transactionId);
+                case COMPLETED -> destination.equals(shipment.destinationReference());
+                case RESERVED -> false;
+            };
+            if (finalized) clearTransaction(logger, transactionId);
+        }
+    }
+
+    private static final class EndpointReference {
+        private static String format(net.minecraft.core.BlockPos pos) {
+            return pos.getX() + "," + pos.getY() + "," + pos.getZ();
         }
     }
 
