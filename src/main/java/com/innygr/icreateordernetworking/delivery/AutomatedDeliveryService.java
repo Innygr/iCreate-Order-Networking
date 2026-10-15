@@ -111,11 +111,17 @@ public final class AutomatedDeliveryService {
         try {
             prepared = adapter.prepareCargo(level, request);
         } catch (RuntimeException | LinkageError exception) {
-            prepared = null;
+            // An exception may have happened after the adapter marked some stacks.
+            // Keep the durable RESERVED row so the adapter can reconcile those
+            // physical changes instead of orphaning transaction-marked cargo.
+            return DeliveryPreparation.failure(
+                    DeliveryPreparation.Status.CARGO_UNAVAILABLE,
+                    "Cargo preparation was interrupted; the durable reservation was kept for recovery.");
         }
         if (prepared == null) {
-            // No physical reservation was returned, so it is safe to remove only
-            // this still-RESERVED journal row and release the order quantity.
+            // A null result is the adapter's explicit guarantee that it made no
+            // reservation (and cleaned up any partial mutation), so release both
+            // durable reservations and let the player retry normally.
             ShipmentJournalData.get(level).abandonReservation(request.transactionId());
             data.forgetDelivery(request.transactionId());
             return DeliveryPreparation.failure(
