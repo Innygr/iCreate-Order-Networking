@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking;
 
 import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
+import com.innygr.icreateordernetworking.compat.TerminalLoggerDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
@@ -71,12 +72,20 @@ public final class ICreateOrderNetworking {
         event.register(CreateRegistries.DISPLAY_SOURCE,
                 ResourceLocation.fromNamespaceAndPath(MOD_ID, "network_statistics"),
                 () -> NetworkStatisticsDisplaySource.INSTANCE);
+        event.register(CreateRegistries.DISPLAY_SOURCE,
+                ResourceLocation.fromNamespaceAndPath(MOD_ID, "terminal_logger"),
+                () -> TerminalLoggerDisplaySource.INSTANCE);
     }
 
     private void registerDisplaySourceBindings(FMLCommonSetupEvent event) {
-        event.enqueueWork(() -> DisplaySource.BY_BLOCK_ENTITY.add(
-                ModBlockEntities.NETWORK_STATISTICS.get(),
-                NetworkStatisticsDisplaySource.INSTANCE));
+        event.enqueueWork(() -> {
+            DisplaySource.BY_BLOCK_ENTITY.add(
+                    ModBlockEntities.NETWORK_STATISTICS.get(),
+                    NetworkStatisticsDisplaySource.INSTANCE);
+            DisplaySource.BY_BLOCK_ENTITY.add(
+                    ModBlockEntities.TERMINAL_LOGGER.get(),
+                    TerminalLoggerDisplaySource.INSTANCE);
+        });
     }
 
 }
