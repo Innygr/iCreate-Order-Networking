@@ -90,6 +90,23 @@ public final class AutomatedDeliveryService {
                     "The transport source is not authorized for this request.");
         }
 
+        // Persist the order quantity reservation and shipment journal BEFORE
+        // touching physical cargo. A crash can then leave a recoverable RESERVED
+        // transaction, never transaction-marked cargo with no durable journal row.
+        if (!data.reserveDelivery(request.transactionId(), request.orderId(), request.route(),
+                request.actorId(), request.count())) {
+            return DeliveryPreparation.failure(
+                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
+                    "The order quantity could not be reserved for this transaction.");
+        }
+
+        if (!DurableShipmentService.recordReserved(level, request)) {
+            data.forgetDelivery(request.transactionId());
+            return DeliveryPreparation.failure(
+                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
+                    "The shipment journal could not reserve this transaction.");
+        }
+
         PreparedDelivery prepared;
         try {
             prepared = adapter.prepareCargo(level, request);
@@ -97,38 +114,15 @@ public final class AutomatedDeliveryService {
             prepared = null;
         }
         if (prepared == null) {
+            // No physical reservation was returned, so it is safe to remove only
+            // this still-RESERVED journal row and release the order quantity.
+            ShipmentJournalData.get(level).abandonReservation(request.transactionId());
+            data.forgetDelivery(request.transactionId());
             return DeliveryPreparation.failure(
                     DeliveryPreparation.Status.CARGO_UNAVAILABLE,
                     "The adapter could not reserve cargo safely.");
         }
 
-        // Persist the transaction reservation only after the adapter has reserved
-        // the physical cargo. If durable order reservation fails, release the cargo.
-        if (!data.reserveDelivery(request.transactionId(), request.orderId(), request.route(),
-                request.actorId(), request.count())) {
-            try {
-                prepared.rollback();
-            } catch (RuntimeException | LinkageError ignored) {
-                // Adapter rollback is required to be idempotent and best-effort.
-            }
-            return DeliveryPreparation.failure(
-                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
-                    "The order quantity could not be reserved for this transaction.");
-        }
-
-        // Couple the authoritative order reservation to the durable shipment journal.
-        // If the journal rejects the transaction, undo both reservations before returning.
-        if (!DurableShipmentService.recordReserved(level, request)) {
-            data.forgetDelivery(request.transactionId());
-            try {
-                prepared.rollback();
-            } catch (RuntimeException | LinkageError ignored) {
-                // Adapter rollback is required to be idempotent and best-effort.
-            }
-            return DeliveryPreparation.failure(
-                    DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
-                    "The shipment journal could not reserve this transaction.");
-        }
         return DeliveryPreparation.prepared(prepared);
     }
 
