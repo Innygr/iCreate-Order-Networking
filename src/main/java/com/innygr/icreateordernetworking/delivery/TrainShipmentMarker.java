@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -58,7 +59,7 @@ public final class TrainShipmentMarker {
                     && shipment.route() == DeliveryRoute.TRAIN
                     && shipment.count() == marker.getInt(COUNT)
                     && shipment.sourceReference().equals(marker.getString(SOURCE) + ">" + marker.getString(DESTINATION))
-                    && ResourceLocation.parse(marker.getString(ITEM)) != null;
+                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(ResourceLocation.parse(marker.getString(ITEM)));
         } catch (RuntimeException ignored) {
             return false;
         }
