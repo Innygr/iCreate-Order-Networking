@@ -41,6 +41,43 @@ class OrderDataTest {
     }
 
     @Test
+    void loadIgnoresMalformedAutomatedReceiptsAndDuplicateTransactionIds() {
+        OrderData original = new OrderData();
+        UUID orderId = UUID.randomUUID();
+        UUID claimantId = UUID.randomUUID();
+        UUID transactionId = UUID.randomUUID();
+        original.add(new Order(orderId, UUID.randomUUID(), "owner",
+                ResourceLocation.parse("minecraft:iron_ingot"), 10, 0, 0,
+                claimantId, OrderStatus.IN_PROGRESS, 1L));
+        assertTrue(original.reserveDelivery(transactionId, orderId, DeliveryRoute.TRAIN, claimantId, 4));
+
+        CompoundTag saved = original.save(new CompoundTag(), null);
+        ListTag receipts = saved.getList("ProcessedDeliveries", net.minecraft.nbt.Tag.TAG_COMPOUND);
+
+        CompoundTag malformed = new CompoundTag();
+        malformed.putString("Id", UUID.randomUUID().toString());
+        malformed.putString("Order", orderId.toString());
+        malformed.putString("Route", DeliveryRoute.TRAIN.name());
+        malformed.putInt("Count", 4); // Automated receipts require a claimant.
+        malformed.putBoolean("ProgressApplied", false);
+        receipts.add(malformed);
+
+        CompoundTag duplicate = new CompoundTag();
+        duplicate.putString("Id", transactionId.toString());
+        duplicate.putString("Order", orderId.toString());
+        duplicate.putString("Route", DeliveryRoute.TRAIN.name());
+        duplicate.putString("Claimant", claimantId.toString());
+        duplicate.putInt("Count", 9); // First valid record must win.
+        duplicate.putBoolean("ProgressApplied", false);
+        receipts.add(duplicate);
+
+        OrderData restored = OrderData.load(saved, null);
+
+        assertEquals(4L, restored.pendingDeliveryCountForOrder(orderId, null));
+        assertEquals(1, restored.pendingAutomatedDeliveries().size());
+    }
+
+    @Test
     void pendingDeliveryReservationsReduceAvailableOrderQuantity() {
         OrderData data = new OrderData();
         UUID orderId = UUID.randomUUID();
