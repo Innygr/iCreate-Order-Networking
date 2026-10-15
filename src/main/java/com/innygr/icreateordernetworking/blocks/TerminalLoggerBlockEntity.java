@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.delivery.TrainShipmentMarker;
+import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryService;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
@@ -119,6 +120,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         logger.pullInputs(level);
         logger.pushOutput(level);
         if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            AutomatedDeliveryService.resumeReservedAtSource(serverLevel, pos);
             TrainShipmentMarker.tryConfirmAtDestination(serverLevel, logger);
         }
     }
@@ -188,7 +190,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stored = inventory.getStackInSlot(slot);
-            if (stored.isEmpty()) continue;
+            // Tagged train cargo must only leave through the adapter's transaction-aware PSI handoff.
+            if (stored.isEmpty() || TrainShipmentMarker.transactionId(stored) != null) continue;
             for (int targetSlot = 0; targetSlot < target.getSlots(); targetSlot++) {
                 ItemStack remainder = target.insertItem(targetSlot, stored.copyWithCount(
                         Math.min(TRANSFER_PER_TICK, stored.getCount())), false);
