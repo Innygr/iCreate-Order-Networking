@@ -212,8 +212,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
             if (!logger.isInputEnabled(side)) continue;
             BlockPos psiPos = logger.getBlockPos().relative(side);
             if (!level.hasChunkAt(psiPos)) continue;
-            if (level.getBlockEntity(psiPos) instanceof PortableStorageInterfaceBlockEntity psi
-                    && psi.canTransfer()) return psi;
+            if (level.getBlockEntity(psiPos) instanceof PortableStorageInterfaceBlockEntity psi) return psi;
         }
         return null;
     }
