@@ -9,6 +9,7 @@ This checklist is the handoff between backend implementation and the planned blo
 - [x] Persistent order data and automated-delivery reservation receipts.
 - [x] Recovery-safe progress markers for automated deliveries and cancellation protection while shipments are pending.
 - [x] Common automated-delivery preparation API with server-thread, order, claimant, item, quantity, route, and adapter authorization checks.
+- [x] Registered server-authoritative automated-shipment payload: terminal ACL, bounded fields, server-resolved order item/claimant, route preparation, durable dispatch commit, and recovery-safe failure messaging.
 - [x] Create Redstone Requester bridge: a powered requester adjacent to a configured Order Terminal can create no-reward restock orders; active same-owner/item orders suppress repeats.
 - [x] Terminal Logger sided inventory capability with filtering, input/output faces, and bounded per-tick movement.
 - [x] Native unit tests for order data, delivery receipt validation, adapter registry, preparation/request validation, and economy persistence.
@@ -18,7 +19,8 @@ This checklist is the handoff between backend implementation and the planned blo
 - [ ] Implement at least one real automated transport adapter end to end. Registry/compatibility detection alone is not a transport implementation.
 - [ ] A shipment must persist its transaction before dispatch, reserve cargo exactly once, commit idempotently, and only fulfil/pay after the destination independently confirms receipt.
 - [ ] Recover pending shipments after a server restart; adapters must reconcile their real transport state instead of guessing whether cargo arrived.
-- [ ] Wire the Order Terminal's server-side actions to the authoritative order/network services, including permission checks and useful success/failure results.
+- [x] Wire server-side Order Terminal actions to authoritative order/network services with terminal reachability/ownership checks and action feedback.
+- [ ] Add the player-facing Order Terminal GUI and client action wiring for automated shipment requests.
 - [ ] Connect Terminal Logger transfers to shipment/job accounting; generic inventory movement and statistics are not proof of an order delivery.
 - [ ] Verify Create train PSI, belt/funnel, Frogport, and Aeronautics docking behavior against the exact supported mod versions. Keep routes unavailable unless the corresponding adapter is genuinely verified.
 - [ ] Confirm the Mythic backend boundary: dedicated-server only, no privileged action trusted from client packets, and no secrets or server-only services exposed to clients.
