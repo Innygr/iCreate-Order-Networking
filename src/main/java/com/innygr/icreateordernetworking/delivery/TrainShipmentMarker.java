@@ -121,7 +121,8 @@ public final class TrainShipmentMarker {
                         level, transactionId, destination);
                 case DESTINATION_RECEIVED -> DurableShipmentService.retryPayout(level, transactionId);
                 case COMPLETED -> destination.equals(shipment.destinationReference());
-                case RESERVED -> false;
+                case RESERVED -> DurableShipmentService.reconcileDestinationReceipt(
+                        level, transactionId, destination);
             };
             if (finalized) clearTransaction(logger, transactionId);
         }
