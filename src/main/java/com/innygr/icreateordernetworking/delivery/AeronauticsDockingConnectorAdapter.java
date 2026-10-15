@@ -214,7 +214,7 @@ public final class AeronauticsDockingConnectorAdapter implements AutomatedDelive
                     return false;
                 }
                 liveSource.recordTransfer(true, request.itemId(), request.count(),
-                        "Train dispatch " + request.transactionId());
+                        "Airship dispatch " + request.transactionId());
                 committed = true;
                 return true;
             }
@@ -311,7 +311,10 @@ public final class AeronauticsDockingConnectorAdapter implements AutomatedDelive
         for (Direction side : Direction.values()) {
             if (!logger.isInputEnabled(side)) continue;
             BlockPos connector = logger.getBlockPos().relative(side);
-            if (isDockingConnector(level, connector)) return connector;
+            if (!isDockingConnector(level, connector)) continue;
+            if (level.getCapability(Capabilities.ItemHandler.BLOCK, connector, side.getOpposite()) != null) {
+                return connector;
+            }
         }
         return null;
     }
