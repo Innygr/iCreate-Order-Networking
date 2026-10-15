@@ -64,15 +64,12 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         }
         if (remaining != 0) return null;
 
-        java.util.Set<Integer> fullyReservedSlots = new java.util.HashSet<>();
-        for (StackAllocation allocation : allocations) {
-            if (allocation.amount() == allocation.originalCount()) fullyReservedSlots.add(allocation.sourceSlot());
-        }
+        // Partial extraction needs a separate empty slot for the marked piece.
+        // Keep those target slots distinct from every original source slot; using a
+        // slot that another allocation will refill would overwrite reserved cargo.
         java.util.List<Integer> availableTargets = new java.util.ArrayList<>();
         for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
-            if (source.getInventory().getStackInSlot(slot).isEmpty() || fullyReservedSlots.contains(slot)) {
-                availableTargets.add(slot);
-            }
+            if (source.getInventory().getStackInSlot(slot).isEmpty()) availableTargets.add(slot);
         }
         java.util.List<StackAllocation> finalized = new java.util.ArrayList<>();
         for (StackAllocation allocation : allocations) {
