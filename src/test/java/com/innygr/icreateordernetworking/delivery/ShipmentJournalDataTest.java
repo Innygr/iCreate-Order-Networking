@@ -80,6 +80,18 @@ class ShipmentJournalDataTest {
         CompoundTag malformed = new CompoundTag();
         malformed.putString("Transaction", "not-a-uuid");
         rows.add(malformed);
+
+        // A receipt stage without a durable destination must not be recovered as paid.
+        CompoundTag impossibleReceipt = new CompoundTag();
+        impossibleReceipt.putString("Transaction", UUID.randomUUID().toString());
+        impossibleReceipt.putString("Order", UUID.randomUUID().toString());
+        impossibleReceipt.putString("Claimant", UUID.randomUUID().toString());
+        impossibleReceipt.putString("Route", DeliveryRoute.TRAIN.name());
+        impossibleReceipt.putString("Stage", ShipmentJournalData.Stage.DESTINATION_RECEIVED.name());
+        impossibleReceipt.putInt("Count", 4);
+        impossibleReceipt.putString("Source", "0,64,0>10,64,10");
+        impossibleReceipt.putString("Destination", "");
+        rows.add(impossibleReceipt);
         saved.put("Shipments", rows);
 
         ShipmentJournalData reloaded = ShipmentJournalData.load(saved, null);
