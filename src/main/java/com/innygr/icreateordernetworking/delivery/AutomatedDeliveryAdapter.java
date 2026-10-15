@@ -18,7 +18,10 @@ public interface AutomatedDeliveryAdapter {
 
     /**
      * Reserves the requested cargo without permanently consuming it.
-     * Return null if cargo is absent, stale, or cannot be reserved.
+     * Return null if cargo is absent, stale, or cannot be reserved safely. A null
+     * return must guarantee that no transaction-marked cargo remains at the source;
+     * if preparation is interrupted after partial mutation, throw instead so the
+     * caller retains the durable RESERVED journal entry for recovery.
      */
     PreparedDelivery prepareCargo(ServerLevel level, DeliveryRequest request);
 
