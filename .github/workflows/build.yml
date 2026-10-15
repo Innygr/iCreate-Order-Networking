@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main, feature/logistics-foundation]
+    branches: [main, feature/logistics-foundation, feature/durable-shipment-journal]
   pull_request:
   workflow_dispatch:
 
