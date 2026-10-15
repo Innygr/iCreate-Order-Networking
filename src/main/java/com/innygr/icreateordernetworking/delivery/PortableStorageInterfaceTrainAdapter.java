@@ -31,7 +31,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
 
     @Override
     public boolean isAuthorized(ServerLevel level, DeliveryRequest request) {
-        if (!isAvailable() || level == null || request == null || !request.isWellFormed()) return false;
+        if (!isAvailable() || level == null || request == null || request.route() != DeliveryRoute.TRAIN || !request.isWellFormed()) return false;
         EndpointPair pair = EndpointPair.parse(request.sourceReference());
         if (pair == null || pair.source().equals(pair.destination())
                 || !level.hasChunkAt(pair.source()) || !level.hasChunkAt(pair.destination())) return false;
@@ -154,8 +154,7 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         if (pair == null || !destinationReference.equals(EndpointPair.format(pair.destination()))
                 || !level.hasChunkAt(pair.destination())) return false;
         if (!(level.getBlockEntity(pair.destination()) instanceof TerminalLoggerBlockEntity destination)
-                || !shipment.claimantId().equals(destination.getOwnerId())
-                || destinationInterface(level, destination) == null) return false;
+                || !shipment.claimantId().equals(destination.getOwnerId())) return false;
         if (TrainShipmentMarker.countIn(destination, shipment.transactionId()) < shipment.count()) return false;
         for (int slot = 0; slot < destination.getInventory().getSlots(); slot++) {
             ItemStack stack = destination.getInventory().getStackInSlot(slot);
