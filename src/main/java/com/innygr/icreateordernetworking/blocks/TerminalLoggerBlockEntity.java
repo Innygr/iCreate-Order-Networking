@@ -118,6 +118,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (level.isClientSide || level.getGameTime() % 4 != 0) return;
         logger.pullInputs(level);
         logger.pushOutput(level);
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            TrainShipmentMarker.tryConfirmAtDestination(serverLevel, logger);
+        }
     }
 
     private void pullInputs(Level level) {
