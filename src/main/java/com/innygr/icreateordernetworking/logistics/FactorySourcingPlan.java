@@ -76,7 +76,7 @@ public record FactorySourcingPlan(
             throw new IllegalArgumentException("Requested count cannot be negative");
         }
         if (requestedCount == 0) {
-            return java.util.Optional.empty();
+            return new FactorySourcingPlan(0, List.of(), 0, 0);
         }
 
         List<Allocation> allocations = new ArrayList<>();
