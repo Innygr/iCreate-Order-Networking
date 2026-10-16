@@ -134,7 +134,7 @@ An orbital missile is a separate assembly mode: its designated structure must be
 
 ## Missile component recipe specifications
 
-The missile fin, missile nose, missile navigator, altitude sensor, and navigation table are now registered as items, with crafting recipes for the fin, nose, and navigator. Altitude Sensor and Navigation Table are currently recipe components/items, not functional sensor/table blocks; those mechanics and their own survival recipes remain follow-up work.
+The missile fin, missile nose, missile navigator, altitude sensor, and navigation table are now registered as items, with crafting recipes for the fin, nose, and navigator. Altitude Sensor and Navigation Table are currently registered recipe components/items, not functional sensor/table blocks. Both now have inexpensive survival recipes; their actual sensing and table mechanics remain follow-up work.
 
 ### Missile fin
 
@@ -160,6 +160,16 @@ B
 ```
 
 `I` = Iron Ingot; `B` = Iron Block.
+
+### Altitude sensor
+
+- **Output:** 1 Altitude Sensor
+- **Ingredients:** 1 iron ingot, 1 redstone dust, and 1 glass pane (shapeless recipe).
+
+### Navigation table
+
+- **Output:** 1 Navigation Table
+- **Ingredients:** 1 Cartography Table and 1 Compass (shapeless recipe).
 
 ### Missile navigator
 
