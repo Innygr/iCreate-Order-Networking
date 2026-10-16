@@ -184,7 +184,7 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
         if (adjacentDisplays == 0 && adjacentLoggers == 0 && adjacentStockLinks == 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
                     + " is ready. Place a claimed Network Statistics block and/or Terminal Logger directly beside this terminal, then right-click again to bind them."), true);
-        } else if (boundDisplays > 0 || boundLoggers > 0) {
+        } else if (boundDisplays > 0 || boundLoggers > 0 || boundStockLinks > 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
                     + ": bound " + boundDisplays + " statistics display(s) and " + boundLoggers
                     + " Terminal Logger(s), " + boundStockLinks + " Create Stock Link(s)." + (inaccessibleTargets > 0 ? " " + inaccessibleTargets
