@@ -327,6 +327,21 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         return -1;
     }
 
+    /**
+     * True when a transaction-marked package still exists at its source Packager.
+     * Recovery must not collect replacement factory stock while a matching package
+     * is held or queued; it may be about to leave or may already be in transit.
+     */
+    static boolean hasMarkedPackageAtSource(ServerLevel level, ShipmentJournalData.Shipment shipment) {
+        if (level == null || shipment == null || shipment.route() != DeliveryRoute.FROGPORT
+                || level.getServer() == null || !level.getServer().isSameThread()) return false;
+        EndpointPair pair = EndpointPair.parse(shipment.sourceReference());
+        if (pair == null || !level.hasChunkAt(pair.source())) return false;
+        if (!(level.getBlockEntity(pair.source()) instanceof TerminalLoggerBlockEntity source)) return false;
+        PackagerBlockEntity packager = findSourcePackager(level, source);
+        return packager != null && countMarkedPackages(packager, shipment) > 0;
+    }
+
     private static int countMarkedPackages(PackagerBlockEntity packager,
                                            ShipmentJournalData.Shipment shipment) {
         if (packager == null || shipment == null) return 0;
