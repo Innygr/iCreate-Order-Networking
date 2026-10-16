@@ -2,6 +2,8 @@ package com.innygr.icreateordernetworking.delivery;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import com.innygr.icreateordernetworking.logistics.FactorySourcingPlan;
@@ -70,6 +72,7 @@ public final class FactorySourcedDeliveryService {
         List<SourceSlice> slices = new ArrayList<>();
         ItemStack template = null;
         int sourceAvailable = 0;
+        Set<BlockPos> seenPackagers = new HashSet<>();
         for (FactorySourcingPlan.Allocation allocation : plan.allocations()) {
             BlockPos linkPos = allocation.source().position();
             if (!level.hasChunkAt(linkPos)
@@ -80,7 +83,7 @@ public final class FactorySourcedDeliveryService {
             PackagerBlockEntity packager = link == null ? null : link.getPackager();
             IItemHandler inventory = packager == null || packager.targetInventory == null
                     ? null : packager.targetInventory.getInventory();
-            if (inventory == null) return false;
+            if (inventory == null || !seenPackagers.add(packager.getBlockPos().immutable())) return false;
 
             int needed = allocation.count();
             for (int slot = 0; slot < inventory.getSlots() && needed > 0; slot++) {
@@ -110,12 +113,12 @@ public final class FactorySourcedDeliveryService {
         try {
             for (SourceSlice slice : slices) {
                 ItemStack stack = slice.inventory().extractItem(slice.slot(), slice.count(), false);
+                extracted.add(stack);
                 if (stack.isEmpty() || stack.getCount() != slice.count()
                         || !ItemStack.isSameItemSameComponents(template, stack)) {
                     restore(level, slices, extracted);
                     return false;
                 }
-                extracted.add(stack);
             }
         } catch (RuntimeException | LinkageError exception) {
             restore(level, slices, extracted);
