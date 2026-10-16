@@ -29,6 +29,16 @@ This checklist separates code implementation from the dedicated-server test sess
 - [ ] Test denied terminal access, mismatched owner/team, invalid route references, unloaded endpoints, incomplete cargo, and attempts to extract reserved cargo through other item-handler consumers.
 - [ ] Verify the terminal screen and both adapters in the target modpack; confirm the client cannot bypass server-side permissions or shipment validation.
 
+## Factory stock sourcing boundary
+
+- [x] Persist explicit Stock Link-to-factory bindings and revalidate owner/team access.
+- [x] Build order-bound sourcing plans only for the current claimant and filter each stock offer by its own binding.
+- [ ] Connect the sourcing plan to a real Create Packager request/reservation operation. The current Stock Link compatibility layer reads Create's summary only; it does not extract, reserve, or dispatch stock.
+- [ ] Persist a source allocation before requesting packages, then reconcile partial delivery, retries, and server restarts without duplicating cargo.
+- [ ] Add a dedicated-server test proving a shared Create frequency cannot expose or consume another factory's stock.
+
+Do not describe factory sourcing as end-to-end until the unchecked items above are implemented and exercised in-game.
+
 ## Test handoff
 
 Keep these states distinct during testing:
