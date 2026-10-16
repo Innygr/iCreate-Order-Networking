@@ -170,7 +170,7 @@ public final class OrderTerminalScreen extends Screen {
         graphics.drawString(font, "Item ID / count / reward per item", left, top + 50, 0xCFCFCF);
         graphics.drawString(font, "Source coordinates", left, top + 104, 0xCFCFCF);
         graphics.drawString(font, "Destination coordinates", left + 175, top + 104, 0xCFCFCF);
-        graphics.drawString(font, "Transport route (TRAIN is currently implemented)", left, top + 158, 0xCFCFCF);
+        graphics.drawString(font, "Route: TRAIN or AIRSHIP (requires compatible mod)", left, top + 158, 0xCFCFCF);
         if (!feedback.isBlank()) graphics.drawCenteredString(font, feedback, width / 2, top + 260, 0xFFFF55);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
