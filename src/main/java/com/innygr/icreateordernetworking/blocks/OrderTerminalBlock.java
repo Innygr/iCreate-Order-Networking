@@ -1,6 +1,8 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.logistics.StockLinkBindingData;
+import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -148,6 +150,8 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
         int adjacentLoggers = 0;
         int boundLoggers = 0;
         int inaccessibleTargets = 0;
+        int adjacentStockLinks = 0;
+        int boundStockLinks = 0;
         for (Direction direction : Direction.values()) {
             BlockPos adjacent = pos.relative(direction);
             BlockEntity adjacentEntity = level.getBlockEntity(adjacent);
@@ -155,6 +159,14 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
                 adjacentDisplays++;
                 if (statistics.isConfigured() && statistics.bindFactoryFrom(player.getUUID(), terminal)) {
                     boundDisplays++;
+                } else {
+                    inaccessibleTargets++;
+                }
+            } else if (adjacentEntity instanceof PackagerLinkBlockEntity) {
+                adjacentStockLinks++;
+                if (level instanceof net.minecraft.server.level.ServerLevel serverLevel
+                        && StockLinkBindingData.get(serverLevel).bind(serverLevel, adjacent, player.getUUID(), terminal)) {
+                    boundStockLinks++;
                 } else {
                     inaccessibleTargets++;
                 }
@@ -169,16 +181,16 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
             }
         }
 
-        if (adjacentDisplays == 0 && adjacentLoggers == 0) {
+        if (adjacentDisplays == 0 && adjacentLoggers == 0 && adjacentStockLinks == 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
                     + " is ready. Place a claimed Network Statistics block and/or Terminal Logger directly beside this terminal, then right-click again to bind them."), true);
-        } else if (boundDisplays > 0 || boundLoggers > 0) {
+        } else if (boundDisplays > 0 || boundLoggers > 0 || boundStockLinks > 0) {
             player.displayClientMessage(Component.literal("Factory " + shortId(terminal.getFactoryId())
                     + ": bound " + boundDisplays + " statistics display(s) and " + boundLoggers
-                    + " Terminal Logger(s)." + (inaccessibleTargets > 0 ? " " + inaccessibleTargets
+                    + " Terminal Logger(s), " + boundStockLinks + " Create Stock Link(s)." + (inaccessibleTargets > 0 ? " " + inaccessibleTargets
                     + " adjacent target(s) were unclaimed or inaccessible." : "")), true);
         } else {
-            player.displayClientMessage(Component.literal("No adjacent targets could be bound. Claim each display/logger first and check owner/team permissions."), true);
+            player.displayClientMessage(Component.literal("No adjacent targets could be bound. Claim each display/logger first, ensure Stock Links are configured, and check owner/team permissions."), true);
         }
     }
 
