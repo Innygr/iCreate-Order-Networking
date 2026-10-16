@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.delivery.TrainShipmentMarker;
+import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
+import com.innygr.icreateordernetworking.delivery.ShipmentJournalData;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryService;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
@@ -94,11 +96,25 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                     // Cargo reserved for a durable shipment is locked to its route
                     // adapter. A belt, funnel, or other capability consumer must not
                     // be able to steal it from the logger while dispatch is pending.
-                    if (TrainShipmentMarker.transactionId(inventory.getStackInSlot(slot)) != null) {
-                        // A Packager directly attached to the configured output face
-                        // is the one permitted consumer for Frogport-bound reserved
-                        // cargo. Other pipes, belts, and automation still cannot steal it.
-                        BlockEntity adjacent = level == null ? null : level.getBlockEntity(worldPosition.relative(side));
+                    ItemStack existing = inventory.getStackInSlot(slot);
+                    UUID transactionId = TrainShipmentMarker.transactionId(existing);
+                    if (transactionId != null) {
+                        // Only the source Packager for a live Frogport reservation may
+                        // consume marked cargo. A nearby Packager must never steal a
+                        // train/airship shipment or a marker from another logger.
+                        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) {
+                            return ItemStack.EMPTY;
+                        }
+                        ShipmentJournalData.Shipment shipment =
+                                ShipmentJournalData.get(serverLevel).find(transactionId);
+                        String source = worldPosition.getX() + "," + worldPosition.getY() + "," + worldPosition.getZ();
+                        if (shipment == null || shipment.route() != DeliveryRoute.FROGPORT
+                                || shipment.stage() != ShipmentJournalData.Stage.RESERVED
+                                || !shipment.sourceReference().startsWith(source + ">")
+                                || !TrainShipmentMarker.matches(existing, shipment)) {
+                            return ItemStack.EMPTY;
+                        }
+                        BlockEntity adjacent = level.getBlockEntity(worldPosition.relative(side));
                         if (!(adjacent instanceof com.simibubi.create.content.logistics.packager.PackagerBlockEntity packager)
                                 || packager.getBlockState().getValue(
                                         com.simibubi.create.content.logistics.packager.PackagerBlock.FACING) != side
