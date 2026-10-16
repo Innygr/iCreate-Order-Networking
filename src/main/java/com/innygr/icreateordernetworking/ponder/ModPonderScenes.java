@@ -18,6 +18,7 @@ public final class ModPonderScenes {
     public static void terminalLogger(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "terminal_logger_basics", "Tracking a delivery");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.BARREL.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.HOPPER.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.CHEST.defaultBlockState(), false);
@@ -33,6 +34,7 @@ public final class ModPonderScenes {
     public static void brassTerminalLogger(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "brass_terminal_logger", "The brass logger");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.COPPER_BLOCK.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.BRICKS.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.GOLD_BLOCK.defaultBlockState(), false);
@@ -48,6 +50,7 @@ public final class ModPonderScenes {
     public static void orderTerminal(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "order_terminal", "From request to fulfilment");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.BARREL.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.LECTERN.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.CHEST.defaultBlockState(), false);
@@ -63,6 +66,7 @@ public final class ModPonderScenes {
     public static void networkStatistics(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "network_statistics", "Diagnosing network activity");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.REDSTONE_LAMP.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.OBSERVER.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.COMPARATOR.defaultBlockState(), false);
@@ -78,6 +82,7 @@ public final class ModPonderScenes {
     public static void scrapper(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "scrapper_basics", "Scrapper input and output");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.RAW_IRON_BLOCK.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.CHEST.defaultBlockState(), false);
@@ -93,6 +98,7 @@ public final class ModPonderScenes {
     public static void missileThruster(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "missile_thruster", "Fuel efficiency overview");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.WATER_CAULDRON.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.FURNACE.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.LAVA_CAULDRON.defaultBlockState(), false);
@@ -108,6 +114,7 @@ public final class ModPonderScenes {
     public static void missileTag(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "missile_tag", "Missile identity data");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.OAK_SIGN.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.WHITE_BANNER.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.CHEST.defaultBlockState(), false);
@@ -123,6 +130,7 @@ public final class ModPonderScenes {
     public static void transportAdapters(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "transport_adapters", "Transport integration overview");
         showBase(scene, util);
+        animateCourier(scene, util);
         scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.RAIL.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.CHEST.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
@@ -152,6 +160,15 @@ public final class ModPonderScenes {
         scene.idle(14);
         explain(scene, util, "The final component settles into place. This is a visual assembly animation; live launch, descent physics, and impact integration remain future work.", 2, 2, 2);
         scene.markAsFinished();
+    }
+
+    /** A moving marker gives every logistics tutorial a visible, timed movement beat. */
+    private static void animateCourier(CreateSceneBuilder scene, SceneBuildingUtil util) {
+        scene.world().setBlock(util.grid().at(0, 2, 0), Blocks.REDSTONE_BLOCK.defaultBlockState(), false);
+        scene.world().showSection(util.select().position(0, 2, 0), Direction.DOWN);
+        scene.idle(4);
+        scene.world().moveSection(util.select().position(0, 2, 0), util.vector().of(4, 0, 0), 28);
+        scene.idle(30);
     }
 
     private static CreateSceneBuilder start(SceneBuilder builder, String id, String title) {

@@ -183,7 +183,7 @@ public final class OrderTerminalScreen extends Screen {
         int left = (width - 340) / 2;
         int top = (height - 282) / 2;
 
-        // Industrial frame, inset panel, header strip, and section separators.
+        // Industrial frame, inset panel, header strip, section separators, and field wells.
         graphics.fill(panelLeft, panelTop, panelLeft + PANEL_WIDTH, panelTop + PANEL_HEIGHT, 0xFF05080C);
         graphics.fill(panelLeft + 2, panelTop + 2, panelLeft + PANEL_WIDTH - 2,
                 panelTop + PANEL_HEIGHT - 2, PANEL);
@@ -202,6 +202,24 @@ public final class OrderTerminalScreen extends Screen {
                 panelLeft + PANEL_WIDTH - 3, panelTop + PANEL_HEIGHT - 3, INSET);
         graphics.fill(panelLeft + 3, panelTop + PANEL_HEIGHT - 25,
                 panelLeft + PANEL_WIDTH - 3, panelTop + PANEL_HEIGHT - 24, AMBER);
+
+        // Recessed wells behind the standard Minecraft edit controls.
+        fieldWell(graphics, left, top + 35, 340, 18);
+        fieldWell(graphics, left, top + 62, 185, 18);
+        fieldWell(graphics, left + 192, top + 62, 65, 18);
+        fieldWell(graphics, left + 264, top + 62, 76, 18);
+        fieldWell(graphics, left, top + 116, 165, 18);
+        fieldWell(graphics, left + 175, top + 116, 165, 18);
+        fieldWell(graphics, left, top + 170, 165, 18);
+
+        // Subtle routing rail and terminal telemetry ticks.
+        graphics.fill(left, top + 185, left + 340, top + 187, 0xFF35424F);
+        graphics.fill(left, top + 185, left + 62, top + 187, AMBER);
+        for (int tick = 0; tick < 12; tick++) {
+            int tickX = panelLeft + PANEL_WIDTH - 18 - tick * 5;
+            graphics.fill(tickX, panelTop + 12, tickX + 2, panelTop + 17,
+                    tick < 8 ? AMBER : 0xFF56616D);
+        }
 
         graphics.drawString(font, "ICREATE // ORDER NETWORK", panelLeft + 22, panelTop + 8, AMBER);
         graphics.drawString(font, "LOGISTICS CONTROL TERMINAL", panelLeft + 22, panelTop + 19, 0xFFE3E8ED);
@@ -222,6 +240,13 @@ public final class OrderTerminalScreen extends Screen {
         }
 
         super.render(graphics, mouseX, mouseY, partialTick);
+    }
+
+    private static void fieldWell(GuiGraphics graphics, int x, int y, int width, int height) {
+        graphics.fill(x - 1, y - 1, x + width + 1, y + height + 1, 0xFF070B10);
+        graphics.fill(x, y, x + width, y + height, 0xFF26313B);
+        graphics.fill(x, y, x + width, y + 1, 0xFF52606D);
+        graphics.fill(x, y + height - 1, x + width, y + height, 0xFF111820);
     }
 
     @Override

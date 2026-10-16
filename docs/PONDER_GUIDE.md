@@ -32,3 +32,8 @@ The scenes intentionally distinguish implemented helpers from planned gameplay. 
 - [ ] Open every scene in a client and verify camera framing, text placement, and reveal timing.
 - [ ] Confirm every entry block exposes its expected scene(s) in the Ponder index.
 - [ ] Replace visual props with accurate machinery / animated item movement when the relevant runtime integration is available.
+
+
+## Animated movement pass
+
+The logistics-oriented Ponder scenes now include a moving redstone marker that travels across the demonstration area, giving each sequence a visible motion beat. These are teaching animations only and do not imply that the visual marker is a real shipment entity. The orbital scene separately animates assembly components into position.
