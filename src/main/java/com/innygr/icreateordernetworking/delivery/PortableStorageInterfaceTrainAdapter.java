@@ -126,15 +126,16 @@ public final class PortableStorageInterfaceTrainAdapter implements AutomatedDeli
         DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
                 DeliveryRoute.TRAIN, shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
         java.util.List<Integer> markedSlots = findMarkedSlots(source, shipment.transactionId());
-        int markedCount = markedSlots.stream()
-                .mapToInt(slot -> source.getInventory().getStackInSlot(slot).getCount()).sum();
-        if (markedCount > shipment.count()) return null;
-
-        // If the server stopped midway through prepareCargo(), finish the same
-        // durable reservation from remaining unmarked source stacks. Never create
-        // a second transaction or dispatch a partial marked shipment.
-        int remaining = shipment.count() - markedCount;
-        if (remaining > 0 && !completePartialReservation(source, request, remaining)) return null;
+        int markedCount = 0;
+        for (int slot : markedSlots) {
+            ItemStack marked = source.getInventory().getStackInSlot(slot);
+            // A restart retry may only reuse the exact reservation. If some marked
+            // cargo is missing, it may already have entered the transport; filling
+            // the gap from ordinary inventory could dispatch a duplicate shipment.
+            if (!TrainShipmentMarker.matches(marked, shipment)) return null;
+            markedCount += marked.getCount();
+        }
+        if (markedCount != shipment.count()) return null;
         return preparedFor(level, request, pair);
     }
 
