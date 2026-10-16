@@ -13,11 +13,11 @@ This snapshot describes the current `main` branch. A successful Java/Gradle CI r
 
 ## Work still required
 
-1. Complete and test durable shipment dispatch, destination receipt, payout retry, and restart recovery as one connected lifecycle.
+1. Complete dedicated-server tests for durable dispatch, destination receipt, payout retry, and restart recovery as one connected lifecycle.
 2. Add broader manual-handoff success, partial-transfer, invalid-request, authorization, and duplicate-transaction tests.
-3. Implement independently verified cargo adapters for Create trains/Portable Storage Interfaces, Aeronautics Docking Connectors, Create Frogports, and belts/Terminal Loggers. Do not register placeholder adapters: an adapter must reserve cargo, verify actual destination receipt, and recover safely.
-4. Implement server-authoritative Order Terminal menu actions and then connect the player-facing GUI.
-5. Verify Redstone Requester behavior, Display Link registration, and any Stock Link integration in a live world against the pinned Create version.
+3. Validate the existing train/PSI, Aeronautics Docking Connector, and Packager/Frogport adapters in a live world; belt delivery remains unimplemented and must stay unavailable until destination receipt can be independently verified.
+4. Implement explicit Stock Link-to-factory binding and request authorization; current Stock Link discovery is read-only and must not be treated as authorization.
+5. Verify Redstone Requester behavior, Display Link registration, chunk-loader lifecycle/resource limits, and all transport integrations in a dedicated live world against the pinned Create version.
 
 ## Merged implementation
 
