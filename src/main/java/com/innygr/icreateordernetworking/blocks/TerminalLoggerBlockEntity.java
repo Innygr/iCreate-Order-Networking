@@ -90,6 +90,12 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 @Override
                 public ItemStack extractItem(int slot, int amount, boolean simulate) {
                     if (side != routingConfig.output()) return ItemStack.EMPTY;
+                    // Cargo reserved for a durable shipment is locked to its route
+                    // adapter. A belt, funnel, or other capability consumer must not
+                    // be able to steal it from the logger while dispatch is pending.
+                    if (TrainShipmentMarker.transactionId(inventory.getStackInSlot(slot)) != null) {
+                        return ItemStack.EMPTY;
+                    }
                     return inventory.extractItem(slot, amount, simulate);
                 }
 
