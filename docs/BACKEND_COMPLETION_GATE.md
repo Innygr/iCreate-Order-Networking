@@ -33,8 +33,8 @@ This checklist separates code implementation from the dedicated-server test sess
 
 - [x] Persist explicit Stock Link-to-factory bindings and revalidate owner/team access.
 - [x] Build order-bound sourcing plans only for the current claimant and filter each stock offer by its own binding.
-- [ ] Connect the sourcing plan to a real Create Packager request/reservation operation. The current Stock Link compatibility layer reads Create's summary only; it does not extract, reserve, or dispatch stock.
-- [ ] Persist a source allocation before requesting packages, then reconcile partial delivery, retries, and server restarts without duplicating cargo.
+- [x] Connect the authorization-filtered sourcing plan to real Create Packager-mediated Frogport requests. The factory dispatch service rechecks every stock-link binding, collects the requested item from multiple distinct authorized packager inventories, marks cargo with the durable transaction identity, and hands the reserved cargo to the Frogport adapter.
+- [ ] Persist the exact multi-stock-link allocation manifest in the shipment journal and recover partially collected factory cargo across a crash. Current recovery handles a complete marked source-logger reservation and a complete already-created source package idempotently; partial collection/package states deliberately remain pending rather than being guessed or sourced again.
 - [ ] Add a dedicated-server test proving a shared Create frequency cannot expose or consume another factory's stock.
 
 Do not describe factory sourcing as end-to-end until the unchecked items above are implemented and exercised in-game.

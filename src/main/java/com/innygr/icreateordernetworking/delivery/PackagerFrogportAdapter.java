@@ -168,13 +168,27 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 PackagerBlockEntity packager = source == null ? null : findSourcePackager(level, source);
                 if (packager == null) return false;
 
+                ShipmentJournalData journal = ShipmentJournalData.get(level);
+                ShipmentJournalData.Shipment durable = journal.find(request.transactionId());
+                if (durable == null) return false;
+
+                // Crash recovery: Create may already have moved the entire marked
+                // transaction into a held/queued package before the journal could
+                // advance to DISPATCHED. Treat that exact package as the idempotent
+                // commit, but never if the same transaction still exists at source
+                // (which could indicate duplicated physical cargo).
+                int packaged = countMarkedPackages(packager, durable);
+                int stillAtSource = countMarkedSourceCargo(source, request);
+                if (packaged == request.count()) return stillAtSource == 0;
+                if (packaged != 0) return false; // partial package state needs reconciliation, not a second request
+
                 // A Stock Link is the request boundary for Create logistics. Do not
                 // use attemptToSend(null): that generic path can take unrelated stock
                 // from the target inventory and does not carry an item-specific request.
                 ItemStack markedCargo = findMarkedSourceCargo(source, request);
                 PackagerLinkBlockEntity stockLink = findStockLink(level, packager);
                 if (markedCargo == null || stockLink == null
-                        || countMarkedSourceCargo(source, request) != request.count())
+                        || stillAtSource != request.count())
                     return false;
 
                 Pair<PackagerBlockEntity, PackagingRequest> pair;
