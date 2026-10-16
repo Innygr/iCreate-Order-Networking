@@ -82,9 +82,14 @@ public record OrderTerminalActionPacket(BlockPos terminalPos, int action, String
             ItemStack stack = player.getInventory().getItem(slot);
             if (!stack.isEmpty() && requested.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
                 Order order = OrderService.create(player, stack, packet.count(), packet.rewardPerItem());
-                player.displayClientMessage(Component.literal(order == null
-                        ? "Order creation failed: check your balance and order settings."
-                        : "Order created: " + order.id()), true);
+                if (order == null) {
+                    player.displayClientMessage(Component.literal(
+                            "Order creation failed: check your balance and order settings."), true);
+                } else {
+                    // Keep the UUID in chat so it remains available after the
+                    // action-bar notification disappears and can be entered in the terminal UI.
+                    player.displayClientMessage(Component.literal("Order created: " + order.id()), false);
+                }
                 return;
             }
         }
