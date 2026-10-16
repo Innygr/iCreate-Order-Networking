@@ -99,6 +99,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                         // cargo. Other pipes, belts, and automation still cannot steal it.
                         BlockEntity adjacent = level == null ? null : level.getBlockEntity(worldPosition.relative(side));
                         if (!(adjacent instanceof com.simibubi.create.content.logistics.packager.PackagerBlockEntity packager)
+                                || packager.getBlockState().getValue(
+                                        com.simibubi.create.content.logistics.packager.PackagerBlock.FACING) != side
                                 || packager.targetInventory == null
                                 || packager.targetInventory.getInventory() == null) {
                             return ItemStack.EMPTY;
