@@ -109,10 +109,11 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
             return InteractionResult.PASS;
         }
         if (level.isClientSide) {
-            net.neoforged.fml.DistExecutor.unsafeRunWhenOn(
-                    net.neoforged.api.distmarker.Dist.CLIENT,
-                    () -> () -> net.minecraft.client.Minecraft.getInstance().setScreen(
-                            new com.innygr.icreateordernetworking.client.OrderTerminalScreen(basePos)));
+            if (net.neoforged.fml.loading.FMLEnvironment.dist
+                    == net.neoforged.api.distmarker.Dist.CLIENT) {
+                net.minecraft.client.Minecraft.getInstance().setScreen(
+                        new com.innygr.icreateordernetworking.client.OrderTerminalScreen(basePos));
+            }
             return InteractionResult.SUCCESS;
         }
         interact(terminal, level, basePos, player);
