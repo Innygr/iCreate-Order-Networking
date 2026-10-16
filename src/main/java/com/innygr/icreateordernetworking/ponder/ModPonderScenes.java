@@ -151,12 +151,12 @@ public final class ModPonderScenes {
         scene.world().setBlock(util.grid().at(2, 3, 2), Blocks.ANVIL.defaultBlockState(), false);
         reveal(scene, util, 1, 1, 2, 1, Direction.DOWN);
         explain(scene, util, "The planned assembly is inverted, with its anchor at Y=250 or higher.", 1, 1, 2);
-        var engineSection = scene.world().showSection(util.select().position(3, 1, 2), Direction.DOWN);
+        var engineSection = scene.world().showIndependentSection(util.select().position(3, 1, 2), Direction.DOWN);
         scene.idle(8);
         scene.world().moveSection(engineSection, util.vector().of(-1, 1, 0), 12);
         scene.idle(14);
         explain(scene, util, "The engine component slides into the central assembly position.", 2, 2, 2);
-        var finalSection = scene.world().showSection(util.select().position(2, 3, 2), Direction.DOWN);
+        var finalSection = scene.world().showIndependentSection(util.select().position(2, 3, 2), Direction.DOWN);
         scene.idle(8);
         scene.world().moveSection(finalSection, util.vector().of(0, -1, 0), 12);
         scene.idle(14);
@@ -167,7 +167,7 @@ public final class ModPonderScenes {
     /** A moving marker gives every logistics tutorial a visible, timed movement beat. */
     private static void animateCourier(CreateSceneBuilder scene, SceneBuildingUtil util) {
         scene.world().setBlock(util.grid().at(0, 2, 0), Blocks.REDSTONE_BLOCK.defaultBlockState(), false);
-        var courierSection = scene.world().showSection(util.select().position(0, 2, 0), Direction.DOWN);
+        var courierSection = scene.world().showIndependentSection(util.select().position(0, 2, 0), Direction.DOWN);
         scene.idle(4);
         scene.world().moveSection(courierSection, util.vector().of(4, 0, 0), 28);
         scene.idle(30);
