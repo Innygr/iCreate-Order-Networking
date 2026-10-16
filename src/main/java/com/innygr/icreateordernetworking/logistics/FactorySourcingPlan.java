@@ -67,7 +67,25 @@ public record FactorySourcingPlan(
             return new FactorySourcingPlan(requestedCount, List.of(), 0, requestedCount);
         }
         UUID networkId = binding.createNetworkId();
-        return create(level, networkId, requester, item, requestedCount);
+        if (requestedCount == 0) return new FactorySourcingPlan(0, List.of(), 0, 0);
+
+        // A shared Create frequency is not a permission boundary. Filter every
+        // candidate independently so binding one link cannot expose stock from
+        // another factory that happens to use the same frequency.
+        List<Allocation> allocations = new ArrayList<>();
+        int remaining = requestedCount;
+        StockLinkBindingData bindings = StockLinkBindingData.get(level);
+        for (FactoryEndpointRegistry.StockOffer offer :
+                FactoryEndpointRegistry.findStock(level, networkId, requester, item)) {
+            if (remaining == 0) break;
+            if (bindings.authorizedBinding(level, offer.position(), actorId) == null) continue;
+            int amount = Math.min(remaining, offer.availableCount());
+            if (amount <= 0) continue;
+            allocations.add(new Allocation(offer, amount));
+            remaining -= amount;
+        }
+        int locallyAvailable = requestedCount - remaining;
+        return new FactorySourcingPlan(requestedCount, allocations, locallyAvailable, remaining);
     }
 
     public static FactorySourcingPlan create(ServerLevel level, UUID networkId,
