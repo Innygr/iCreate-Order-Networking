@@ -54,6 +54,7 @@ public final class ICreateOrderNetworking {
         // The registry is cleared on shutdown, so install stateless adapters for each server lifecycle.
         AutomatedDeliveryRegistry.register(new PortableStorageInterfaceTrainAdapter());
         AutomatedDeliveryRegistry.register(new AeronauticsDockingConnectorAdapter());
+        AutomatedDeliveryRegistry.register(new PackagerFrogportAdapter());
         // Retry durable payouts only after a destination receipt was already recorded.
         // Transport adapters still own recovery for shipments awaiting physical reconciliation.
         DurableShipmentService.recoverPendingPayouts(event.getServer().overworld());
