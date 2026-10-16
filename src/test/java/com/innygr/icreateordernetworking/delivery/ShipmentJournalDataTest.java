@@ -46,6 +46,23 @@ class ShipmentJournalDataTest {
     }
 
     @Test
+    void onlyAnUncommittedReservationCanBeAbandoned() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID reservedId = UUID.randomUUID();
+        UUID dispatchedId = UUID.randomUUID();
+
+        assertTrue(journal.reserve(request(reservedId)));
+        assertTrue(journal.abandonReservation(reservedId));
+        assertNull(journal.find(reservedId));
+
+        assertTrue(journal.reserve(request(dispatchedId)));
+        assertTrue(journal.advance(dispatchedId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+        assertFalse(journal.abandonReservation(dispatchedId));
+        assertEquals(ShipmentJournalData.Stage.DISPATCHED, journal.find(dispatchedId).stage());
+    }
+
+    @Test
     void completedShipmentIsNoLongerPending() {
         ShipmentJournalData journal = new ShipmentJournalData();
         UUID transactionId = UUID.randomUUID();
