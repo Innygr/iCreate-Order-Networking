@@ -20,6 +20,15 @@ public final class AutomatedDeliveryService {
     private AutomatedDeliveryService() {}
 
     public static DeliveryPreparation prepare(ServerLevel level, DeliveryRequest request) {
+        return prepare(level, request, null);
+    }
+
+    /**
+     * Variant used by factory sourcing. The reservation callback runs only after
+     * the order quantity and shipment journal have been persisted.
+     */
+    static DeliveryPreparation prepare(ServerLevel level, DeliveryRequest request,
+                                       FactoryCargoReservation factoryReservation) {
         if (level == null || request == null || !request.isWellFormed()) {
             return DeliveryPreparation.failure(
                     DeliveryPreparation.Status.INVALID_REQUEST, "Delivery request is incomplete.");
@@ -105,6 +114,24 @@ public final class AutomatedDeliveryService {
             return DeliveryPreparation.failure(
                     DeliveryPreparation.Status.ORDER_QUANTITY_UNAVAILABLE,
                     "The shipment journal could not reserve this transaction.");
+        }
+
+        if (factoryReservation != null) {
+            try {
+                if (!factoryReservation.reserve(level, request)) {
+                    ShipmentJournalData.get(level).abandonReservation(request.transactionId());
+                    data.forgetDelivery(request.transactionId());
+                    return DeliveryPreparation.failure(
+                            DeliveryPreparation.Status.CARGO_UNAVAILABLE,
+                            "Factory stock changed or could not be reserved; no shipment was dispatched.");
+                }
+            } catch (RuntimeException | LinkageError exception) {
+                // The callback may have moved a subset before an unexpected failure.
+                // Keep the durable RESERVED journal so source-side reconciliation can recover it.
+                return DeliveryPreparation.failure(
+                        DeliveryPreparation.Status.CARGO_UNAVAILABLE,
+                        "Factory reservation was interrupted; its durable shipment reservation was kept for recovery.");
+            }
         }
 
         PreparedDelivery prepared;

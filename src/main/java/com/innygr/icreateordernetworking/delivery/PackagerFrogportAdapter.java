@@ -75,8 +75,21 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         EndpointPair pair = EndpointPair.parse(request.sourceReference());
         TerminalLoggerBlockEntity source = (TerminalLoggerBlockEntity) level.getBlockEntity(pair.source());
 
-        // Keep one complete transaction in a single stack so Create's package
-        // contents preserve a single unambiguous marker/count across retries.
+        // Factory sourcing may already have reserved and marked the cargo after
+        // persisting the journal. Reuse that exact reservation instead of sourcing twice.
+        int existingMarked = 0;
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            ItemStack stack = source.getInventory().getStackInSlot(slot);
+            if (TrainShipmentMarker.matches(stack, request.transactionId())) {
+                if (!BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())) return null;
+                existingMarked += stack.getCount();
+            }
+        }
+        if (existingMarked > 0) {
+            return existingMarked == request.count() ? preparedFor(level, request, pair) : null;
+        }
+
+        // Keep the normal direct-logger path for cargo already present at source.
         for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
             ItemStack current = source.getInventory().getStackInSlot(slot);
             if (current.isEmpty()
@@ -160,7 +173,8 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 // from the target inventory and does not carry an item-specific request.
                 ItemStack markedCargo = findMarkedSourceCargo(source, request);
                 PackagerLinkBlockEntity stockLink = findStockLink(level, packager);
-                if (markedCargo == null || stockLink == null || markedCargo.getCount() != request.count())
+                if (markedCargo == null || stockLink == null
+                        || countMarkedSourceCargo(source, request) != request.count())
                     return false;
 
                 Pair<PackagerBlockEntity, PackagingRequest> pair;
@@ -225,12 +239,19 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
             ItemStack stack = source.getInventory().getStackInSlot(slot);
             if (TrainShipmentMarker.matches(stack, request.transactionId())
-                    && stack.getCount() == request.count()
-                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())) {
-                return stack;
-            }
+                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())) return stack;
         }
         return null;
+    }
+
+    private static int countMarkedSourceCargo(TerminalLoggerBlockEntity source, DeliveryRequest request) {
+        int count = 0;
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            ItemStack stack = source.getInventory().getStackInSlot(slot);
+            if (TrainShipmentMarker.matches(stack, request.transactionId())
+                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())) count += stack.getCount();
+        }
+        return count;
     }
 
     private static PackagerLinkBlockEntity findStockLink(ServerLevel level, PackagerBlockEntity packager) {
