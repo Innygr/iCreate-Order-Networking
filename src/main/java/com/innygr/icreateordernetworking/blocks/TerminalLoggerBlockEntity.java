@@ -37,6 +37,7 @@ import net.neoforged.neoforge.items.IItemHandler;
 public final class TerminalLoggerBlockEntity extends BlockEntity {
     private static final int SLOT_COUNT = 18;
     private static final int TRANSFER_PER_TICK = 4;
+    private boolean chunkTicketRegistered;
 
     private final TerminalLoggerConfig routingConfig = new TerminalLoggerConfig();
     private long acceptedDeliveries;
@@ -129,6 +130,30 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
      */
     public IItemHandler getSidedItemHandler(Direction side) {
         return side == null ? null : sidedHandlers.get(side);
+    }
+
+    /** Keep the logger's own chunk available so its logistics tick can run without nearby players. */
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        updateChunkLoading(true);
+    }
+
+    /** Release the forced chunk when this block entity is removed. */
+    @Override
+    public void setRemoved() {
+        updateChunkLoading(false);
+        super.setRemoved();
+    }
+
+    private void updateChunkLoading(boolean enabled) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+        if (enabled == chunkTicketRegistered) return;
+        net.minecraft.world.level.ChunkPos chunkPos = new net.minecraft.world.level.ChunkPos(worldPosition);
+        // setChunkForced persists the ticket in the world's forced-chunk data, so it
+        // survives a restart. This intentionally forces only the logger's own chunk.
+        serverLevel.setChunkForced(chunkPos, enabled);
+        chunkTicketRegistered = enabled;
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, TerminalLoggerBlockEntity logger) {
