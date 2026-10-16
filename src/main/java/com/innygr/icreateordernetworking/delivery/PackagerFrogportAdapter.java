@@ -11,8 +11,14 @@ import com.innygr.icreateordernetworking.orders.OrderData;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageItem;
 import com.simibubi.create.content.logistics.packager.PackagerBlock;
+import com.simibubi.create.AllDataComponents;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
+import com.simibubi.create.content.logistics.packager.PackagingRequest;
+import com.simibubi.create.content.logistics.packagerLink.PackagerLinkBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportBlockEntity;
+import com.simibubi.create.foundation.item.ItemHelper;
+import net.createmod.catnip.data.Pair;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -149,13 +155,41 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 PackagerBlockEntity packager = source == null ? null : findSourcePackager(level, source);
                 if (packager == null) return false;
 
-                // Ask Create's own Packager to perform its normal packing cycle.
-                // If it is busy, keep the durable reservation and retry next tick.
+                // A Stock Link is the request boundary for Create logistics. Do not
+                // use attemptToSend(null): that generic path can take unrelated stock
+                // from the target inventory and does not carry an item-specific request.
+                ItemStack markedCargo = findMarkedSourceCargo(source, request);
+                PackagerLinkBlockEntity stockLink = findStockLink(level, packager);
+                if (markedCargo == null || stockLink == null || markedCargo.getCount() != request.count())
+                    return false;
+
+                Pair<PackagerBlockEntity, PackagingRequest> pair;
                 try {
-                    packager.attemptToSend(null);
+                    pair = stockLink.processRequest(markedCargo.copyWithCount(1), request.count(),
+                            packager.signBasedAddress, 0, new MutableBoolean(true),
+                            request.orderId().hashCode(), null, null);
                 } catch (RuntimeException | LinkageError ignored) {
                     return false;
                 }
+                if (pair == null || pair.getFirst() != packager || pair.getSecond() == null
+                        || pair.getSecond().getCount() != request.count()) return false;
+
+                PackagingRequest packagingRequest = pair.getSecond();
+                List<PackagingRequest> requests = new ArrayList<>();
+                requests.add(packagingRequest);
+                int previousCount = packagingRequest.getCount();
+                try {
+                    packager.attemptToSend(requests);
+                } catch (RuntimeException | LinkageError ignored) {
+                    // Keep the RESERVED journal and any marked physical cargo for recovery.
+                    return false;
+                }
+                if (packagingRequest.getCount() >= previousCount) return false;
+
+                // Create has now extracted the exact requested stack into a held or
+                // queued package. Attach the transaction marker to that newly-created
+                // package's contents before the package can leave the Packager.
+                if (!markNewestCreatedPackage(packager, request)) return false;
                 ShipmentJournalData.Shipment shipment =
                         ShipmentJournalData.get(level).find(request.transactionId());
                 return shipment != null && countMarkedPackages(packager, shipment) == request.count();
@@ -182,6 +216,61 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 || !shipment.claimantId().equals(destination.getOwnerId())
                 || !TrainShipmentMarker.hasOnlyMatchingStacks(destination, shipment)) return false;
         return TrainShipmentMarker.countMatchingIn(destination, shipment) == shipment.count();
+    }
+
+    private static ItemStack findMarkedSourceCargo(TerminalLoggerBlockEntity source, DeliveryRequest request) {
+        for (int slot = 0; slot < source.getInventory().getSlots(); slot++) {
+            ItemStack stack = source.getInventory().getStackInSlot(slot);
+            if (TrainShipmentMarker.matches(stack, request.transactionId())
+                    && stack.getCount() == request.count()
+                    && BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())) {
+                return stack;
+            }
+        }
+        return null;
+    }
+
+    private static PackagerLinkBlockEntity findStockLink(ServerLevel level, PackagerBlockEntity packager) {
+        for (Direction side : Direction.values()) {
+            BlockPos pos = packager.getBlockPos().relative(side);
+            if (!level.hasChunkAt(pos)
+                    || !(level.getBlockEntity(pos) instanceof PackagerLinkBlockEntity link)) continue;
+            if (link.getPackager() == packager) return link;
+        }
+        return null;
+    }
+
+    private static boolean markNewestCreatedPackage(PackagerBlockEntity packager, DeliveryRequest request) {
+        ItemStack created;
+        if (packager.heldBox.isEmpty() || packager.animationTicks == 0) {
+            // A request-driven send normally creates a held box when the tray is free.
+            created = packager.heldBox;
+        } else if (!packager.queuedExitingPackages.isEmpty()) {
+            created = packager.queuedExitingPackages.get(packager.queuedExitingPackages.size() - 1).stack;
+        } else {
+            return false;
+        }
+        if (!PackageItem.isPackage(created)) return false;
+        ItemStackHandler contents = PackageItem.getContents(created);
+        int marked = 0;
+        for (int slot = 0; slot < contents.getSlots(); slot++) {
+            ItemStack stack = contents.getStackInSlot(slot);
+            if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())
+                    || TrainShipmentMarker.transactionId(stack) != null) continue;
+            TrainShipmentMarker.mark(stack, request);
+            contents.setStackInSlot(slot, stack);
+            marked += stack.getCount();
+        }
+        if (marked != request.count()) return false;
+        created.set(AllDataComponents.PACKAGE_CONTENTS, ItemHelper.containerContentsFromHandler(contents));
+        if (created == packager.heldBox) packager.heldBox = created.copy();
+        else {
+            var queued = packager.queuedExitingPackages.get(packager.queuedExitingPackages.size() - 1);
+            queued.stack = created.copy();
+        }
+        packager.setChanged();
+        packager.notifyUpdate();
+        return true;
     }
 
     private static int findEmptySlot(ItemStackHandler inventory, int except) {
