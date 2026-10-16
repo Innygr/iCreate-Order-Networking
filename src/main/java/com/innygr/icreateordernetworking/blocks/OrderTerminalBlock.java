@@ -6,22 +6,35 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.phys.BlockHitResult;
 import com.mojang.serialization.MapCodec;
 
-/** Factory identity block and binding point for adjacent loggers and Network Statistics displays. */
+/** Two-block-tall factory identity block and binding point for adjacent loggers and displays. */
 public final class OrderTerminalBlock extends BaseEntityBlock {
+    public static final EnumProperty<DoubleBlockHalf> HALF = BlockStateProperties.DOUBLE_BLOCK_HALF;
+
     public OrderTerminalBlock(BlockBehaviour.Properties properties) {
         super(properties);
+        registerDefaultState(stateDefinition.any().setValue(HALF, DoubleBlockHalf.LOWER));
     }
 
     @Override
@@ -30,8 +43,43 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
     }
 
     @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(HALF);
+    }
+
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context) {
+        BlockPos pos = context.getClickedPos();
+        Level level = context.getLevel();
+        if (pos.getY() >= level.getMaxBuildHeight() - 1 || !level.getBlockState(pos.above()).canBeReplaced(context)) {
+            return null;
+        }
+        return defaultBlockState().setValue(HALF, DoubleBlockHalf.LOWER);
+    }
+
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+        level.setBlock(pos.above(), state.setValue(HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
+        super.setPlacedBy(level, pos, state, placer, stack);
+    }
+
+    @Override
+    public BlockState updateShape(BlockState state, Direction direction, BlockState neighborState,
+                                  LevelAccessor level, BlockPos pos, BlockPos neighborPos) {
+        DoubleBlockHalf half = state.getValue(HALF);
+        if ((half == DoubleBlockHalf.LOWER && direction == Direction.UP)
+                || (half == DoubleBlockHalf.UPPER && direction == Direction.DOWN)) {
+            if (!neighborState.is(this) || neighborState.getValue(HALF) == half) {
+                return Blocks.AIR.defaultBlockState();
+            }
+        }
+        return super.updateShape(state, direction, neighborState, level, pos, neighborPos);
+    }
+
+    @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new OrderTerminalBlockEntity(pos, state);
+        return state.getValue(HALF) == DoubleBlockHalf.LOWER
+                ? new OrderTerminalBlockEntity(pos, state) : null;
     }
 
     @Override
@@ -44,23 +92,41 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level,
                                                BlockPos pos, Player player,
                                                net.minecraft.world.InteractionHand hand, BlockHitResult hit) {
-        if (!(level.getBlockEntity(pos) instanceof OrderTerminalBlockEntity terminal)) {
+        BlockPos basePos = getBasePos(state, pos);
+        if (!(level.getBlockEntity(basePos) instanceof OrderTerminalBlockEntity terminal)) {
             return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
         }
         if (level.isClientSide) return ItemInteractionResult.SUCCESS;
-        interact(terminal, level, pos, player);
+        interact(terminal, level, basePos, player);
         return ItemInteractionResult.SUCCESS;
     }
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                 Player player, BlockHitResult hit) {
-        if (!(level.getBlockEntity(pos) instanceof OrderTerminalBlockEntity terminal)) {
+        BlockPos basePos = getBasePos(state, pos);
+        if (!(level.getBlockEntity(basePos) instanceof OrderTerminalBlockEntity terminal)) {
             return InteractionResult.PASS;
         }
         if (level.isClientSide) return InteractionResult.SUCCESS;
-        interact(terminal, level, pos, player);
+        interact(terminal, level, basePos, player);
         return InteractionResult.SUCCESS;
+    }
+
+    private static BlockPos getBasePos(BlockState state, BlockPos pos) {
+        return state.getValue(HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos;
+    }
+
+    @Override
+    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide) {
+            BlockPos otherPos = state.getValue(HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos.above();
+            BlockState otherState = level.getBlockState(otherPos);
+            if (otherState.is(this) && otherState.getValue(HALF) != state.getValue(HALF)) {
+                level.setBlock(otherPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL | Block.UPDATE_SUPPRESS_DROPS);
+            }
+        }
+        super.playerWillDestroy(level, pos, state, player);
     }
 
     private static void interact(OrderTerminalBlockEntity terminal, Level level, BlockPos pos, Player player) {
