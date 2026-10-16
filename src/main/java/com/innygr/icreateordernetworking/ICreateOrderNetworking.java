@@ -16,6 +16,7 @@ import com.innygr.icreateordernetworking.registry.ModBlockEntities;
 import com.innygr.icreateordernetworking.registry.ModBlocks;
 import com.innygr.icreateordernetworking.registry.ModEffects;
 import com.innygr.icreateordernetworking.registry.ModItems;
+import com.innygr.icreateordernetworking.registry.ModCreativeTabs;
 import com.innygr.icreateordernetworking.registry.ModSounds;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
@@ -46,6 +47,7 @@ public final class ICreateOrderNetworking {
         ModBlocks.register(modBus);
         ModBlockEntities.register(modBus);
         ModItems.register(modBus);
+        ModCreativeTabs.register(modBus);
         ModEffects.register(modBus);
         ModSounds.register(modBus);
         modBus.addListener(ModNetwork::registerPayloads);

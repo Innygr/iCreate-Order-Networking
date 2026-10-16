@@ -3,10 +3,10 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [8, 8],
 	"textures": {
-		"0": "Network Statistics:network_statistics_texture",
-		"1": "light_texture",
-		"2": "light_texture2",
-		"particle": "Network Statistics:network_statistics_texture"
+		"0": "icreate_order_networking:block/network_statistics_texture",
+		"1": "icreate_order_networking:block/light_texture",
+		"2": "icreate_order_networking:block/light_texture2",
+		"particle": "icreate_order_networking:block/network_statistics_texture"
 	},
 	"elements": [
 		{

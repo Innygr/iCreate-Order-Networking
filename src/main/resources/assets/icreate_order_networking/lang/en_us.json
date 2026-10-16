@@ -1,4 +1,5 @@
 {
+  "itemGroup.icreate_order_networking": "iCreate: Order Networking",
   "block.icreate_order_networking.order_terminal": "Order Terminal",
   "block.icreate_order_networking.terminal_logger": "Andesite Terminal Logger",
   "block.icreate_order_networking.brass_terminal_logger": "Brass Terminal Logger",
