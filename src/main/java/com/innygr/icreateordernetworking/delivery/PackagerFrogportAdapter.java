@@ -178,6 +178,8 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 List<PackagingRequest> requests = new ArrayList<>();
                 requests.add(packagingRequest);
                 int previousCount = packagingRequest.getCount();
+                ItemStack previousHeldBox = packager.heldBox;
+                int previousQueuedCount = packager.queuedExitingPackages.size();
                 try {
                     packager.attemptToSend(requests);
                 } catch (RuntimeException | LinkageError ignored) {
@@ -189,7 +191,8 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 // Create has now extracted the exact requested stack into a held or
                 // queued package. Attach the transaction marker to that newly-created
                 // package's contents before the package can leave the Packager.
-                if (!markNewestCreatedPackage(packager, request)) return false;
+                if (!markNewestCreatedPackage(packager, request, previousHeldBox, previousQueuedCount))
+                    return false;
                 ShipmentJournalData.Shipment shipment =
                         ShipmentJournalData.get(level).find(request.transactionId());
                 return shipment != null && countMarkedPackages(packager, shipment) == request.count();
@@ -240,12 +243,13 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         return null;
     }
 
-    private static boolean markNewestCreatedPackage(PackagerBlockEntity packager, DeliveryRequest request) {
+    private static boolean markNewestCreatedPackage(PackagerBlockEntity packager, DeliveryRequest request,
+                                                      ItemStack previousHeldBox, int previousQueuedCount) {
         ItemStack created;
-        if (packager.heldBox.isEmpty() || packager.animationTicks == 0) {
-            // A request-driven send normally creates a held box when the tray is free.
+        boolean newHeldBox = packager.heldBox != previousHeldBox;
+        if (newHeldBox && PackageItem.isPackage(packager.heldBox)) {
             created = packager.heldBox;
-        } else if (!packager.queuedExitingPackages.isEmpty()) {
+        } else if (packager.queuedExitingPackages.size() > previousQueuedCount) {
             created = packager.queuedExitingPackages.get(packager.queuedExitingPackages.size() - 1).stack;
         } else {
             return false;
