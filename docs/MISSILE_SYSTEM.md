@@ -130,3 +130,50 @@ The optional Missile Tag is an identity marker for a missile assembly. Its block
 ## Orbital missile variant
 
 An orbital missile is a separate assembly mode: its designated structure must be assembled upside down, with the trigger/anchor block at or above Y=250. The structure checker should reject normal orientation, missing required blocks, and anchor positions below Y=250 before launch. Orbital kills use dedicated death-message translation keys: `%1$s was orbitally struck by missile` for an untagged missile and `%1$s was struck by %2$s’s orbital missile` for a tagged missile. The current patch adds the assembly validator and message helper; wiring them into a live missile entity/assembly interaction remains dependent on the not-yet-implemented missile launch system.
+
+
+## Missile component recipe specifications
+
+The missile fin, missile nose, missile navigator, altitude sensor, and navigation table are now registered as items, with crafting recipes for the fin, nose, and navigator. Altitude Sensor and Navigation Table are currently registered recipe components/items, not functional sensor/table blocks. Both now have inexpensive survival recipes; their actual sensing and table mechanics remain follow-up work.
+
+### Missile fin
+
+- **Output:** 4 Missile Fins
+- **Pattern:** three iron ingots arranged diagonally
+
+```text
+I..
+.I.
+..I
+```
+
+`I` = Iron Ingot.
+
+### Missile nose
+
+- **Output:** 1 Missile Nose
+- **Pattern:** an iron ingot directly above an iron block
+
+```text
+I
+B
+```
+
+`I` = Iron Ingot; `B` = Iron Block.
+
+### Altitude sensor
+
+- **Output:** 1 Altitude Sensor
+- **Ingredients:** 1 iron ingot, 1 redstone dust, and 1 glass pane (shapeless recipe).
+
+### Navigation table
+
+- **Output:** 1 Navigation Table
+- **Ingredients:** 1 Cartography Table and 1 Compass (shapeless recipe).
+
+### Missile navigator
+
+- **Output:** 1 Missile Navigator
+- **Ingredients:** 1 Altitude Sensor, 1 Navigation Table, and 1 Cartography Table.
+
+The current shaped recipe places Altitude Sensor, Navigation Table, and Cartography Table side-by-side. Keep the recipe focused on guidance equipment rather than adding extra expensive materials.

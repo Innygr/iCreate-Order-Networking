@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:iron_ingot" },
+    { "item": "minecraft:redstone" },
+    { "item": "minecraft:glass_pane" }
+  ],
+  "result": { "id": "icreate_order_networking:altitude_sensor", "count": 1 }
+}

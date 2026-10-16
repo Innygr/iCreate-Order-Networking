@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
+import com.innygr.icreateordernetworking.delivery.TrainShipmentMarker;
+import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryService;
 import com.innygr.icreateordernetworking.compat.FTBTeamsCompat;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnection;
 import com.innygr.icreateordernetworking.logistics.TerminalLoggerConnectionDetector;
@@ -88,6 +90,22 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                 @Override
                 public ItemStack extractItem(int slot, int amount, boolean simulate) {
                     if (side != routingConfig.output()) return ItemStack.EMPTY;
+                    // Cargo reserved for a durable shipment is locked to its route
+                    // adapter. A belt, funnel, or other capability consumer must not
+                    // be able to steal it from the logger while dispatch is pending.
+                    if (TrainShipmentMarker.transactionId(inventory.getStackInSlot(slot)) != null) {
+                        // A Packager directly attached to the configured output face
+                        // is the one permitted consumer for Frogport-bound reserved
+                        // cargo. Other pipes, belts, and automation still cannot steal it.
+                        BlockEntity adjacent = level == null ? null : level.getBlockEntity(worldPosition.relative(side));
+                        if (!(adjacent instanceof com.simibubi.create.content.logistics.packager.PackagerBlockEntity packager)
+                                || packager.getBlockState().getValue(
+                                        com.simibubi.create.content.logistics.packager.PackagerBlock.FACING) != side
+                                || packager.targetInventory == null
+                                || packager.targetInventory.getInventory() == null) {
+                            return ItemStack.EMPTY;
+                        }
+                    }
                     return inventory.extractItem(slot, amount, simulate);
                 }
 
@@ -117,6 +135,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (level.isClientSide || level.getGameTime() % 4 != 0) return;
         logger.pullInputs(level);
         logger.pushOutput(level);
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            AutomatedDeliveryService.resumeReservedAtSource(serverLevel, pos);
+            TrainShipmentMarker.tryConfirmAtDestination(serverLevel, logger);
+        }
     }
 
     private void pullInputs(Level level) {
@@ -168,6 +190,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                     recordAccepted("Pulled " + accepted + "x " + itemId + " from " + side.getName());
                     recordNetworkTransfer(level, itemId, NetworkStatsData.EventType.INPUT, accepted,
                             "Input from " + side.getName());
+                    if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        TrainShipmentMarker.tryConfirmAtDestination(serverLevel, this);
+                    }
                     return;
                 }
             }
@@ -181,7 +206,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
         for (int slot = 0; slot < inventory.getSlots(); slot++) {
             ItemStack stored = inventory.getStackInSlot(slot);
-            if (stored.isEmpty()) continue;
+            // Tagged train cargo must only leave through the adapter's transaction-aware PSI handoff.
+            if (stored.isEmpty() || TrainShipmentMarker.transactionId(stored) != null) continue;
             for (int targetSlot = 0; targetSlot < target.getSlots(); targetSlot++) {
                 ItemStack remainder = target.insertItem(targetSlot, stored.copyWithCount(
                         Math.min(TRANSFER_PER_TICK, stored.getCount())), false);

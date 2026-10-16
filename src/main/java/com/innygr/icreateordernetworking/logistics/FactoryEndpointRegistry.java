@@ -68,16 +68,20 @@ public final class FactoryEndpointRegistry {
             EndpointKey endpointKey = entry.getKey();
             FactoryEndpoint endpoint = entry.getValue();
             try {
-                if (!endpointKey.dimension().equals(dimension)
-                        || !networkId.equals(endpoint.networkId())) {
+                if (!endpointKey.dimension().equals(dimension)) {
                     continue;
                 }
+
+                // Do not query a factory endpoint after its chunk has unloaded.
+                // Some optional integrations read live block-entity state here;
+                // position/load validation must happen before network or stock calls.
+                BlockPos source = endpoint.position();
+                if (source == null || !level.hasChunkAt(source)) continue;
+                if (!networkId.equals(endpoint.networkId())) continue;
 
                 int available = Math.max(0, endpoint.availableCount(itemId));
                 if (available == 0) continue;
 
-                BlockPos source = endpoint.position();
-                if (source == null) continue;
                 offers.add(new StockOffer(source, itemId, available,
                         source.distSqr(requester), endpoint));
             } catch (RuntimeException | LinkageError ignored) {

@@ -29,6 +29,24 @@ public record FactorySourcingPlan(
         allocations = List.copyOf(allocations);
     }
 
+    /**
+     * Build a sourcing plan against the Create logistics frequency represented
+     * by a specific Stock Link. The link's frequency is the network scope; no
+     * cargo is reserved or moved by planning.
+     */
+    public static FactorySourcingPlan createForStockLink(ServerLevel level, BlockPos stockLink,
+                                                          BlockPos requester, Item item, int requestedCount) {
+        if (requestedCount < 0) {
+            throw new IllegalArgumentException("Requested count cannot be negative");
+        }
+        UUID networkId = com.innygr.icreateordernetworking.compat.CreateStockLinkCompat
+                .networkIdAt(level, stockLink);
+        if (networkId == null) {
+            return new FactorySourcingPlan(requestedCount, List.of(), 0, requestedCount);
+        }
+        return create(level, networkId, requester, item, requestedCount);
+    }
+
     public static FactorySourcingPlan create(ServerLevel level, UUID networkId,
                                              BlockPos requester, Item item, int requestedCount) {
         if (requestedCount < 0) {

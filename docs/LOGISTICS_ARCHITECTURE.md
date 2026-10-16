@@ -86,7 +86,7 @@ Connection discovery must use explicit, validated adapters/capability checks for
 
 ### Current implementation boundary
 
-The Terminal Logger exposes a standard NeoForge `ItemHandler.BLOCK` capability with sided access: five faces accept filtered items and the selected output face permits extraction. Its server tick can pull from adjacent item-handler providers and push buffered items through the configured output face. Create's Portable Storage Interface already exposes its own item handler only while its native transfer state is active, so the logger can exchange cargo through that capability without duplicating the PSI handshake. However, this is not yet an order-aware train delivery adapter: the transfer is not bound to a persistent shipment reservation, order ID, or verified destination receipt. Aeronautics Docking Connector cargo access/lifecycle, package/Frogport routing, and verified belt-to-order receipts also remain unfinished. Endpoint discovery is diagnostic only; no route should fulfil an order or pay a reward until receipt verification is connected to the shared fulfilment service.
+The Terminal Logger exposes a standard NeoForge `ItemHandler.BLOCK` capability with sided access: five faces accept filtered items and the selected output face permits extraction. Its server tick can pull from adjacent item-handler providers and push buffered items through the configured output face. Create's Portable Storage Interface already exposes its own item handler only while its native transfer state is active, so the logger can exchange cargo through that capability without duplicating the PSI handshake. However, this is not yet an order-aware train delivery adapter: the transfer is not bound to a persistent shipment reservation, order ID, or verified destination receipt. Aeronautics Docking Connector cargo access/lifecycle and verified belt-to-order receipts also remain unfinished. A Packager-mediated Frogport adapter is now implemented for the target Create 6.0.x / Minecraft 1.21.1 API. The physical route is Terminal Logger ↔ correctly oriented Packager, with a Frogport above the Packager; the Frogport does not directly connect to the Logger. Reserved cargo remains transaction-marked inside Create packages, and the adapter only accepts a receipt after the destination Logger contains the exact marked quantity. The code/build still does not prove that the configured Frogport address and physical route work in-game; that must be verified in the target modpack before release. Endpoint discovery is diagnostic only; no route should fulfil an order or pay a reward until receipt verification is connected to the shared fulfilment service.
 
 The logger should define clear input/output behavior per connection. A connection can be input-only, output-only, or bidirectional only when the underlying component safely supports it. Do not allow the same item stack to be dispatched twice if multiple connections are attached. Cargo must be reserved/claimed by a single active job before transfer, and completion must be verified at the destination.
 
@@ -231,7 +231,7 @@ This section distinguishes implemented scaffolding from functionality that must 
 | Player-facing Order Terminal GUI | Not complete | Add server-authoritative menu actions and client screens; validate all inputs on server |
 | Display Link: Network Statistics | Source class exists | Confirm source registration and output in Create 6.0.6 in a live world |
 | Display Link: Order Terminal and Terminal Logger | Planned | Add separate sources; logger output must be local to that block, not aggregated across every logger in a factory |
-| Stock Link: Order Terminal | Planned | Define precisely whether reported stock is available, reserved, in transit, or craftable; never count reserved stock as available |
+| Create Stock Link stock discovery | Implemented read-only live stock endpoint registration for loaded Create Stock Links; reports linked Packager availability and Create frequency | Bind the Create frequency to an authorized iCreate factory/network, then test live stock refresh, unload/reload, reservation races, and actual dispatch/receipt; read-only stock is not a reservation |
 
 ### Required automated-delivery transaction contract
 
@@ -269,6 +269,7 @@ A factory may contain many Terminal Loggers. Each logger's routing, filter, buff
 - [ ] Add a real server-side adapter and integration test for each route independently: train/Portable Storage Interface, Aeronautics/Docking Connector, Create Frogport, and belt/Terminal Logger.
 - [ ] Verify Redstone Requester event timing and duplicate-order suppression in-game.
 - [ ] Implement and test server-authoritative Order Terminal menu actions before exposing the GUI.
-- [ ] Verify Display Link sources and any Stock Link integration against the pinned Create version in a live world.
+- [ ] Verify Display Link sources and Stock Link endpoint registration/stock counts against the pinned Create version in a live world.
+- [ ] Bind Create Stock Link frequency to an authorized iCreate factory network before sourcing requests from those endpoints; stock discovery alone must not reserve or dispatch cargo.
 - [ ] Run the full CI suite after backend changes; CI compilation alone does not prove live-world transport behavior.
 

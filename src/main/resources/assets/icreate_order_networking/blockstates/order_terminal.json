@@ -1,6 +1,9 @@
 {
   "variants": {
-    "": {
+    "half=lower": {
+      "model": "icreate_order_networking:block/order_terminal"
+    },
+    "half=upper": {
       "model": "icreate_order_networking:block/order_terminal"
     }
   }

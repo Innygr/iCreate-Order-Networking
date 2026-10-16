@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    { "item": "minecraft:cartography_table" },
+    { "item": "minecraft:compass" }
+  ],
+  "result": { "id": "icreate_order_networking:navigation_table", "count": 1 }
+}

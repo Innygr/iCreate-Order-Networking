@@ -1,0 +1,152 @@
+package com.innygr.icreateordernetworking.delivery;
+
+import java.util.UUID;
+import net.minecraft.server.level.ServerLevel;
+
+/**
+ * Server-thread protocol for durable shipment milestones. Route adapters must
+ * verify dispatch and destination receipt independently before advancing stages.
+ */
+public final class DurableShipmentService {
+    private DurableShipmentService() {}
+
+    public static boolean recordReserved(ServerLevel level, DeliveryRequest request) {
+        if (!onServerThread(level) || request == null) return false;
+        // An order receipt is the authoritative quantity reservation; this journal
+        // adds dispatch/recovery milestones for the same transaction ID.
+        var receipt = com.innygr.icreateordernetworking.orders.OrderData.get(level)
+                .deliveryReceipt(request.transactionId());
+        if (receipt == null || !receipt.matches(request.orderId(), request.route(), request.actorId(), request.count())) {
+            return false;
+        }
+        return ShipmentJournalData.get(level).reserve(request);
+    }
+
+    public static boolean markDispatched(ServerLevel level, UUID transactionId) {
+        return onServerThread(level) && ShipmentJournalData.get(level)
+                .advance(transactionId, ShipmentJournalData.Stage.RESERVED, ShipmentJournalData.Stage.DISPATCHED, null);
+    }
+
+    /**
+     * Commit the transport's idempotent cargo reservation, then record dispatch.
+     * If the server stops between these operations, a destination receipt can
+     * independently reconcile the transaction from its physical cargo marker.
+     */
+    public static boolean commitDispatch(ServerLevel level, UUID transactionId, PreparedDelivery prepared) {
+        if (!onServerThread(level) || transactionId == null || prepared == null) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment shipment = journal.find(transactionId);
+        if (shipment == null) return false;
+        if (shipment.stage() == ShipmentJournalData.Stage.DISPATCHED
+                || shipment.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED
+                || shipment.stage() == ShipmentJournalData.Stage.COMPLETED) {
+            return true;
+        }
+        if (shipment.stage() != ShipmentJournalData.Stage.RESERVED) return false;
+        try {
+            if (!prepared.commit()) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        return markDispatched(level, transactionId);
+    }
+
+    /**
+     * Reconcile a shipment when its marked cargo is already at the verified
+     * destination but the server stopped after physical dispatch and before
+     * persisting DISPATCHED. Receipt verification is the evidence for recovery;
+     * a missing source stack alone is never treated as proof of dispatch.
+     */
+    public static boolean reconcileDestinationReceipt(ServerLevel level, UUID transactionId,
+                                                       String destinationReference) {
+        if (!onServerThread(level) || transactionId == null || destinationReference == null
+                || destinationReference.isBlank() || destinationReference.length() > 256) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment current = journal.find(transactionId);
+        if (current == null) return false;
+        if (current.stage() != ShipmentJournalData.Stage.RESERVED) {
+            return confirmDestinationReceipt(level, transactionId, destinationReference);
+        }
+        AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(current.route()).orElse(null);
+        if (adapter == null) return false;
+        try {
+            if (!adapter.verifyDestinationReceipt(level, current, destinationReference)) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        if (!journal.advance(transactionId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null)) return false;
+        return confirmDestinationReceipt(level, transactionId, destinationReference);
+    }
+
+    /** Call only after the destination inventory/endpoint verifies the matching transaction and item count. */
+    public static boolean confirmDestinationReceipt(ServerLevel level, UUID transactionId, String destinationReference) {
+        if (!onServerThread(level) || transactionId == null
+                || destinationReference == null || destinationReference.isBlank()
+                || destinationReference.length() > 256) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment current = journal.find(transactionId);
+        if (current == null) return false;
+        // Duplicate receipt notifications are idempotent only for the same endpoint.
+        if (current.stage() == ShipmentJournalData.Stage.COMPLETED) {
+            return current.destinationReference().equals(destinationReference);
+        }
+        if (current.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED) {
+            return current.destinationReference().equals(destinationReference)
+                    && retryPayout(level, transactionId);
+        }
+        if (current.stage() != ShipmentJournalData.Stage.DISPATCHED) return false;
+        AutomatedDeliveryAdapter adapter = AutomatedDeliveryRegistry.find(current.route()).orElse(null);
+        if (adapter == null) return false;
+        try {
+            if (!adapter.verifyDestinationReceipt(level, current, destinationReference)) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        if (!journal.advance(transactionId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, destinationReference)) return false;
+        return finalizePayout(level, transactionId, journal);
+    }
+
+    /** Retry this after restart for any journal entry at DESTINATION_RECEIVED. */
+    public static boolean retryPayout(ServerLevel level, UUID transactionId) {
+        if (!onServerThread(level)) return false;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        ShipmentJournalData.Shipment shipment = journal.find(transactionId);
+        if (shipment == null || shipment.stage() != ShipmentJournalData.Stage.DESTINATION_RECEIVED) return false;
+        return finalizePayout(level, transactionId, journal);
+    }
+
+    /**
+     * Startup recovery pass. Destination receipt is already durable at this stage,
+     * so payout can be retried safely without touching physical cargo. RESERVED and
+     * DISPATCHED transactions deliberately remain pending for their transport adapter
+     * to reconcile; this service must never invent a receipt for them.
+     *
+     * @return number of transactions successfully finalized during this pass
+     */
+    public static int recoverPendingPayouts(ServerLevel level) {
+        if (!onServerThread(level)) return 0;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        int recovered = 0;
+        for (ShipmentJournalData.Shipment shipment : journal.pending().values()) {
+            if (shipment.stage() == ShipmentJournalData.Stage.DESTINATION_RECEIVED
+                    && retryPayout(level, shipment.transactionId())) {
+                recovered++;
+            }
+        }
+        return recovered;
+    }
+
+    private static boolean finalizePayout(ServerLevel level, UUID transactionId, ShipmentJournalData journal) {
+        ShipmentJournalData.Shipment shipment = journal.find(transactionId);
+        if (shipment == null || shipment.stage() != ShipmentJournalData.Stage.DESTINATION_RECEIVED) return false;
+        if (!AutomatedDeliveryService.completeAfterDestinationReceipt(level, transactionId)) return false;
+        return journal.advance(transactionId, ShipmentJournalData.Stage.DESTINATION_RECEIVED,
+                ShipmentJournalData.Stage.COMPLETED, null);
+    }
+
+    private static boolean onServerThread(ServerLevel level) {
+        return level != null && level.getServer() != null && level.getServer().isSameThread();
+    }
+}
