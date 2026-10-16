@@ -96,6 +96,9 @@ public final class OrderTerminalScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("CLOSE"), button -> onClose())
                 .bounds(left + 175, top + 232, 165, 20).build());
         setInitialFocus(orderId);
+        // Fetch the server-authoritative order snapshot when the terminal opens.
+        PacketDistributor.sendToServer(new OrderTerminalActionPacket(terminalPos,
+                OrderTerminalActionPacket.OPEN, "", 0, 0, "", ""));
     }
 
     private void createOrder() {

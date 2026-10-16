@@ -60,8 +60,22 @@ public record OrderTerminalActionPacket(BlockPos terminalPos, int action, String
             }
             if (!(player.level() instanceof ServerLevel)) return;
             switch (packet.action()) {
-                case OPEN -> player.displayClientMessage(Component.literal("Order Terminal: "
-                        + OrderService.listFor(player).size() + " active order(s) available to you."), true);
+                case OPEN -> {
+                    java.util.List<Order> visibleOrders = OrderService.listFor(player);
+                    player.displayClientMessage(Component.literal("Order Terminal: "
+                            + visibleOrders.size() + " active order(s) available to you."), false);
+                    int shown = Math.min(visibleOrders.size(), 8);
+                    for (int i = 0; i < shown; i++) {
+                        Order order = visibleOrders.get(i);
+                        player.displayClientMessage(Component.literal(
+                                order.id() + " | " + order.itemId() + " | remaining "
+                                        + order.remainingCount() + " | " + order.status().name()), false);
+                    }
+                    if (visibleOrders.size() > shown) {
+                        player.displayClientMessage(Component.literal("Showing " + shown + " of "
+                                + visibleOrders.size() + " orders. Use the order UUID for actions."), false);
+                    }
+                }
                 case CREATE -> create(player, packet);
                 case CLAIM -> withOrderId(packet.orderId(), id -> OrderService.claim(player, id), player);
                 case FULFIL -> fulfil(player, packet);
