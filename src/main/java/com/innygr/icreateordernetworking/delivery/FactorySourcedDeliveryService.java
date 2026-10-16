@@ -201,13 +201,13 @@ public final class FactorySourcedDeliveryService {
             // travelling even if the journal still says RESERVED. Never refill the
             // source logger from factory stock in that state: it could duplicate a
             // shipment that has physically left the source.
-            if (PackagerFrogportAdapter.hasMarkedPackageAtSource(level, shipment)) continue;
+            boolean packageExists = PackagerFrogportAdapter.hasMarkedPackageAtSource(level, shipment);
             // With no marked cargo at the source, the physical state is ambiguous:
             // the package may be in transit, or a crash may have happened between
             // extraction and insertion. Fail closed rather than collecting fresh
             // stock and risking a duplicate shipment. Partial marked logger cargo
             // remains recoverable from the persisted manifest.
-            if (present <= 0 || present >= shipment.count()) continue;
+            if (!shouldResumeFactoryCollection(present, shipment.count(), packageExists)) continue;
             com.innygr.icreateordernetworking.orders.Order order =
                     com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
             if (order == null) continue;
@@ -264,6 +264,13 @@ public final class FactorySourcedDeliveryService {
             if (missing == 0) recovered++;
         }
         return recovered;
+    }
+
+    /** Pure recovery guard: only partial, source-marked cargo with no existing package may be topped up. */
+    static boolean shouldResumeFactoryCollection(int markedAtLogger, int shipmentCount,
+                                                  boolean markedPackageExistsAtSource) {
+        return shipmentCount > 0 && markedAtLogger > 0 && markedAtLogger < shipmentCount
+                && !markedPackageExistsAtSource;
     }
 
     private static BlockPos parsePos(String value) {
