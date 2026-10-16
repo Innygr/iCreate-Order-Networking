@@ -280,8 +280,16 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         int marked = 0;
         for (int slot = 0; slot < contents.getSlots(); slot++) {
             ItemStack stack = contents.getStackInSlot(slot);
-            if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId())
-                    || TrainShipmentMarker.transactionId(stack) != null) continue;
+            if (stack.isEmpty() || !BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(request.itemId()))
+                continue;
+            java.util.UUID existingTransaction = TrainShipmentMarker.transactionId(stack);
+            if (request.transactionId().equals(existingTransaction)) {
+                // Factory-sourced cargo is marked before it enters the source logger;
+                // Create must preserve that exact marker inside the package.
+                marked += stack.getCount();
+                continue;
+            }
+            if (existingTransaction != null) continue;
             TrainShipmentMarker.mark(stack, request);
             contents.setStackInSlot(slot, stack);
             marked += stack.getCount();
