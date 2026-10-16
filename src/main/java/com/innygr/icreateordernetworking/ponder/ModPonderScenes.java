@@ -165,7 +165,7 @@ public final class ModPonderScenes {
     private static void reveal(CreateSceneBuilder scene, SceneBuildingUtil util,
                                int x, int y, int z, int pause, Direction direction) {
         scene.world().showSection(util.select().position(x, y, z), direction);
-        scene.idle(8 + pause * 2L);
+        scene.idle(8 + pause * 2);
     }
 
     private static void explain(CreateSceneBuilder scene, SceneBuildingUtil util,
