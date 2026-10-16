@@ -122,6 +122,86 @@ class ShipmentJournalDataTest {
         assertEquals(1, reloaded.pending().size());
     }
     @Test
+    void factoryAllocationManifestSurvivesSaveLoadExactly() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID transactionId = UUID.randomUUID();
+        DeliveryRequest request = new DeliveryRequest(UUID.randomUUID(),
+                ResourceLocation.parse("minecraft:iron_ingot"), 4, DeliveryRoute.FROGPORT,
+                UUID.randomUUID(), "0,64,0>10,64,10", transactionId);
+        assertTrue(journal.reserve(request));
+
+        var expected = java.util.List.of(
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(1, 64, 1),
+                        new net.minecraft.core.BlockPos(2, 64, 1), 3),
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(5, 64, 5),
+                        new net.minecraft.core.BlockPos(6, 64, 5), 1));
+        assertTrue(journal.saveFactoryManifest(transactionId, expected));
+
+        ShipmentJournalData reloaded = ShipmentJournalData.load(journal.save(new CompoundTag(), null), null);
+        assertEquals(expected, reloaded.factoryManifest(transactionId));
+        assertThrows(UnsupportedOperationException.class,
+                () -> reloaded.factoryManifest(transactionId).add(expected.get(0)));
+    }
+
+    @Test
+    void factoryManifestRejectsWrongTotalsAndCannotBeReplaced() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID transactionId = UUID.randomUUID();
+        DeliveryRequest request = new DeliveryRequest(UUID.randomUUID(),
+                ResourceLocation.parse("minecraft:iron_ingot"), 4, DeliveryRoute.FROGPORT,
+                UUID.randomUUID(), "0,64,0>10,64,10", transactionId);
+        assertTrue(journal.reserve(request));
+
+        var first = java.util.List.of(
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(1, 64, 1),
+                        new net.minecraft.core.BlockPos(2, 64, 1), 2),
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(5, 64, 5),
+                        new net.minecraft.core.BlockPos(6, 64, 5), 2));
+        var wrongTotal = java.util.List.of(
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(1, 64, 1),
+                        new net.minecraft.core.BlockPos(2, 64, 1), 3));
+        var replacement = java.util.List.of(
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(1, 64, 1),
+                        new net.minecraft.core.BlockPos(2, 64, 1), 1),
+                new ShipmentJournalData.FactoryAllocation(new net.minecraft.core.BlockPos(5, 64, 5),
+                        new net.minecraft.core.BlockPos(6, 64, 5), 3));
+
+        assertFalse(journal.saveFactoryManifest(transactionId, wrongTotal));
+        assertTrue(journal.saveFactoryManifest(transactionId, first));
+        assertFalse(journal.saveFactoryManifest(transactionId, replacement));
+        assertEquals(first, journal.factoryManifest(transactionId));
+    }
+
+    @Test
+    void factoryManifestIsRemovedWhenReservationIsAbandonedOrCompleted() {
+        ShipmentJournalData journal = new ShipmentJournalData();
+        UUID abandonedId = UUID.randomUUID();
+        DeliveryRequest abandoned = new DeliveryRequest(UUID.randomUUID(),
+                ResourceLocation.parse("minecraft:iron_ingot"), 1, DeliveryRoute.FROGPORT,
+                UUID.randomUUID(), "0,64,0>10,64,10", abandonedId);
+        var manifest = java.util.List.of(new ShipmentJournalData.FactoryAllocation(
+                new net.minecraft.core.BlockPos(1, 64, 1), new net.minecraft.core.BlockPos(2, 64, 1), 1));
+        assertTrue(journal.reserve(abandoned));
+        assertTrue(journal.saveFactoryManifest(abandonedId, manifest));
+        assertTrue(journal.abandonReservation(abandonedId));
+        assertTrue(journal.factoryManifest(abandonedId).isEmpty());
+
+        UUID completedId = UUID.randomUUID();
+        DeliveryRequest completed = new DeliveryRequest(UUID.randomUUID(),
+                ResourceLocation.parse("minecraft:iron_ingot"), 1, DeliveryRoute.FROGPORT,
+                UUID.randomUUID(), "0,64,0>10,64,10", completedId);
+        assertTrue(journal.reserve(completed));
+        assertTrue(journal.saveFactoryManifest(completedId, manifest));
+        assertTrue(journal.advance(completedId, ShipmentJournalData.Stage.RESERVED,
+                ShipmentJournalData.Stage.DISPATCHED, null));
+        assertTrue(journal.advance(completedId, ShipmentJournalData.Stage.DISPATCHED,
+                ShipmentJournalData.Stage.DESTINATION_RECEIVED, "10,64,10"));
+        assertTrue(journal.advance(completedId, ShipmentJournalData.Stage.DESTINATION_RECEIVED,
+                ShipmentJournalData.Stage.COMPLETED, null));
+        assertTrue(journal.factoryManifest(completedId).isEmpty());
+    }
+
+    @Test
     void transitionsRejectEndpointDataOutsideReceiptBoundary() {
         ShipmentJournalData journal = new ShipmentJournalData();
         UUID transactionId = UUID.randomUUID();
