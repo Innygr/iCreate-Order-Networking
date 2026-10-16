@@ -47,6 +47,29 @@ public record FactorySourcingPlan(
         return create(level, networkId, requester, item, requestedCount);
     }
 
+    /**
+     * Authorization-enforcing entry point for actual order sourcing. Unlike the
+     * discovery-only overload, this requires an explicit persisted Stock Link to
+     * factory binding and revalidates the actor's current owner/team access.
+     */
+    public static FactorySourcingPlan createForAuthorizedStockLink(ServerLevel level, BlockPos stockLink,
+                                                                    BlockPos requester, Item item,
+                                                                    int requestedCount, UUID actorId) {
+        if (requestedCount < 0) {
+            throw new IllegalArgumentException("Requested count cannot be negative");
+        }
+        if (level == null || actorId == null || stockLink == null) {
+            return new FactorySourcingPlan(requestedCount, List.of(), 0, requestedCount);
+        }
+        StockLinkBindingData.Binding binding = StockLinkBindingData.get(level)
+                .authorizedBinding(level, stockLink, actorId);
+        if (binding == null) {
+            return new FactorySourcingPlan(requestedCount, List.of(), 0, requestedCount);
+        }
+        UUID networkId = binding.createNetworkId();
+        return create(level, networkId, requester, item, requestedCount);
+    }
+
     public static FactorySourcingPlan create(ServerLevel level, UUID networkId,
                                              BlockPos requester, Item item, int requestedCount) {
         if (requestedCount < 0) {
