@@ -221,11 +221,10 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                 || !(level.getBlockEntity(pos) instanceof PackagerBlockEntity packager)
                 || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)
                 || packager.getBlockState().getValue(PackagerBlock.FACING) != logger.getOutputDirection()) return null;
-        Direction towardLogger = logger.getOutputDirection().getOpposite();
         IItemHandler loggerFace = level.getCapability(Capabilities.ItemHandler.BLOCK,
-                logger.getBlockPos(), towardLogger);
+                logger.getBlockPos(), logger.getOutputDirection());
         if (loggerFace == null || packager.targetInventory == null
-                || packager.targetInventory.getInventory() == null) return null;
+                || packager.targetInventory.getInventory() != loggerFace) return null;
         return packager;
     }
 
@@ -239,8 +238,9 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
                     || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)
                     || packager.getBlockState().getValue(PackagerBlock.FACING) != side) continue;
             IItemHandler loggerFace = level.getCapability(Capabilities.ItemHandler.BLOCK,
-                    logger.getBlockPos(), side.getOpposite());
-            if (loggerFace != null && packager.targetInventory != null) return packager;
+                    logger.getBlockPos(), side);
+            if (loggerFace != null && packager.targetInventory != null
+                    && packager.targetInventory.getInventory() == loggerFace) return packager;
         }
         return null;
     }
