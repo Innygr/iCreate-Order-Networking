@@ -130,3 +130,40 @@ The optional Missile Tag is an identity marker for a missile assembly. Its block
 ## Orbital missile variant
 
 An orbital missile is a separate assembly mode: its designated structure must be assembled upside down, with the trigger/anchor block at or above Y=250. The structure checker should reject normal orientation, missing required blocks, and anchor positions below Y=250 before launch. Orbital kills use dedicated death-message translation keys: `%1$s was orbitally struck by missile` for an untagged missile and `%1$s was struck by %2$s’s orbital missile` for a tagged missile. The current patch adds the assembly validator and message helper; wiring them into a live missile entity/assembly interaction remains dependent on the not-yet-implemented missile launch system.
+
+
+## Missile component recipe specifications
+
+These are the agreed recipe designs for implementation. They are design specs, not currently loadable crafting recipes: the missile fin, missile nose, missile navigator, altitude sensor, and navigation table still need registered game items/blocks before recipe JSON can reference them.
+
+### Missile fin
+
+- **Output:** 4 Missile Fins
+- **Pattern:** three iron ingots arranged diagonally
+
+```text
+I..
+.I.
+..I
+```
+
+`I` = Iron Ingot.
+
+### Missile nose
+
+- **Output:** 1 Missile Nose
+- **Pattern:** an iron ingot directly above an iron block
+
+```text
+I
+B
+```
+
+`I` = Iron Ingot; `B` = Iron Block.
+
+### Missile navigator
+
+- **Output:** 1 Missile Navigator
+- **Ingredients:** 1 Altitude Sensor, 1 Navigation Table, and 1 Cartography Table.
+
+The exact shaped/shapeless arrangement can be settled when the component items are registered. Keep the recipe focused on guidance equipment rather than adding extra expensive materials.
