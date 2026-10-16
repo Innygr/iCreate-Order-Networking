@@ -197,8 +197,17 @@ public final class FactorySourcedDeliveryService {
             List<ShipmentJournalData.FactoryAllocation> manifest = journal.factoryManifest(shipment.transactionId());
             if (manifest.isEmpty()) continue;
             int present = TrainShipmentMarker.countMatchingIn(logger, shipment);
-            if (present == shipment.count()) continue;
-            if (present > shipment.count()) continue;
+            // Once Create has made a transaction-marked package, it may already be
+            // travelling even if the journal still says RESERVED. Never refill the
+            // source logger from factory stock in that state: it could duplicate a
+            // shipment that has physically left the source.
+            if (PackagerFrogportAdapter.hasMarkedPackageAtSource(level, shipment)) continue;
+            // With no marked cargo at the source, the physical state is ambiguous:
+            // the package may be in transit, or a crash may have happened between
+            // extraction and insertion. Fail closed rather than collecting fresh
+            // stock and risking a duplicate shipment. Partial marked logger cargo
+            // remains recoverable from the persisted manifest.
+            if (present <= 0 || present >= shipment.count()) continue;
             com.innygr.icreateordernetworking.orders.Order order =
                     com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
             if (order == null) continue;
