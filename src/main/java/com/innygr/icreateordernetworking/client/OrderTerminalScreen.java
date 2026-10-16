@@ -209,6 +209,8 @@ public final class OrderTerminalScreen extends Screen {
         graphics.drawString(font, "02  RESOURCE REQUEST", left, top + 50, AMBER);
         graphics.drawString(font, "03  SHIPMENT ENDPOINTS", left, top + 104, AMBER);
         graphics.drawString(font, "04  ROUTE & ACTIONS", left, top + 158, AMBER);
+        graphics.fill(left, top + 185, left + 340, top + 187, 0xFF35424F);
+        graphics.fill(left, top + 185, left + 62, top + 187, AMBER);
         graphics.drawString(font, "TRAIN / AIRSHIP depend on installed integrations", left + 174, top + 174, MUTED);
 
         if (!feedback.isBlank()) {

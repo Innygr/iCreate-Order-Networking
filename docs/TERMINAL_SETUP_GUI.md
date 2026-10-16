@@ -18,3 +18,8 @@ The Order Terminal screen now uses a code-drawn industrial frame: dark inset pan
 2. Add searchable order list and shipment status/history.
 3. Implement terminal setup and stock-link management screens from `TERMINAL_SETUP_GUI.md`.
 4. Replace default widgets with custom-styled controls and add matching textures where useful.
+
+
+## Order Terminal visual implementation
+
+The current Order Terminal uses a code-drawn dark industrial panel with a steel header, amber status/accent bars, section separators, and a persistent request-status strip. Its controls still use Minecraft's standard widgets. Action feedback is client-side confirmation that a packet was sent; server response messages remain authoritative. The Ponder orbital assembly scene animates components sliding into position as a visual teaching sequence only.

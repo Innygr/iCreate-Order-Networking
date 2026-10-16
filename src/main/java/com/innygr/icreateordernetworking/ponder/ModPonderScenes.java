@@ -138,15 +138,19 @@ public final class ModPonderScenes {
     public static void orbitalMissile(SceneBuilder builder, SceneBuildingUtil util) {
         CreateSceneBuilder scene = start(builder, "orbital_missile", "Orbital assembly overview");
         showBase(scene, util);
-        scene.world().setBlock(util.grid().at(2, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
-        scene.world().setBlock(util.grid().at(2, 2, 2), Blocks.FURNACE.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(1, 1, 2), Blocks.IRON_BLOCK.defaultBlockState(), false);
+        scene.world().setBlock(util.grid().at(3, 1, 2), Blocks.FURNACE.defaultBlockState(), false);
         scene.world().setBlock(util.grid().at(2, 3, 2), Blocks.ANVIL.defaultBlockState(), false);
-        reveal(scene, util, 2, 1, 2, 1, Direction.DOWN);
-        explain(scene, util, "The planned assembly is inverted, with its anchor at Y=250 or higher.", 2, 1, 2);
-        reveal(scene, util, 2, 2, 2, 2, Direction.DOWN);
-        explain(scene, util, "Starting high is intended to reduce the fuel needed for the climb.", 2, 2, 2);
+        reveal(scene, util, 1, 1, 2, 1, Direction.DOWN);
+        explain(scene, util, "The planned assembly is inverted, with its anchor at Y=250 or higher.", 1, 1, 2);
+        reveal(scene, util, 3, 1, 2, 2, Direction.DOWN);
+        scene.world().moveSection(util.select().position(3, 1, 2), util.vector().of(-1, 1, 0), 12);
+        scene.idle(14);
+        explain(scene, util, "The engine component slides into the central assembly position.", 2, 2, 2);
         reveal(scene, util, 2, 3, 2, 3, Direction.DOWN);
-        explain(scene, util, "The validator and message helpers exist; live launch, descent physics, and impact integration remain future work.", 2, 3, 2);
+        scene.world().moveSection(util.select().position(2, 3, 2), util.vector().of(0, -1, 0), 12);
+        scene.idle(14);
+        explain(scene, util, "The final component settles into place. This is a visual assembly animation; live launch, descent physics, and impact integration remain future work.", 2, 2, 2);
         scene.markAsFinished();
     }
 
