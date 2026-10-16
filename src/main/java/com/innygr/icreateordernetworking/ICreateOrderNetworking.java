@@ -4,6 +4,7 @@ import com.innygr.icreateordernetworking.compat.NetworkStatisticsDisplaySource;
 import com.innygr.icreateordernetworking.compat.OrderTerminalDisplaySource;
 import com.innygr.icreateordernetworking.compat.TerminalLoggerDisplaySource;
 import com.innygr.icreateordernetworking.compat.RedstoneRequesterOrderBridge;
+import com.innygr.icreateordernetworking.compat.CreateStockLinkEndpointBridge;
 import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
 import com.innygr.icreateordernetworking.delivery.AeronauticsDockingConnectorAdapter;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
@@ -35,9 +36,11 @@ public final class ICreateOrderNetworking {
     public static final String MOD_ID = "icreate_order_networking";
 
     private final RedstoneRequesterOrderBridge requesterOrderBridge = new RedstoneRequesterOrderBridge();
+    private final CreateStockLinkEndpointBridge stockLinkEndpointBridge = new CreateStockLinkEndpointBridge();
 
     public ICreateOrderNetworking(IEventBus modBus) {
         NeoForge.EVENT_BUS.register(requesterOrderBridge);
+        NeoForge.EVENT_BUS.register(stockLinkEndpointBridge);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onServerStopped);
         ModBlocks.register(modBus);
@@ -63,6 +66,7 @@ public final class ICreateOrderNetworking {
 
     private void onServerStopped(ServerStoppedEvent event) {
         requesterOrderBridge.clear();
+        stockLinkEndpointBridge.clear();
         AutomatedDeliveryRegistry.clear();
         FactoryEndpointRegistry.clear();
     }
