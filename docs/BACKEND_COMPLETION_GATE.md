@@ -20,7 +20,8 @@ This checklist separates code implementation from the dedicated-server test sess
 ## Remaining verification before calling the backend complete
 
 - [ ] Verify Create train PSI and Aeronautics docking behavior against the exact mod versions in the target modpack. A registered adapter is implemented code, not proof that its live endpoint API works in-game.
-- [ ] Implement and verify Frogport routing through a Create Packager whose input/output face is oriented toward the Terminal Logger; Frogport does not directly connect to the Logger. Validate package inventory/lifecycle and destination receipt before enabling order fulfilment.
+- [x] Implement the Packager-mediated Frogport adapter: a correctly oriented Create Packager sits against each Terminal Logger, with the Frogport above the Packager; reserved cargo remains transaction-marked inside Create packages and cannot be fulfilled without a matching destination receipt.
+- [ ] Verify the Packager/Frogport address configuration, physical package movement, marker preservation, and receipt/payout lifecycle in the exact target modpack.
 - [ ] Confirm that belt/funnel routes remain unavailable unless a real adapter is implemented and verified for those transports.
 - [ ] Run the full Gradle test/build suite on the final branch head.
 - [ ] Test on a dedicated server: create and claim an order, reserve cargo, dispatch, receive the exact marked cargo, finalize order progress and payout, then repeat the same transaction to verify idempotency.
