@@ -231,7 +231,7 @@ This section distinguishes implemented scaffolding from functionality that must 
 | Player-facing Order Terminal GUI | Not complete | Add server-authoritative menu actions and client screens; validate all inputs on server |
 | Display Link: Network Statistics | Source class exists | Confirm source registration and output in Create 6.0.6 in a live world |
 | Display Link: Order Terminal and Terminal Logger | Planned | Add separate sources; logger output must be local to that block, not aggregated across every logger in a factory |
-| Stock Link: Order Terminal | Planned | Define precisely whether reported stock is available, reserved, in transit, or craftable; never count reserved stock as available |
+| Create Stock Link stock discovery | Implemented read-only live stock endpoint registration for loaded Create Stock Links; reports linked Packager availability and Create frequency | Bind the Create frequency to an authorized iCreate factory/network, then test live stock refresh, unload/reload, reservation races, and actual dispatch/receipt; read-only stock is not a reservation |
 
 ### Required automated-delivery transaction contract
 
@@ -269,6 +269,7 @@ A factory may contain many Terminal Loggers. Each logger's routing, filter, buff
 - [ ] Add a real server-side adapter and integration test for each route independently: train/Portable Storage Interface, Aeronautics/Docking Connector, Create Frogport, and belt/Terminal Logger.
 - [ ] Verify Redstone Requester event timing and duplicate-order suppression in-game.
 - [ ] Implement and test server-authoritative Order Terminal menu actions before exposing the GUI.
-- [ ] Verify Display Link sources and any Stock Link integration against the pinned Create version in a live world.
+- [ ] Verify Display Link sources and Stock Link endpoint registration/stock counts against the pinned Create version in a live world.
+- [ ] Bind Create Stock Link frequency to an authorized iCreate factory network before sourcing requests from those endpoints; stock discovery alone must not reserve or dispatch cargo.
 - [ ] Run the full CI suite after backend changes; CI compilation alone does not prove live-world transport behavior.
 
