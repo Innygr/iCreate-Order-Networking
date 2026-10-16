@@ -106,6 +106,7 @@ public final class RedstoneRequesterOrderBridge {
         }
 
         boolean hasValidRequest = false;
+        boolean allRequestsHandled = true;
         for (BigItemStack entry : requester.encodedRequest.stacks()) {
             if (entry == null || entry.stack == null || entry.stack.isEmpty()
                     || entry.count < 1 || entry.count > OrderService.MAX_ORDER_COUNT) continue;
@@ -116,8 +117,14 @@ public final class RedstoneRequesterOrderBridge {
             if (created != null) {
                 LOGGER.info("Created Redstone Requester restock order {} for {} x{} at {} in {}",
                         created.id(), itemId, entry.count, requesterPos, level.dimension().location());
+            } else if (!OrderService.hasActiveOrderForOwnerItem(level, ownerId, itemId)) {
+                // Leave the requester unlatched if creation failed so another neighbor update can retry.
+                allRequestsHandled = false;
+                LOGGER.warn("Could not create Redstone Requester restock order for {} x{} at {} in {}; will retry",
+                        itemId, entry.count, requesterPos, level.dimension().location());
             }
         }
-        return hasValidRequest;
+        // Existing active orders intentionally suppress duplicates; only latch handled requests.
+        return hasValidRequest && allRequestsHandled;
     }
 }
