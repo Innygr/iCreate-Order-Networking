@@ -118,7 +118,7 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
     }
 
     @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide) {
             BlockPos otherPos = state.getValue(HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos.above();
             BlockState otherState = level.getBlockState(otherPos);
@@ -126,7 +126,7 @@ public final class OrderTerminalBlock extends BaseEntityBlock {
                 level.setBlock(otherPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL | Block.UPDATE_SUPPRESS_DROPS);
             }
         }
-        super.playerWillDestroy(level, pos, state, player);
+        return super.playerWillDestroy(level, pos, state, player);
     }
 
     private static void interact(OrderTerminalBlockEntity terminal, Level level, BlockPos pos, Player player) {
