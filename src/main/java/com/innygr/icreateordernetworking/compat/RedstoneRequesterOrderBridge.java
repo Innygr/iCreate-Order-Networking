@@ -1,6 +1,8 @@
 package com.innygr.icreateordernetworking.compat;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -105,26 +107,41 @@ public final class RedstoneRequesterOrderBridge {
                     .orElse(null);
         }
 
-        boolean hasValidRequest = false;
-        boolean allRequestsHandled = true;
+        Map<net.minecraft.resources.ResourceLocation, Long> requestedCounts = new LinkedHashMap<>();
         for (BigItemStack entry : requester.encodedRequest.stacks()) {
             if (entry == null || entry.stack == null || entry.stack.isEmpty()
-                    || entry.count < 1 || entry.count > OrderService.MAX_ORDER_COUNT) continue;
+                    || entry.count < 1) continue;
             var itemId = BuiltInRegistries.ITEM.getKey(entry.stack.getItem());
             if (itemId == null || itemId.equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
-            hasValidRequest = true;
-            var created = OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, entry.count);
+            requestedCounts.merge(itemId, (long) entry.count, Long::sum);
+        }
+        if (requestedCounts.isEmpty()) return false;
+
+        boolean allRequestsHandled = true;
+        for (var requested : requestedCounts.entrySet()) {
+            var itemId = requested.getKey();
+            long requestedCount = requested.getValue();
+            // Never silently truncate duplicate item rows or create an oversized order.
+            if (requestedCount < 1 || requestedCount > OrderService.MAX_ORDER_COUNT) {
+                allRequestsHandled = false;
+                LOGGER.warn("Redstone Requester request for {} totals {} items at {} in {}; maximum per order is {}; correct the encoded request",
+                        itemId, requestedCount, requesterPos, level.dimension().location(),
+                        OrderService.MAX_ORDER_COUNT);
+                continue;
+            }
+            int count = (int) requestedCount;
+            var created = OrderService.createRestockOrder(level, ownerId, ownerName, ownerTeamKey, itemId, count);
             if (created != null) {
                 LOGGER.info("Created Redstone Requester restock order {} for {} x{} at {} in {}",
-                        created.id(), itemId, entry.count, requesterPos, level.dimension().location());
+                        created.id(), itemId, count, requesterPos, level.dimension().location());
             } else if (!OrderService.hasActiveOrderForOwnerItem(level, ownerId, itemId)) {
                 // Leave the requester unlatched if creation failed so another neighbor update can retry.
                 allRequestsHandled = false;
                 LOGGER.warn("Could not create Redstone Requester restock order for {} x{} at {} in {}; will retry",
-                        itemId, entry.count, requesterPos, level.dimension().location());
+                        itemId, count, requesterPos, level.dimension().location());
             }
         }
         // Existing active orders intentionally suppress duplicates; only latch handled requests.
-        return hasValidRequest && allRequestsHandled;
+        return allRequestsHandled;
     }
 }
