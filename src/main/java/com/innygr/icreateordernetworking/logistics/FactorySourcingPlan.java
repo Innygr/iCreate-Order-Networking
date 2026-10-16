@@ -124,6 +124,52 @@ public record FactorySourcingPlan(
         }
     }
 
+    /**
+     * Recheck a planned allocation immediately before a caller attempts to
+     * reserve/extract stock. A plan is only a snapshot: stock may have changed
+     * since discovery, and every source must still be bound to this actor.
+     *
+     * This method does not reserve or move items; callers must still perform
+     * an atomic endpoint reservation before dispatching any shipment.
+     */
+    public boolean revalidateForAuthorizedStockLink(ServerLevel level, BlockPos stockLink,
+                                                      UUID actorId, Item item) {
+        if (level == null || stockLink == null || actorId == null || item == null
+                || level.getServer() == null || !level.getServer().isSameThread()) {
+            return false;
+        }
+        if (requestedCount == 0) return allocations.isEmpty() && shortfall == 0;
+        StockLinkBindingData bindings = StockLinkBindingData.get(level);
+        StockLinkBindingData.Binding root = bindings.authorizedBinding(level, stockLink, actorId);
+        if (root == null) return false;
+        ResourceLocation expectedItem = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item);
+        if (expectedItem == null) return false;
+
+        long total = 0;
+        for (Allocation allocation : allocations) {
+            FactoryEndpointRegistry.StockOffer offer = allocation.source();
+            BlockPos position = offer.position();
+            if (position == null || !level.hasChunkAt(position)
+                    || !expectedItem.equals(offer.itemId())
+                    || bindings.authorizedBinding(level, position, actorId) == null) {
+                return false;
+            }
+            FactoryEndpointRegistry.FactoryEndpoint endpoint = offer.endpoint();
+            try {
+                if (endpoint == null || !position.equals(endpoint.position())
+                        || !root.createNetworkId().equals(endpoint.networkId())
+                        || endpoint.availableCount(expectedItem) < allocation.count()) {
+                    return false;
+                }
+            } catch (RuntimeException | LinkageError unavailable) {
+                return false;
+            }
+            total += allocation.count();
+            if (total > Integer.MAX_VALUE) return false;
+        }
+        return total == locallyAvailable && total + shortfall == requestedCount;
+    }
+
     public boolean fullySourcedLocally() {
         return shortfall == 0;
     }
