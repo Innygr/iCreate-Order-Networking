@@ -137,20 +137,36 @@ public final class FactorySourcedDeliveryService {
                     return false;
                 }
                 TrainShipmentMarker.mark(stack, request);
-                int target = -1;
-                for (int slot : emptySlots) {
-                    if (logger.getInventory().getStackInSlot(slot).isEmpty()) { target = slot; break; }
+                // Coalesce compatible transaction stacks first so the number of
+                // source slots does not artificially exceed the logger's capacity.
+                for (int slot = 0; slot < logger.getInventory().getSlots() && !stack.isEmpty(); slot++) {
+                    ItemStack existing = logger.getInventory().getStackInSlot(slot);
+                    if (existing.isEmpty() || !TrainShipmentMarker.matches(existing, request.transactionId())
+                            || !ItemStack.isSameItemSameComponents(existing, stack)) continue;
+                    int room = existing.getMaxStackSize() - existing.getCount();
+                    if (room <= 0) continue;
+                    int moved = Math.min(room, stack.getCount());
+                    ItemStack merged = existing.copy();
+                    merged.grow(moved);
+                    logger.getInventory().setStackInSlot(slot, merged);
+                    stack.shrink(moved);
                 }
-                if (target < 0) {
-                    ItemStack remainder = slice.inventory().insertItem(slice.slot(), stack, false);
-                    if (!remainder.isEmpty()) level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
-                            level, slice.position().getX() + 0.5, slice.position().getY() + 0.5,
-                            slice.position().getZ() + 0.5, remainder));
-                    if (outputSlot > 0) throw new IllegalStateException(
-                            "Factory logger filled during a partial durable reservation");
-                    return false;
+                if (!stack.isEmpty()) {
+                    int target = -1;
+                    for (int slot : emptySlots) {
+                        if (logger.getInventory().getStackInSlot(slot).isEmpty()) { target = slot; break; }
+                    }
+                    if (target < 0) {
+                        ItemStack remainder = slice.inventory().insertItem(slice.slot(), stack, false);
+                        if (!remainder.isEmpty()) level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
+                                level, slice.position().getX() + 0.5, slice.position().getY() + 0.5,
+                                slice.position().getZ() + 0.5, remainder));
+                        if (outputSlot > 0) throw new IllegalStateException(
+                                "Factory logger filled during a partial durable reservation");
+                        return false;
+                    }
+                    logger.getInventory().setStackInSlot(target, stack);
                 }
-                logger.getInventory().setStackInSlot(target, stack);
                 logger.setChanged();
                 outputSlot++;
             }
