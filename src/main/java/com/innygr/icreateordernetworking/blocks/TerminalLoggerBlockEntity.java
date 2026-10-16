@@ -150,6 +150,19 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
         if (enabled == chunkTicketRegistered) return;
         net.minecraft.world.level.ChunkPos chunkPos = new net.minecraft.world.level.ChunkPos(worldPosition);
+        if (!enabled) {
+            // Forced chunks are tracked per chunk, not per block entity. Do not
+            // remove the shared ticket while another live logger still needs it.
+            net.minecraft.world.level.chunk.LevelChunk chunk =
+                    serverLevel.getChunkSource().getChunkNow(chunkPos.x, chunkPos.z);
+            if (chunk != null && chunk.getBlockEntities().values().stream()
+                    .anyMatch(blockEntity -> blockEntity != this
+                            && blockEntity instanceof TerminalLoggerBlockEntity logger
+                            && !logger.isRemoved())) {
+                chunkTicketRegistered = false;
+                return;
+            }
+        }
         // setChunkForced persists the ticket in the world's forced-chunk data, so it
         // survives a restart. This intentionally forces only the logger's own chunk.
         serverLevel.setChunkForced(chunkPos.x, chunkPos.z, enabled);
