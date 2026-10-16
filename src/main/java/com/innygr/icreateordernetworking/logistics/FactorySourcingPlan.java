@@ -23,10 +23,14 @@ public record FactorySourcingPlan(
 
     public FactorySourcingPlan {
         if (requestedCount < 0 || locallyAvailable < 0 || shortfall < 0
-                || locallyAvailable + shortfall != requestedCount) {
+                || (long) locallyAvailable + shortfall != requestedCount) {
             throw new IllegalArgumentException("Inconsistent sourcing plan quantities");
         }
         allocations = List.copyOf(allocations);
+        long allocatedCount = allocations.stream().mapToLong(Allocation::count).sum();
+        if (allocatedCount != locallyAvailable) {
+            throw new IllegalArgumentException("Allocation counts must equal locally available quantity");
+        }
     }
 
     /**

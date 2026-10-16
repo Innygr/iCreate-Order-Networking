@@ -23,6 +23,8 @@ class FactorySourcingPlanTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new FactorySourcingPlan(10, List.of(), 2, 7));
         assertThrows(IllegalArgumentException.class,
+                () -> new FactorySourcingPlan(10, List.of(), 2, 8));
+        assertThrows(IllegalArgumentException.class,
                 () -> new FactorySourcingPlan(-1, List.of(), 0, -1));
     }
 
