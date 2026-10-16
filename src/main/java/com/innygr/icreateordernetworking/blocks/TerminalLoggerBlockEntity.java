@@ -94,7 +94,15 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
                     // adapter. A belt, funnel, or other capability consumer must not
                     // be able to steal it from the logger while dispatch is pending.
                     if (TrainShipmentMarker.transactionId(inventory.getStackInSlot(slot)) != null) {
-                        return ItemStack.EMPTY;
+                        // A Packager directly attached to the configured output face
+                        // is the one permitted consumer for Frogport-bound reserved
+                        // cargo. Other pipes, belts, and automation still cannot steal it.
+                        BlockEntity adjacent = level == null ? null : level.getBlockEntity(worldPosition.relative(side));
+                        if (!(adjacent instanceof com.simibubi.create.content.logistics.packager.PackagerBlockEntity packager)
+                                || packager.targetInventory == null
+                                || packager.targetInventory.getInventory() == null) {
+                            return ItemStack.EMPTY;
+                        }
                     }
                     return inventory.extractItem(slot, amount, simulate);
                 }
