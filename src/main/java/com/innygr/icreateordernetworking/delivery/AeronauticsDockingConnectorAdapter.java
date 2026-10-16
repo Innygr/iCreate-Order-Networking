@@ -125,9 +125,14 @@ public final class AeronauticsDockingConnectorAdapter implements AutomatedDelive
         DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
                 DeliveryRoute.AIRSHIP, shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
         java.util.List<Integer> markedSlots = findMarkedSlots(source, shipment.transactionId());
-        if (markedSlots.isEmpty()) return null;
-        int markedCount = markedSlots.stream()
-                .mapToInt(slot -> source.getInventory().getStackInSlot(slot).getCount()).sum();
+        int markedCount = 0;
+        for (int slot : markedSlots) {
+            ItemStack marked = source.getInventory().getStackInSlot(slot);
+            // Never fill a missing quantity from ordinary inventory during recovery:
+            // the missing cargo may already be on the airship.
+            if (!TrainShipmentMarker.matches(marked, shipment)) return null;
+            markedCount += marked.getCount();
+        }
         return markedCount == shipment.count() ? preparedFor(level, request, pair) : null;
     }
 
