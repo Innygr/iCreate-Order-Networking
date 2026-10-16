@@ -152,7 +152,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         net.minecraft.world.level.ChunkPos chunkPos = new net.minecraft.world.level.ChunkPos(worldPosition);
         // setChunkForced persists the ticket in the world's forced-chunk data, so it
         // survives a restart. This intentionally forces only the logger's own chunk.
-        serverLevel.setChunkForced(chunkPos, enabled);
+        serverLevel.setChunkForced(chunkPos.x, chunkPos.z, enabled);
         chunkTicketRegistered = enabled;
     }
 
