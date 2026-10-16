@@ -10,6 +10,7 @@ import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
 import com.simibubi.create.content.logistics.BigItemStack;
 import com.simibubi.create.content.logistics.box.PackageItem;
+import com.simibubi.create.content.logistics.packager.PackagerBlock;
 import com.simibubi.create.content.logistics.packager.PackagerBlockEntity;
 import com.simibubi.create.content.logistics.packagePort.frogport.FrogportBlockEntity;
 import net.minecraft.core.BlockPos;
@@ -218,7 +219,8 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
         BlockPos pos = logger.getBlockPos().relative(logger.getOutputDirection());
         if (!level.hasChunkAt(pos)
                 || !(level.getBlockEntity(pos) instanceof PackagerBlockEntity packager)
-                || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)) return null;
+                || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)
+                || packager.getBlockState().getValue(PackagerBlock.FACING) != logger.getOutputDirection()) return null;
         Direction towardLogger = logger.getOutputDirection().getOpposite();
         IItemHandler loggerFace = level.getCapability(Capabilities.ItemHandler.BLOCK,
                 logger.getBlockPos(), towardLogger);
@@ -234,7 +236,8 @@ public final class PackagerFrogportAdapter implements AutomatedDeliveryAdapter {
             BlockPos pos = logger.getBlockPos().relative(side);
             if (!level.hasChunkAt(pos)
                     || !(level.getBlockEntity(pos) instanceof PackagerBlockEntity packager)
-                    || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)) continue;
+                    || !(level.getBlockEntity(pos.above()) instanceof FrogportBlockEntity)
+                    || packager.getBlockState().getValue(PackagerBlock.FACING) != side) continue;
             IItemHandler loggerFace = level.getCapability(Capabilities.ItemHandler.BLOCK,
                     logger.getBlockPos(), side.getOpposite());
             if (loggerFace != null && packager.targetInventory != null) return packager;
