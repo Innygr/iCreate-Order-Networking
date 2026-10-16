@@ -19,14 +19,16 @@ This snapshot separates code on `main` from work proposed in an open pull reques
 4. Implement server-authoritative Order Terminal menu actions and then connect the player-facing GUI.
 5. Verify Redstone Requester behavior, Display Link registration, and any Stock Link integration in a live world against the pinned Create version.
 
-## Open proposed patch
+## Merged implementation
 
-[PR #15 — durable shipment dispatch and receipt journal](https://github.com/Innygr/iCreate-Order-Networking/pull/15) proposes a persistent shipment journal with `RESERVED → DISPATCHED → DESTINATION_RECEIVED → COMPLETED` milestones and idempotent payout retry. The PR description explicitly notes that an automatic startup recovery hook and concrete transport adapter are not included. Treat this as proposed work until merged and CI-verified; do not describe it as part of `main` yet.
+[PR #15 — durable shipment dispatch and receipt journal](https://github.com/Innygr/iCreate-Order-Networking/pull/15) was merged into `main`. The durable journal, startup payout recovery hook, transaction-marked PSI/Aeronautics/Frogport adapters, missile/component recipes, and unloaded-endpoint guard are now in the main branch. CI confirms compilation and automated tests only; live transport behavior still needs a dedicated-server session.
 
 ## Completion estimates
 
-- **Backend:** previously tracked at 85%; this is a planning estimate, not a test result. The durable shipment lifecycle and real transport adapters remain meaningful gaps.
-- **Whole mod:** previously tracked at 45%; the order GUI, route adapters, and end-to-end/live-world verification remain incomplete.
+These are planning estimates based on implemented code and the remaining feature/test list, not measured test results:
+
+- **Backend implementation: ~85–90%.** Core order/economy logic, GUI actions, durable shipment stages, idempotency, and three transport adapter implementations exist. Remaining work is chiefly live-world validation, lifecycle/restart test coverage, Stock Link authorization/binding, and belt-to-order delivery.
+- **Whole mod: ~65%.** The core backend and most current block/item models and recipes are in place. The remaining share includes polishing and verifying models in-game, completing missing transport/Stock Link behavior, testing permissions and recovery on a dedicated server, and release cleanup. The estimate assumes the current model work is substantially complete; it does not treat model work as wholly outstanding.
 
 ## Next implementation order
 
