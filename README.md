@@ -1,6 +1,6 @@
 # iCreate: Order Networking
 
-🚧 **Work in progress — not yet a playable release.**
+🚧 **Work in progress — not yet a playable release. Although it is almost completely ready for a release!**
 
 A player-driven economy mod for Create-based Minecraft servers. The goal is to connect factories, trade resources, and cooperate through a shared order network that lets players request materials and fulfil industrial needs.
 
