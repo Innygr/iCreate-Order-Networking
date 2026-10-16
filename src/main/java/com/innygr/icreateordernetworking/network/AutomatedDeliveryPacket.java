@@ -6,6 +6,8 @@ import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryService;
 import com.innygr.icreateordernetworking.delivery.DeliveryPreparation;
 import com.innygr.icreateordernetworking.delivery.DeliveryRequest;
 import com.innygr.icreateordernetworking.delivery.DeliveryRoute;
+import com.innygr.icreateordernetworking.delivery.FactorySourcedDeliveryService;
+import com.innygr.icreateordernetworking.logistics.StockLinkBindingData;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
 import com.innygr.icreateordernetworking.orders.Order;
 import com.innygr.icreateordernetworking.orders.OrderData;
@@ -91,7 +93,13 @@ public record AutomatedDeliveryPacket(BlockPos terminalPos, String orderId, int 
 
         DeliveryRequest request = new DeliveryRequest(orderId, registeredItem, packet.count(), route,
                 player.getUUID(), packet.sourceReference(), transactionId);
-        DeliveryPreparation preparation = AutomatedDeliveryService.prepare(level, request);
+
+        // A bound Stock Link beside the Order Terminal opts this request into
+        // authorized factory sourcing. Without one, retain the direct-logger path.
+        BlockPos factoryStockLink = findAdjacentAuthorizedStockLink(level, packet.terminalPos(), player);
+        DeliveryPreparation preparation = route == DeliveryRoute.FROGPORT && factoryStockLink != null
+                ? FactorySourcedDeliveryService.prepare(level, request, factoryStockLink, packet.terminalPos())
+                : AutomatedDeliveryService.prepare(level, request);
         if (preparation.status() != DeliveryPreparation.Status.PREPARED) {
             reply(player, "Automated delivery failed: " + preparation.detail());
             return;
@@ -104,6 +112,20 @@ public record AutomatedDeliveryPacket(BlockPos terminalPos, String orderId, int 
             // source after a transient PSI/transport interruption or server restart.
             reply(player, "Shipment reserved but not yet dispatched. Keep the source logger loaded; recovery will retry.");
         }
+    }
+
+
+    private static BlockPos findAdjacentAuthorizedStockLink(ServerLevel level, BlockPos terminalPos,
+                                                             ServerPlayer player) {
+        if (level == null || terminalPos == null || player == null) return null;
+        for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.values()) {
+            BlockPos candidate = terminalPos.relative(direction);
+            if (!level.hasChunkAt(candidate)) continue;
+            if (StockLinkBindingData.get(level).authorizedBinding(level, candidate, player.getUUID()) != null) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private static void reply(ServerPlayer player, String message) {
