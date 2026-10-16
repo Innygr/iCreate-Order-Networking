@@ -76,7 +76,7 @@ public record FactorySourcingPlan(
             throw new IllegalArgumentException("Requested count cannot be negative");
         }
         if (requestedCount == 0) {
-            return new FactorySourcingPlan(0, List.of(), 0, 0);
+            return java.util.Optional.empty();
         }
 
         List<Allocation> allocations = new ArrayList<>();
@@ -111,11 +111,11 @@ public record FactorySourcingPlan(
      * This is deliberately planning-only: adapters must separately reserve and verify cargo
      * before any shipment is dispatched.
      */
-    public static FactorySourcingPlan createForAuthorizedOrder(ServerLevel level, UUID orderId,
+    public static java.util.Optional<FactorySourcingPlan> createForAuthorizedOrder(ServerLevel level, UUID orderId,
             BlockPos stockLink, BlockPos requester, UUID actorId) {
         if (level == null || orderId == null || stockLink == null || actorId == null
                 || level.getServer() == null || !level.getServer().isSameThread()) {
-            return new FactorySourcingPlan(0, List.of(), 0, 0);
+            return java.util.Optional.empty();
         }
         com.innygr.icreateordernetworking.orders.Order order =
                 com.innygr.icreateordernetworking.orders.OrderData.get(level).find(orderId);
@@ -124,15 +124,15 @@ public record FactorySourcingPlan(
                     && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
                 || !actorId.equals(order.claimedBy())
                 || order.remainingCount() < 1) {
-            return new FactorySourcingPlan(0, List.of(), 0, 0);
+            return java.util.Optional.empty();
         }
         net.minecraft.world.item.Item item =
                 net.minecraft.core.registries.BuiltInRegistries.ITEM.get(order.itemId());
         if (item == null || net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item)
                 .equals(net.minecraft.core.registries.BuiltInRegistries.ITEM.getDefaultKey())) {
-            return new FactorySourcingPlan(0, List.of(), 0, 0);
+            return java.util.Optional.empty();
         }
-        return createForAuthorizedStockLink(level, stockLink, requester, item,
-                order.remainingCount(), actorId);
+        return java.util.Optional.of(createForAuthorizedStockLink(level, stockLink, requester, item,
+                order.remainingCount(), actorId));
     }
 }
