@@ -32,10 +32,13 @@ public final class CreateStockLinkEndpointBridge {
         if (!(event.getLevel() instanceof ServerLevel level)
                 || !(event.getChunk() instanceof LevelChunk chunk)
                 || !CreateStockLinkCompat.isAvailable()) return;
-        for (var blockEntity : chunk.getBlockEntities().values()) {
-            if (blockEntity instanceof PackagerLinkBlockEntity)
-                register(level, blockEntity.getBlockPos());
-        }
+        // Defer one server task so Create has finished initializing each link's
+        // LogisticallyLinkedBehaviour and restored its persisted frequency UUID.
+        var positions = chunk.getBlockEntities().values().stream()
+                .filter(PackagerLinkBlockEntity.class::isInstance)
+                .map(blockEntity -> blockEntity.getBlockPos().immutable())
+                .toList();
+        level.getServer().execute(() -> positions.forEach(position -> register(level, position)));
     }
 
     @SubscribeEvent
