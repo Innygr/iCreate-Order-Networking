@@ -8,6 +8,7 @@ import com.innygr.icreateordernetworking.delivery.AutomatedDeliveryRegistry;
 import com.innygr.icreateordernetworking.delivery.AeronauticsDockingConnectorAdapter;
 import com.innygr.icreateordernetworking.delivery.DurableShipmentService;
 import com.innygr.icreateordernetworking.delivery.PortableStorageInterfaceTrainAdapter;
+import com.innygr.icreateordernetworking.delivery.PackagerFrogportAdapter;
 import com.innygr.icreateordernetworking.logistics.FactoryEndpointRegistry;
 import com.innygr.icreateordernetworking.network.ModNetwork;
 import com.innygr.icreateordernetworking.registry.ModBlockEntities;
