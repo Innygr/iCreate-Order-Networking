@@ -105,4 +105,34 @@ public record FactorySourcingPlan(
     public boolean fullySourcedLocally() {
         return shortfall == 0;
     }
+
+    /**
+     * Build an order-bound sourcing plan only for the current claimant of an active order.
+     * This is deliberately planning-only: adapters must separately reserve and verify cargo
+     * before any shipment is dispatched.
+     */
+    public static FactorySourcingPlan createForAuthorizedOrder(ServerLevel level, UUID orderId,
+            BlockPos stockLink, BlockPos requester, UUID actorId) {
+        if (level == null || orderId == null || stockLink == null || actorId == null
+                || level.getServer() == null || !level.getServer().isSameThread()) {
+            return new FactorySourcingPlan(0, List.of(), 0, 0);
+        }
+        com.innygr.icreateordernetworking.orders.Order order =
+                com.innygr.icreateordernetworking.orders.OrderData.get(level).find(orderId);
+        if (order == null
+                || (order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.OPEN
+                    && order.status() != com.innygr.icreateordernetworking.orders.OrderStatus.IN_PROGRESS)
+                || !actorId.equals(order.claimedBy())
+                || order.remainingCount() < 1) {
+            return new FactorySourcingPlan(0, List.of(), 0, 0);
+        }
+        net.minecraft.world.item.Item item =
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.get(order.itemId());
+        if (item == null || net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item)
+                .equals(net.minecraft.core.registries.BuiltInRegistries.ITEM.getDefaultKey())) {
+            return new FactorySourcingPlan(0, List.of(), 0, 0);
+        }
+        return createForAuthorizedStockLink(level, stockLink, requester, item,
+                order.remainingCount(), actorId);
+    }
 }
