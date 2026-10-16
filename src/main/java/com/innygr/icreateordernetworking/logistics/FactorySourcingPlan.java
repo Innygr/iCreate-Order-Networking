@@ -148,6 +148,15 @@ public record FactorySourcingPlan(
                 || order.remainingCount() < 1) {
             return java.util.Optional.empty();
         }
+        // A plan must not source quantities already reserved by another shipment.
+        // This is still planning-only; a real endpoint reservation must revalidate
+        // stock again before extracting anything.
+        long unreservedCount = (long) order.remainingCount()
+                - com.innygr.icreateordernetworking.orders.OrderData.get(level)
+                        .pendingDeliveryCountForOrder(orderId, null);
+        if (unreservedCount < 1 || unreservedCount > Integer.MAX_VALUE) {
+            return java.util.Optional.empty();
+        }
         net.minecraft.world.item.Item item =
                 net.minecraft.core.registries.BuiltInRegistries.ITEM.get(order.itemId());
         if (item == null || net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item)
@@ -155,6 +164,6 @@ public record FactorySourcingPlan(
             return java.util.Optional.empty();
         }
         return java.util.Optional.of(createForAuthorizedStockLink(level, stockLink, requester, item,
-                order.remainingCount(), actorId));
+                (int) unreservedCount, actorId));
     }
 }
