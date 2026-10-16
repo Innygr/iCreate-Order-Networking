@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ANC"
+  ],
+  "key": {
+    "A": {
+      "item": "icreate_order_networking:altitude_sensor"
+    },
+    "N": {
+      "item": "icreate_order_networking:navigation_table"
+    },
+    "C": {
+      "item": "minecraft:cartography_table"
+    }
+  },
+  "result": {
+    "id": "icreate_order_networking:missile_navigator",
+    "count": 1
+  }
+}
