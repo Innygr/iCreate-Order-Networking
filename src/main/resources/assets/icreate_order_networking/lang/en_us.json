@@ -9,6 +9,8 @@
   "block.icreate_order_networking.missile_thruster": "Missile Thruster",
   "block.icreate_order_networking.missile_tag": "Missile Tag",
   "item.icreate_order_networking.missile_tag": "Missile Tag",
+  "item.icreate_order_networking.missile_fin": "Missile Fin",
+  "item.icreate_order_networking.missile_nose": "Missile Nose",
   "item.icreate_order_networking.nuclear_core": "Nuclear Core",
   "effect.icreate_order_networking.radiation": "Radiation",
   "death.attack.icreate_order_networking.missile": "%1$s was exploded via missile",
