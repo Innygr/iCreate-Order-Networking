@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "minecraft:item/cartography_table"
+    "layer0": "minecraft:block/cartography_table_top"
   }
 }
