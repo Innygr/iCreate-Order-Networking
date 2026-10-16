@@ -190,6 +190,8 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         logger.pullInputs(level);
         logger.pushOutput(level);
         if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            com.innygr.icreateordernetworking.delivery.FactorySourcedDeliveryService
+                    .resumeFactoryCollectionAtSource(serverLevel, logger);
             AutomatedDeliveryService.resumeReservedAtSource(serverLevel, pos);
             TrainShipmentMarker.tryConfirmAtDestination(serverLevel, logger);
         }

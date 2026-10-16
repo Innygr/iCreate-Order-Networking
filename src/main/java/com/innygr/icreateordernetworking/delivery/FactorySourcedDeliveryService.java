@@ -101,6 +101,17 @@ public final class FactorySourcedDeliveryService {
         }
         if (sourceAvailable != request.count() || template == null) return false;
 
+        // Persist exact authorized source links/packagers before the first extraction.
+        List<ShipmentJournalData.FactoryAllocation> manifest = new ArrayList<>();
+        for (FactorySourcingPlan.Allocation allocation : plan.allocations()) {
+            PackagerLinkBlockEntity link = (PackagerLinkBlockEntity) level.getBlockEntity(allocation.source().position());
+            PackagerBlockEntity packager = link.getPackager();
+            manifest.add(new ShipmentJournalData.FactoryAllocation(
+                    allocation.source().position(), packager.getBlockPos(), allocation.count()));
+        }
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        if (!journal.saveFactoryManifest(request.transactionId(), manifest)) return false;
+
         int stackSize = Math.max(1, template.getMaxStackSize());
         int requiredSlots = (request.count() + stackSize - 1) / stackSize;
         List<Integer> emptySlots = new ArrayList<>();
@@ -109,63 +120,125 @@ public final class FactorySourcedDeliveryService {
         }
         if (emptySlots.size() < requiredSlots) return false;
 
-        List<ItemStack> extracted = new ArrayList<>();
+        int outputSlot = 0;
         try {
             for (SourceSlice slice : slices) {
                 ItemStack stack = slice.inventory().extractItem(slice.slot(), slice.count(), false);
-                extracted.add(stack);
                 if (stack.isEmpty() || stack.getCount() != slice.count()
                         || !ItemStack.isSameItemSameComponents(template, stack)) {
-                    restore(level, slices, extracted);
+                    if (!stack.isEmpty()) {
+                        ItemStack remainder = slice.inventory().insertItem(slice.slot(), stack, false);
+                        if (!remainder.isEmpty()) level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
+                                level, slice.position().getX() + 0.5, slice.position().getY() + 0.5,
+                                slice.position().getZ() + 0.5, remainder));
+                    }
+                    if (outputSlot > 0) throw new IllegalStateException(
+                            "Factory collection interrupted after a partial durable reservation");
                     return false;
                 }
+                TrainShipmentMarker.mark(stack, request);
+                int target = -1;
+                for (int slot : emptySlots) {
+                    if (logger.getInventory().getStackInSlot(slot).isEmpty()) { target = slot; break; }
+                }
+                if (target < 0) {
+                    ItemStack remainder = slice.inventory().insertItem(slice.slot(), stack, false);
+                    if (!remainder.isEmpty()) level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
+                            level, slice.position().getX() + 0.5, slice.position().getY() + 0.5,
+                            slice.position().getZ() + 0.5, remainder));
+                    if (outputSlot > 0) throw new IllegalStateException(
+                            "Factory logger filled during a partial durable reservation");
+                    return false;
+                }
+                logger.getInventory().setStackInSlot(target, stack);
+                logger.setChanged();
+                outputSlot++;
             }
         } catch (RuntimeException | LinkageError exception) {
-            restore(level, slices, extracted);
+            // The persisted manifest plus any already marked logger stacks are
+            // sufficient for source-side recovery after the server restarts.
             throw exception;
-        }
-
-        int stackIndex = 0;
-        ItemStack bucket = ItemStack.EMPTY;
-        for (ItemStack stack : extracted) {
-            int remaining = stack.getCount();
-            while (remaining > 0) {
-                int amount = Math.min(remaining, stackSize);
-                ItemStack part = stack.copyWithCount(amount);
-                if (bucket.isEmpty()) bucket = part;
-                else {
-                    // Identical item/components were checked above; keep separate
-                    // stacks so each inventory slot respects its normal stack limit.
-                    TrainShipmentMarker.mark(bucket, request);
-                    logger.getInventory().setStackInSlot(emptySlots.get(stackIndex++), bucket);
-                    bucket = part;
-                }
-                remaining -= amount;
-            }
-        }
-        if (!bucket.isEmpty()) {
-            TrainShipmentMarker.mark(bucket, request);
-            logger.getInventory().setStackInSlot(emptySlots.get(stackIndex), bucket);
         }
         logger.setChanged();
         return true;
     }
 
-    private static void restore(ServerLevel level, List<SourceSlice> slices, List<ItemStack> extracted) {
-        int index = 0;
-        for (SourceSlice slice : slices) {
-            if (index >= extracted.size()) break;
-            ItemStack stack = extracted.get(index++);
-            if (stack.isEmpty()) continue;
-            ItemStack remainder = slice.inventory().insertItem(slice.slot(), stack, false);
-            if (!remainder.isEmpty()) {
-                // The source inventory changed unexpectedly. Preserve the cargo in
-                // the source dimension rather than deleting it.
-                level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
-                        level, slice.position().getX() + 0.5, slice.position().getY() + 0.5,
-                        slice.position().getZ() + 0.5, remainder));
+    /**
+     * Recover an interrupted multi-link collection. Only a RESERVED transaction
+     * with a persisted manifest is eligible; it tops up the logger to the exact
+     * shipment count from the same authorized sources before Frogport can package it.
+     */
+    public static int resumeFactoryCollectionAtSource(ServerLevel level, TerminalLoggerBlockEntity logger) {
+        if (level == null || logger == null || level.getServer() == null
+                || !level.getServer().isSameThread()) return 0;
+        BlockPos loggerPos = logger.getBlockPos();
+        String prefix = loggerPos.getX() + "," + loggerPos.getY() + "," + loggerPos.getZ() + ">";
+        int recovered = 0;
+        ShipmentJournalData journal = ShipmentJournalData.get(level);
+        for (ShipmentJournalData.Shipment shipment : journal.pending().values()) {
+            if (shipment.stage() != ShipmentJournalData.Stage.RESERVED
+                    || !shipment.sourceReference().startsWith(prefix)) continue;
+            List<ShipmentJournalData.FactoryAllocation> manifest = journal.factoryManifest(shipment.transactionId());
+            if (manifest.isEmpty()) continue;
+            int present = TrainShipmentMarker.countMatchingIn(logger, shipment);
+            if (present == shipment.count()) continue;
+            if (present > shipment.count()) continue;
+            com.innygr.icreateordernetworking.orders.Order order =
+                    com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
+            if (order == null) continue;
+            Item item = BuiltInRegistries.ITEM.get(order.itemId());
+            if (item == null) continue;
+            ItemStack template = null;
+            for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
+                ItemStack stack = logger.getInventory().getStackInSlot(slot);
+                if (TrainShipmentMarker.matches(stack, shipment)) { template = stack.copyWithCount(1); break; }
             }
+            int missing = shipment.count() - present;
+            DeliveryRequest request = new DeliveryRequest(shipment.orderId(), order.itemId(), shipment.count(),
+                    shipment.route(), shipment.claimantId(), shipment.sourceReference(), shipment.transactionId());
+            for (ShipmentJournalData.FactoryAllocation allocation : manifest) {
+                if (missing == 0) break;
+                BlockPos linkPos = allocation.stockLink();
+                if (!level.hasChunkAt(linkPos)
+                        || StockLinkBindingData.get(level).authorizedBinding(level, linkPos, shipment.claimantId()) == null
+                        || !(level.getBlockEntity(linkPos) instanceof PackagerLinkBlockEntity link)) continue;
+                PackagerBlockEntity packager = link.getPackager();
+                if (packager == null || !allocation.packager().equals(packager.getBlockPos())
+                        || packager.targetInventory == null || packager.targetInventory.getInventory() == null) continue;
+                IItemHandler inventory = packager.targetInventory.getInventory();
+                int sourceBudget = allocation.count();
+                for (int slot = 0; slot < inventory.getSlots() && missing > 0 && sourceBudget > 0; slot++) {
+                    ItemStack available = inventory.getStackInSlot(slot);
+                    if (available.isEmpty() || !item.equals(available.getItem())
+                            || TrainShipmentMarker.transactionId(available) != null
+                            || (template != null && !ItemStack.isSameItemSameComponents(template, available))) continue;
+                    int amount = Math.min(missing, Math.min(sourceBudget, available.getCount()));
+                    ItemStack stack = inventory.extractItem(slot, amount, false);
+                    if (stack.isEmpty() || stack.getCount() != amount
+                            || (template != null && !ItemStack.isSameItemSameComponents(template, stack))) {
+                        if (!stack.isEmpty()) inventory.insertItem(slot, stack, false);
+                        continue;
+                    }
+                    TrainShipmentMarker.mark(stack, request);
+                    int target = -1;
+                    for (int out = 0; out < logger.getInventory().getSlots(); out++) {
+                        if (logger.getInventory().getStackInSlot(out).isEmpty()) { target = out; break; }
+                    }
+                    if (target < 0) {
+                        ItemStack remainder = inventory.insertItem(slot, stack, false);
+                        if (!remainder.isEmpty()) level.addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(
+                                level, linkPos.getX() + 0.5, linkPos.getY() + 0.5, linkPos.getZ() + 0.5, remainder));
+                        return recovered;
+                    }
+                    logger.getInventory().setStackInSlot(target, stack);
+                    logger.setChanged();
+                    missing -= stack.getCount();
+                    sourceBudget -= stack.getCount();
+                }
+            }
+            if (missing == 0) recovered++;
         }
+        return recovered;
     }
 
     private static BlockPos parsePos(String value) {
