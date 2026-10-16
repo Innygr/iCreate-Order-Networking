@@ -1,6 +1,6 @@
-# Backend Progress — 2026-10-15
+# Backend Progress — refreshed 2026-10-16
 
-This snapshot separates code on `main` from work proposed in an open pull request. A successful Java/Gradle CI run proves compilation and automated tests only; it does not prove live Minecraft/Create behavior.
+This snapshot describes the current `main` branch. A successful Java/Gradle CI run proves compilation and automated tests only; it does not prove live Minecraft/Create behavior.
 
 ## Current `main` foundations
 
@@ -30,10 +30,14 @@ These are planning estimates based on implemented code and the remaining feature
 - **Backend implementation: ~85–90%.** Core order/economy logic, GUI actions, durable shipment stages, idempotency, and three transport adapter implementations exist. Remaining work is chiefly live-world validation, lifecycle/restart test coverage, Stock Link authorization/binding, and belt-to-order delivery.
 - **Whole mod: ~65%.** The core backend and most current block/item models and recipes are in place. The remaining share includes polishing and verifying models in-game, completing missing transport/Stock Link behavior, testing permissions and recovery on a dedicated server, and release cleanup. The estimate assumes the current model work is substantially complete; it does not treat model work as wholly outstanding.
 
+## Latest verified CI
+
+The latest `main` build, run [#38907087141](https://github.com/Innygr/iCreate-Order-Networking/actions/runs/38907087141), passed after correcting the Minecraft 1.21.1 `ServerLevel#setChunkForced(int, int, boolean)` call used by Terminal Logger chunk loading. This confirms compilation and automated tests on that commit; it does not validate forced-chunk lifecycle behavior in a running world.
+
 ## Next implementation order
 
-1. Review/CI-verify the durable shipment journal patch.
-2. Add startup reconciliation for pending journal entries, ensuring only destination-received transactions can retry payout and that replay never re-dispatches cargo blindly.
-3. Add lifecycle tests at each persisted boundary, including save/reload and duplicate calls.
-4. Implement one route adapter end-to-end and keep the other routes unavailable until individually verified.
-5. Update the README only when merged code and CI results justify a status change.
+1. Add bounded/configurable chunk-loading ownership and lifecycle tests so multiple loggers in one chunk cannot accidentally unforce one another.
+2. Add dedicated-server recovery tests across RESERVED, DISPATCHED, and DESTINATION_RECEIVED milestones.
+3. Implement Stock Link factory binding and explicit access checks.
+4. Validate PSI train and Packager/Frogport shipment flow live; keep belt routes unavailable until independently verified receipt exists.
+5. Update the completion gate only after those tests pass.
