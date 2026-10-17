@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.client;
 
 import com.innygr.icreateordernetworking.ICreateOrderNetworking;
 import com.innygr.icreateordernetworking.blocks.OrderTerminalBlock;
+import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlock;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
@@ -22,6 +23,12 @@ public final class OrderTerminalClientEvents {
         if (!event.getLevel().isClientSide || event.getHand() != InteractionHand.MAIN_HAND
                 || !event.getItemStack().isEmpty()) return;
         BlockState state = event.getLevel().getBlockState(event.getPos());
+        if (state.getBlock() instanceof TerminalLoggerBlock) {
+            Minecraft.getInstance().setScreen(new TerminalLoggerScreen(event.getPos()));
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
         if (!(state.getBlock() instanceof OrderTerminalBlock)) return;
 
         BlockPos terminalPos = state.getValue(OrderTerminalBlock.HALF)
