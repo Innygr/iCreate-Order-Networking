@@ -86,12 +86,20 @@ public record OrderTerminalActionPacket(BlockPos terminalPos, int action, String
     }
 
     private static void create(ServerPlayer player, OrderTerminalActionPacket packet) {
-        if (packet.itemId() == null || packet.itemId().length() > 256
+        if (packet.itemId() == null || packet.itemId().isBlank() || packet.itemId().length() > 256
                 || packet.count() < 1 || packet.count() > OrderService.MAX_ORDER_COUNT
-                || packet.rewardPerItem() < 0 || packet.rewardPerItem() > OrderService.MAX_REWARD_PER_ITEM) return;
+                || packet.rewardPerItem() < 0 || packet.rewardPerItem() > OrderService.MAX_REWARD_PER_ITEM) {
+            player.displayClientMessage(Component.literal(
+                    "Order creation rejected: enter a valid item ID, count, and reward."), true);
+            return;
+        }
         final ResourceLocation requested;
         try { requested = ResourceLocation.parse(packet.itemId()); }
-        catch (RuntimeException ignored) { return; }
+        catch (RuntimeException ignored) {
+            player.displayClientMessage(Component.literal(
+                    "Order creation rejected: item ID must look like minecraft:stone."), true);
+            return;
+        }
         for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
             ItemStack stack = player.getInventory().getItem(slot);
             if (!stack.isEmpty() && requested.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {

@@ -5,6 +5,7 @@ import com.innygr.icreateordernetworking.blocks.OrderTerminalBlock;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -27,5 +28,9 @@ public final class OrderTerminalClientEvents {
                 == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER
                 ? event.getPos().below() : event.getPos();
         Minecraft.getInstance().setScreen(new OrderTerminalScreen(terminalPos));
+        // Prevent the same right-click from also activating the block's normal
+        // interaction path after the custom screen has opened.
+        event.setCanceled(true);
+        event.setCancellationResult(InteractionResult.SUCCESS);
     }
 }
