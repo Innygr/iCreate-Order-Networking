@@ -2,6 +2,7 @@ package com.innygr.icreateordernetworking.client;
 
 import com.innygr.icreateordernetworking.blocks.TerminalLoggerBlockEntity;
 import com.innygr.icreateordernetworking.network.TerminalLoggerFaceActionPacket;
+import java.util.EnumMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -14,6 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 /** Six-face routing panel for an individual Terminal Logger. */
 public final class TerminalLoggerScreen extends Screen {
     private final BlockPos pos;
+    private final EnumMap<Direction, Integer> modes = new EnumMap<>(Direction.class);
 
     public TerminalLoggerScreen(BlockPos pos) {
         super(Component.literal("Terminal Logger"));
@@ -27,8 +29,11 @@ public final class TerminalLoggerScreen extends Screen {
         for (Direction direction : Direction.values()) {
             int column = direction.ordinal() % 2;
             int row = direction.ordinal() / 2;
-            addRenderableWidget(Button.builder(label(direction, currentMode(direction)), button -> {
-                int next = (currentMode(direction) + 1) % 3;
+            int mode = currentMode(direction);
+            modes.put(direction, mode);
+            addRenderableWidget(Button.builder(label(direction, mode), button -> {
+                int next = (modes.getOrDefault(direction, 0) + 1) % 3;
+                modes.put(direction, next);
                 PacketDistributor.sendToServer(new TerminalLoggerFaceActionPacket(pos, direction.ordinal(), next));
                 button.setMessage(label(direction, next));
             }).bounds(left + column * 128, top + 42 + row * 31, 120, 24).build());
