@@ -326,12 +326,18 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         } else {
             disabledFaces.remove(side);
             if (side == routingConfig.output()) {
+                Direction replacement = null;
                 for (Direction candidate : Direction.values()) {
                     if (candidate != side && !disabledFaces.contains(candidate)) {
-                        routingConfig.setOutput(candidate);
+                        replacement = candidate;
                         break;
                     }
                 }
+                if (replacement == null) {
+                    disabledFaces.add(side);
+                    return false;
+                }
+                routingConfig.setOutput(replacement);
             }
             routingConfig.setInputEnabled(side, true);
         }
