@@ -101,4 +101,5 @@ public final class BotApiBridge {
                 .replace("@here", "@" + zeroWidthSpace + "here")
                 .replace('\r', ' ').strip();
         return clean.length() > maxLength ? clean.substring(0, maxLength) : clean;
-    }}
+    }
+}
