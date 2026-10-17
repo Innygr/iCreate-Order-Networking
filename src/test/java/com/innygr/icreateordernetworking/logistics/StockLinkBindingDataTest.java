@@ -53,4 +53,38 @@ class StockLinkBindingDataTest {
         StockLinkBindingData loaded = StockLinkBindingData.load(root, null);
         assertTrue(loaded.save(new CompoundTag(), null).getList("Bindings", Tag.TAG_COMPOUND).isEmpty());
     }
+    @Test
+    void sharedCreateFrequencyDoesNotMakeDifferentFactoriesInterchangeable() {
+        UUID network = UUID.randomUUID();
+        UUID owner = UUID.randomUUID();
+        UUID team = UUID.randomUUID();
+        StockLinkBindingData.Binding factoryA = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 1L, network, UUID.randomUUID(), owner, team);
+        StockLinkBindingData.Binding anotherLinkInFactoryA = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 2L, network, factoryA.factoryId(), owner, team);
+        StockLinkBindingData.Binding factoryBOnSameFrequency = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 3L, network, UUID.randomUUID(), owner, team);
+
+        assertTrue(StockLinkBindingData.belongsToSameFactory(factoryA, anotherLinkInFactoryA));
+        assertFalse(StockLinkBindingData.belongsToSameFactory(factoryA, factoryBOnSameFrequency));
+        assertFalse(StockLinkBindingData.belongsToSameFactory(factoryA, null));
+    }
+
+    @Test
+    void factoryIdentityComparisonIncludesOwnerAndTeam() {
+        UUID network = UUID.randomUUID();
+        UUID factory = UUID.randomUUID();
+        UUID owner = UUID.randomUUID();
+        UUID team = UUID.randomUUID();
+        StockLinkBindingData.Binding expected = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 1L, network, factory, owner, team);
+        StockLinkBindingData.Binding differentOwner = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 2L, network, factory, UUID.randomUUID(), team);
+        StockLinkBindingData.Binding differentTeam = new StockLinkBindingData.Binding(
+                "minecraft:overworld", 3L, network, factory, owner, UUID.randomUUID());
+
+        assertFalse(StockLinkBindingData.belongsToSameFactory(expected, differentOwner));
+        assertFalse(StockLinkBindingData.belongsToSameFactory(expected, differentTeam));
+    }
+
 }
