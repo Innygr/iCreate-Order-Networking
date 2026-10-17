@@ -1,7 +1,6 @@
 package com.innygr.icreateordernetworking.mythic;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.neoforged.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,20 +17,12 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Server-only Discord notifier for the optional Mythic build.
- *
- * A Discord webhook is used instead of a bot token: it is configured only on
- * the dedicated server and is never sent to clients or embedded in the JAR.
- */
+/** Server-only Discord webhook transport for the optional Mythic build. */
 public final class DiscordBridge {
     private static final Logger LOGGER = LoggerFactory.getLogger("iCreateOrderNetworking/MythicDiscord");
-    private static final Path CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("icreate-order-networking-mythic.json");
-    private static final HttpClient HTTP = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(runnable -> {
-        Thread thread = new Thread(runnable, "icreate-mythic-discord");
+    private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "icreate-mythic-discord");
         thread.setDaemon(true);
         return thread;
     });
@@ -56,16 +47,21 @@ public final class DiscordBridge {
     }
 
     public static void sendEvent(String eventType, String details) {
-        if (stopped || !isConfigured()) return;
+        if (stopped) return;
         String safeType = sanitize(eventType, 80);
         String safeDetails = sanitize(details, 1500);
+
+        // The companion bot receives events independently of the optional webhook.
+        BotApiBridge.sendEvent(safeType, safeDetails);
+        if (!isConfigured()) return;
+
         JsonObject payload = new JsonObject();
-        payload.addProperty("content", "**[" + serverName + "] " + safeType + "**\n" + safeDetails);
+        payload.addProperty("content", "**[" + sanitize(serverName, 100) + "] " + safeType + "**\n" + safeDetails);
         JsonObject allowedMentions = new JsonObject();
         allowedMentions.add("parse", new com.google.gson.JsonArray());
         payload.add("allowed_mentions", allowedMentions);
 
-        HttpRequest request;
+        final HttpRequest request;
         try {
             request = HttpRequest.newBuilder(URI.create(webhookUrl))
                     .timeout(Duration.ofSeconds(8))
@@ -79,7 +75,7 @@ public final class DiscordBridge {
 
         EXECUTOR.submit(() -> {
             try {
-                HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<Void> response = HTTP.send(request, HttpResponse.BodyHandlers.discarding());
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
                     LOGGER.warn("Mythic Discord webhook returned HTTP {}; event was not delivered.", response.statusCode());
                 }
@@ -91,9 +87,7 @@ public final class DiscordBridge {
         });
     }
 
-    static void shutdown() {
-        stopped = true;
-    }
+    static void shutdown() { stopped = true; }
 
     private static boolean isHttpsWebhook(String value) {
         if (value == null || value.isBlank()) return false;
@@ -111,9 +105,9 @@ public final class DiscordBridge {
 
     private static String sanitize(String value, int maxLength) {
         if (value == null) return "n/a";
-        String normalized = value.replace("@everyone", "@\u200beveryone")
-                .replace("@here", "@\u200bhere")
-                .replace("\r", " ")
+        String normalized = value.replace("@everyone", "@\\u200beveryone")
+                .replace("@here", "@\\u200bhere")
+                .replace("\\r", " ")
                 .strip();
         return normalized.length() > maxLength ? normalized.substring(0, maxLength) : normalized;
     }
