@@ -83,7 +83,9 @@ public record FactorySourcingPlan(
         for (FactoryEndpointRegistry.StockOffer offer :
                 FactoryEndpointRegistry.findStock(level, networkId, requester, item)) {
             if (remaining == 0) break;
-            if (bindings.authorizedBinding(level, offer.position(), actorId) == null) continue;
+            StockLinkBindingData.Binding sourceBinding =
+                    bindings.authorizedBinding(level, offer.position(), actorId);
+            if (!StockLinkBindingData.belongsToSameFactory(binding, sourceBinding)) continue;
             int amount = Math.min(remaining, offer.availableCount());
             if (amount <= 0) continue;
             allocations.add(new Allocation(offer, amount));
@@ -150,9 +152,11 @@ public record FactorySourcingPlan(
         for (Allocation allocation : allocations) {
             FactoryEndpointRegistry.StockOffer offer = allocation.source();
             BlockPos position = offer.position();
+            StockLinkBindingData.Binding sourceBinding = position == null ? null
+                    : bindings.authorizedBinding(level, position, actorId);
             if (position == null || !level.hasChunkAt(position)
                     || !expectedItem.equals(offer.itemId())
-                    || bindings.authorizedBinding(level, position, actorId) == null) {
+                    || !StockLinkBindingData.belongsToSameFactory(root, sourceBinding)) {
                 return false;
             }
             FactoryEndpointRegistry.FactoryEndpoint endpoint = offer.endpoint();
