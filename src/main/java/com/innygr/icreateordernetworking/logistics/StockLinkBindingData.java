@@ -29,6 +29,19 @@ public final class StockLinkBindingData extends SavedData {
                           UUID factoryId, UUID factoryOwnerId, UUID factoryTeamId) {}
     private record Key(String dimension, long packedPosition) {}
 
+    /**
+     * A shared Create frequency is not a factory permission boundary. Source
+     * Stock Links must be bound to the same factory identity as the selected
+     * root link, even when the actor belongs to both factories' team.
+     */
+    static boolean belongsToSameFactory(Binding expected, Binding candidate) {
+        return expected != null && candidate != null
+                && expected.factoryId().equals(candidate.factoryId())
+                && expected.factoryOwnerId().equals(candidate.factoryOwnerId())
+                && java.util.Objects.equals(expected.factoryTeamId(), candidate.factoryTeamId())
+                && expected.createNetworkId().equals(candidate.createNetworkId());
+    }
+
     public static StockLinkBindingData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(
                 new SavedData.Factory<>(StockLinkBindingData::new, StockLinkBindingData::load), DATA_NAME);
