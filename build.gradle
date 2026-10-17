@@ -49,6 +49,7 @@ sourceSets {
 }
 if (!isMythicVersion) {
     sourceSets.main.java.exclude 'com/innygr/icreateordernetworking/mythic/**'
+    sourceSets.test.java.exclude 'com/innygr/icreateordernetworking/mythic/**'
 }
 
 // Expose the selected variant in the built JAR so build artifacts can be identified.
