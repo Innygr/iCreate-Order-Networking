@@ -61,3 +61,11 @@ The Order Terminal Display Link reports active orders and outstanding item quant
 
 
 The Order Terminal Display Link has regression tests for active-order counting, outstanding quantities, owner scoping, and unclaimed terminals.
+
+## Mythic variant and Discord bridge
+
+Build the optional server-only Mythic integration with `gradle --no-daemon -Pis_Mythic_version=true build`; the default `false` build excludes the Mythic integration package. The selected value is recorded in the JAR manifest as `Is-Mythic-Version`.
+
+The Mythic dedicated server can post server lifecycle and player join/leave events to a Discord webhook. Missile launch, impact, and interception event hooks are included for the missile subsystem to call when those systems are connected. Server-side configuration and FTB team display-name mappings are documented in [docs/MYTHIC_DISCORD_INTEGRATION.md](docs/MYTHIC_DISCORD_INTEGRATION.md).
+
+The current bridge uses a server-only Discord webhook and local FTB team mapping; it does not yet connect the bot's `/mc-link` or team-sync approval queue, which needs a matching authenticated API in the bot process.
