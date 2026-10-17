@@ -1,6 +1,7 @@
 package com.innygr.icreateordernetworking.blocks;
 
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,6 +43,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     private boolean chunkTicketRegistered;
 
     private final TerminalLoggerConfig routingConfig = new TerminalLoggerConfig();
+    private final EnumSet<Direction> disabledFaces = EnumSet.noneOf(Direction.class);
     private long acceptedDeliveries;
     private long rejectedDeliveries;
     private String lastStatus = "Idle";
@@ -83,7 +85,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-                    if (!routingConfig.isInputEnabled(side) || stack.isEmpty() || !acceptsItem(
+                    if (disabledFaces.contains(side) || !routingConfig.isInputEnabled(side) || stack.isEmpty() || !acceptsItem(
                             net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
                         return stack;
                     }
@@ -92,7 +94,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public ItemStack extractItem(int slot, int amount, boolean simulate) {
-                    if (side != routingConfig.output()) return ItemStack.EMPTY;
+                    if (disabledFaces.contains(side) || side != routingConfig.output()) return ItemStack.EMPTY;
                     // Cargo reserved for a durable shipment is locked to its route
                     // adapter. A belt, funnel, or other capability consumer must not
                     // be able to steal it from the logger while dispatch is pending.
@@ -133,7 +135,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
                 @Override
                 public boolean isItemValid(int slot, ItemStack stack) {
-                    return routingConfig.isInputEnabled(side) && inventory.isItemValid(slot, stack);
+                    return !disabledFaces.contains(side) && routingConfig.isInputEnabled(side) && inventory.isItemValid(slot, stack);
                 }
             });
         }
@@ -199,7 +201,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
     private void pullInputs(Level level) {
         for (Direction side : Direction.values()) {
-            if (!routingConfig.isInputEnabled(side)) continue;
+            if (disabledFaces.contains(side) || !routingConfig.isInputEnabled(side)) continue;
             BlockPos sourcePos = worldPosition.relative(side);
             IItemHandler source = level.getCapability(Capabilities.ItemHandler.BLOCK, sourcePos, side.getOpposite());
             if (source == null) continue;
@@ -256,6 +258,7 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     private void pushOutput(Level level) {
+        if (disabledFaces.contains(routingConfig.output())) return;
         BlockPos targetPos = worldPosition.relative(routingConfig.output());
         IItemHandler target = level.getCapability(Capabilities.ItemHandler.BLOCK, targetPos, routingConfig.output().getOpposite());
         if (target == null) return;
@@ -304,7 +307,38 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
 
     public ItemStackHandler getInventory() { return inventory; }
     public Direction getOutputDirection() { return routingConfig.output(); }
-    public boolean isInputEnabled(Direction side) { return routingConfig.isInputEnabled(side); }
+    public boolean isInputEnabled(Direction side) { return side != null && !disabledFaces.contains(side) && routingConfig.isInputEnabled(side); }
+
+    /** Face mode: 0=input, 1=output, 2=disabled. */
+    public int getFaceMode(Direction side) {
+        if (side == null || disabledFaces.contains(side)) return 2;
+        return side == routingConfig.output() ? 1 : (routingConfig.isInputEnabled(side) ? 0 : 2);
+    }
+
+    /** Apply a face mode from the server-validated logger UI. */
+    public boolean setFaceMode(Direction side, int mode) {
+        if (level == null || level.isClientSide || side == null || mode < 0 || mode > 2) return false;
+        if (mode == 2) {
+            disabledFaces.add(side);
+        } else if (mode == 1) {
+            disabledFaces.remove(side);
+            routingConfig.setOutput(side);
+        } else {
+            disabledFaces.remove(side);
+            if (side == routingConfig.output()) {
+                for (Direction candidate : Direction.values()) {
+                    if (candidate != side && !disabledFaces.contains(candidate)) {
+                        routingConfig.setOutput(candidate);
+                        break;
+                    }
+                }
+            }
+            routingConfig.setInputEnabled(side, true);
+        }
+        setChanged();
+        sync();
+        return true;
+    }
     public long getAcceptedDeliveries() { return acceptedDeliveries; }
     public long getRejectedDeliveries() { return rejectedDeliveries; }
     public String getLastStatus() { return lastStatus; }
@@ -381,10 +415,10 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
     }
 
     public boolean canInputFrom(Direction side, ResourceLocation itemId) {
-        return side != null && routingConfig.isInputEnabled(side) && acceptsItem(itemId);
+        return side != null && !disabledFaces.contains(side) && routingConfig.isInputEnabled(side) && acceptsItem(itemId);
     }
 
-    public boolean canOutputTo(Direction side) { return side != null && side == routingConfig.output(); }
+    public boolean canOutputTo(Direction side) { return side != null && !disabledFaces.contains(side) && side == routingConfig.output(); }
 
     /** Records diagnostics after an observed transfer; does not itself fulfil an order. */
     public void recordTransfer(boolean accepted, ResourceLocation itemId, int count, String reason) {
@@ -471,6 +505,9 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.putString("OutputDirection", routingConfig.output().getName());
         tag.put("RoutingConfig", routingConfig.save());
+        CompoundTag disabled = new CompoundTag();
+        for (Direction direction : Direction.values()) disabled.putBoolean(direction.getName(), disabledFaces.contains(direction));
+        tag.put("DisabledFaces", disabled);
         tag.putLong("AcceptedDeliveries", acceptedDeliveries);
         tag.putLong("RejectedDeliveries", rejectedDeliveries);
         tag.putString("LastStatus", lastStatus);
@@ -489,6 +526,13 @@ public final class TerminalLoggerBlockEntity extends BlockEntity {
         routingConfig.setOutput(loaded == null ? Direction.NORTH : loaded);
         if (tag.contains("RoutingConfig", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
             routingConfig.load(tag.getCompound("RoutingConfig"));
+        }
+        disabledFaces.clear();
+        if (tag.contains("DisabledFaces", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            CompoundTag disabled = tag.getCompound("DisabledFaces");
+            for (Direction direction : Direction.values()) {
+                if (disabled.getBoolean(direction.getName())) disabledFaces.add(direction);
+            }
         }
         acceptedDeliveries = Math.max(0, tag.getLong("AcceptedDeliveries"));
         rejectedDeliveries = Math.max(0, tag.getLong("RejectedDeliveries"));
