@@ -194,6 +194,17 @@ public final class FactorySourcedDeliveryService {
         for (ShipmentJournalData.Shipment shipment : journal.pending().values()) {
             if (shipment.stage() != ShipmentJournalData.Stage.RESERVED
                     || !shipment.sourceReference().startsWith(prefix)) continue;
+            // Recovery is still an authorized operation: a logger may have been
+            // reconfigured or rebound since the original reservation. Never move
+            // factory stock into a logger that no longer belongs to this claimant.
+            if (!shipment.claimantId().equals(logger.getOwnerId())) continue;
+            com.innygr.icreateordernetworking.orders.Order order =
+                    com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
+            if (order == null || !logger.acceptsItem(order.itemId())) continue;
+            Item item = BuiltInRegistries.ITEM.get(order.itemId());
+            if (item == null || BuiltInRegistries.ITEM.getKey(item)
+                    .equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
+
             List<ShipmentJournalData.FactoryAllocation> manifest = journal.factoryManifest(shipment.transactionId());
             if (manifest.isEmpty()) continue;
             int present = TrainShipmentMarker.countMatchingIn(logger, shipment);
@@ -208,11 +219,6 @@ public final class FactorySourcedDeliveryService {
             // stock and risking a duplicate shipment. Partial marked logger cargo
             // remains recoverable from the persisted manifest.
             if (!shouldResumeFactoryCollection(present, shipment.count(), packageExists)) continue;
-            com.innygr.icreateordernetworking.orders.Order order =
-                    com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
-            if (order == null) continue;
-            Item item = BuiltInRegistries.ITEM.get(order.itemId());
-            if (item == null) continue;
             ItemStack template = null;
             for (int slot = 0; slot < logger.getInventory().getSlots(); slot++) {
                 ItemStack stack = logger.getInventory().getStackInSlot(slot);
