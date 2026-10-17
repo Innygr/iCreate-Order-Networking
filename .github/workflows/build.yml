@@ -23,6 +23,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # PRs/pushes verify both outputs. A manual dispatch builds the selected variant only.
+      matrix:
+        is_Mythic_version: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('[{0}]', inputs.is_Mythic_version)) || fromJSON('[false,true]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -42,12 +47,12 @@ jobs:
           validate-wrappers: false
 
       - name: Build mod
-        run: gradle --no-daemon -Pis_Mythic_version=${{ github.event.inputs.is_Mythic_version || 'false' }} build
+        run: gradle --no-daemon -Pis_Mythic_version=${{ matrix.is_Mythic_version }} build
 
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: icreate-order-networking-${{ github.sha }}-${{ github.event.inputs.is_Mythic_version || 'false' }}
+          name: icreate-order-networking-${{ github.sha }}-${{ matrix.is_Mythic_version }}
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
