@@ -14,5 +14,6 @@ public final class ModNetwork {
         registrar.playToServer(FulfilOrderPacket.TYPE, FulfilOrderPacket.STREAM_CODEC, FulfilOrderPacket::handle);
         registrar.playToServer(OrderTerminalActionPacket.TYPE, OrderTerminalActionPacket.STREAM_CODEC, OrderTerminalActionPacket::handle);
         registrar.playToServer(AutomatedDeliveryPacket.TYPE, AutomatedDeliveryPacket.STREAM_CODEC, AutomatedDeliveryPacket::handle);
+        registrar.playToServer(TerminalLoggerFaceActionPacket.TYPE, TerminalLoggerFaceActionPacket.STREAM_CODEC, TerminalLoggerFaceActionPacket::handle);
     }
 }
