@@ -12,7 +12,7 @@ A player-driven economy mod for Create-based Minecraft servers. The goal is to c
 
 ## Implementation status
 
-This repository is beyond the initial scaffold: persistent orders, server-authoritative order actions, the Order Terminal screen, idempotent economy handling, a durable shipment journal, and several Create logistics adapters are implemented. It is **not yet a playable/release-verified build**. The remaining work is primarily end-to-end recovery coverage, live-world compatibility checks, Stock Link factory binding/authorization, belt delivery, and finishing chunk-loading safety controls.
+This repository is beyond the initial scaffold: persistent orders, server-authoritative order actions, the Order Terminal screen, idempotent economy handling, a durable shipment journal, and several Create logistics adapters are implemented. It is **not yet a playable/release-verified build**. The remaining work is primarily end-to-end recovery coverage, live-world compatibility checks, live-world Stock Link isolation checks, belt delivery, and finishing chunk-loading safety controls.
 
 ## Current backend status
 
@@ -32,7 +32,7 @@ The planned Create-facing integrations are split by Create's **Display Link** an
 | Display Link | Network Statistics | Show network statistics, such as item input/output and rejected transfers | A Display Link source class exists; registration and live-world behavior still need verification |
 | Display Link | Order Terminal | Show factory order information, such as active order counts and outstanding item quantity | Source implemented, registered, and covered by summary tests; live-world verification remains |
 | Display Link | Terminal Logger | Show this logger's own routing configuration, filter, buffer/transfer state, and diagnostic status where available | Source implemented and registered; live-world verification remains |
-| Stock Link | Order Terminal | Expose factory stock/request information to Create's stock network, with clear rules for what counts as available stock | Read-only Stock Link discovery exists; iCreate factory binding and request authorization remain incomplete |
+| Stock Link | Order Terminal | Expose factory stock/request information to Create's stock network, with clear rules for what counts as available stock | Explicit Stock Link-to-factory bindings and owner/team authorization are implemented; live shared-frequency isolation still requires dedicated-server testing |
 
 The Terminal Logger now has a local-state Display Link source showing owner short ID, output face, buffered item/slot counts, accepted/rejected transfer counters, filter, and last status. It is registered against the Terminal Logger block entity. This is a per-logger diagnostic display, not a factory-wide order display. The Terminal Logger is **not currently planned as a Stock Link source**: its local buffer and routing role do not necessarily represent the factory's overall stock. Multiple loggers may observe different parts of the same flow, so summing their inventories could double-count items. Any future stock integration would need explicit accounting rules to avoid that.
 
@@ -50,7 +50,7 @@ Automated route support is adapter-specific. Train/PSI, Aeronautics docking, and
 
 The backend includes persistent orders and delivery receipts, server-authoritative create/claim/fulfil/cancel actions, idempotent payout/refund accounting, pending-delivery quantity reservations, manual inventory fulfilment, a Create Redstone Requester restock-order bridge, and a durable shipment journal with `RESERVED → DISPATCHED → DESTINATION_RECEIVED → COMPLETED` milestones. Train/PSI, Aeronautics docking, and Packager/Frogport adapter implementations are present. The Order Terminal screen is wired to server-authoritative actions. A Terminal Logger chunk-loading implementation is also present, but requires live-world lifecycle/resource testing before broad use.
 
-**Still outstanding before calling the backend complete:** get the full Gradle CI suite green on the latest branch head; dedicated-server tests for train/PSI, Frogport, Redstone Requester, interrupted dispatch, receipt verification, payout retry, and restart recovery; Stock Link factory binding and request authorization; belt delivery; and safe chunk-loading limits/ownership/toggle controls. The Aeronautics Docking Connector capability bridge is provisional and needs validation against the actual Aeronautics API and live-world transport. A passing CI build verifies compilation/tests, not in-game behavior. Display Link sources are implemented but still need live-world verification.
+**Still outstanding before calling the backend complete:** get the full Gradle CI suite green on the latest branch head; dedicated-server tests for train/PSI, Frogport, Redstone Requester, interrupted dispatch, receipt verification, payout retry, and restart recovery; shared-frequency isolation between factory Stock Links; belt delivery; and safe chunk-loading limits/ownership/toggle controls. The Aeronautics Docking Connector capability bridge is provisional and needs validation against the actual Aeronautics API and live-world transport. A passing CI build verifies compilation/tests, not in-game behavior. Display Link sources are implemented but still need live-world verification.
 
 ## Completion estimate
 
@@ -69,3 +69,7 @@ Build the optional server-only Mythic integration with `gradle --no-daemon -Pis_
 The Mythic dedicated server can post server lifecycle and player join/leave events to a Discord webhook. Missile launch, impact, and interception event hooks are included for the missile subsystem to call when those systems are connected. Server-side configuration and FTB team display-name mappings are documented in [docs/MYTHIC_DISCORD_INTEGRATION.md](docs/MYTHIC_DISCORD_INTEGRATION.md).
 
 The current bridge uses a server-only Discord webhook and local FTB team mapping; it does not yet connect the bot's `/mc-link` or team-sync approval queue, which needs a matching authenticated API in the bot process.
+
+## Latest patch — Mythic event sanitization
+
+The Mythic bot API bridge and Discord webhook bridge now insert an actual zero-width space to neutralize `@everyone` and `@here`, normalize carriage returns, and preserve their message-length limits. Regression tests cover both sanitizers. The regular build excludes Mythic-only tests when the optional Mythic variant is disabled. This is a source-level regression fix; the latest GitHub Actions result must pass before treating it as build-verified.
