@@ -5,6 +5,12 @@ on:
     branches: [main, feature/logistics-foundation, feature/durable-shipment-journal]
   pull_request:
   workflow_dispatch:
+    inputs:
+      is_Mythic_version:
+        description: "Build the Mythic variant (true or false)"
+        required: true
+        type: boolean
+        default: false
 
 # Avoid duplicate runs for rapid pushes to the same branch/PR.
 concurrency:
@@ -17,6 +23,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # PRs/pushes verify both outputs. A manual dispatch builds the selected variant only.
+      matrix:
+        is_Mythic_version: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('[{0}]', inputs.is_Mythic_version)) || fromJSON('[false,true]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -36,12 +47,12 @@ jobs:
           validate-wrappers: false
 
       - name: Build mod
-        run: gradle --no-daemon build
+        run: gradle --no-daemon -Pis_Mythic_version=${{ matrix.is_Mythic_version }} build
 
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: icreate-order-networking-${{ github.sha }}
+          name: icreate-order-networking-${{ github.sha }}-${{ matrix.is_Mythic_version }}
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar

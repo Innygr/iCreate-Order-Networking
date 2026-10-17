@@ -5,6 +5,15 @@ plugins {
 version = mod_version
 group = mod_group
 
+// Allow callers to select the Mythic build variant with -Pis_Mythic_version=true|false.
+// The default is false, including for local builds that do not pass the property.
+def mythicVersionRaw = providers.gradleProperty('is_Mythic_version').getOrElse('false')
+if (!(mythicVersionRaw in ['true', 'false'])) {
+    throw new GradleException("is_Mythic_version must be 'true' or 'false' (received: '${mythicVersionRaw}')")
+}
+def isMythicVersion = mythicVersionRaw.toBoolean()
+logger.lifecycle("Building Mythic variant: ${isMythicVersion}")
+
 repositories {
     maven { url = "https://maven.createmod.net" }
     maven { url = "https://maven.ithundxr.dev/snapshots" }
@@ -30,12 +39,22 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// The NeoForge ModDev plugin adds Minecraft/NeoForge dependencies to the main
-// source set. Make that same compile/runtime classpath available to JUnit tests.
+// The public build contains no Mythic/Discord integration classes. The Mythic
+// profile compiles the optional server-only package into its JAR.
 sourceSets {
     test {
         compileClasspath += sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+if (!isMythicVersion) {
+    sourceSets.main.java.exclude 'com/innygr/icreateordernetworking/mythic/**'
+}
+
+// Expose the selected variant in the built JAR so build artifacts can be identified.
+tasks.withType(Jar).configureEach {
+    manifest {
+        attributes('Is-Mythic-Version': isMythicVersion.toString())
     }
 }
 

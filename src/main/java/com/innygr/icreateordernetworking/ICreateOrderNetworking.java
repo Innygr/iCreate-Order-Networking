@@ -21,6 +21,7 @@ import com.innygr.icreateordernetworking.registry.ModSounds;
 import com.simibubi.create.api.behaviour.display.DisplaySource;
 import com.simibubi.create.api.registry.CreateRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -30,11 +31,16 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Main entry point for iCreate: Order Networking. */
 @Mod(ICreateOrderNetworking.MOD_ID)
 public final class ICreateOrderNetworking {
     public static final String MOD_ID = "icreate_order_networking";
+    private static final Logger LOGGER = LoggerFactory.getLogger(ICreateOrderNetworking.class);
+    private static final String MYTHIC_INTEGRATION_CLASS =
+            "com.innygr.icreateordernetworking.mythic.MythicIntegration";
 
     private final RedstoneRequesterOrderBridge requesterOrderBridge = new RedstoneRequesterOrderBridge();
     private final CreateStockLinkEndpointBridge stockLinkEndpointBridge = new CreateStockLinkEndpointBridge();
@@ -64,13 +70,30 @@ public final class ICreateOrderNetworking {
         // Retry durable payouts only after a destination receipt was already recorded.
         // Transport adapters still own recovery for shipments awaiting physical reconciliation.
         DurableShipmentService.recoverPendingPayouts(event.getServer().overworld());
+        invokeMythicLifecycleHook("onServerStarted", event.getServer());
     }
 
     private void onServerStopped(ServerStoppedEvent event) {
+        invokeMythicLifecycleHook("onServerStopped", event.getServer());
         requesterOrderBridge.clear();
         stockLinkEndpointBridge.clear();
         AutomatedDeliveryRegistry.clear();
         FactoryEndpointRegistry.clear();
+    }
+
+    /**
+     * Load the optional integration reflectively so the regular public build
+     * can omit the entire Mythic package without a compile-time dependency.
+     */
+    private static void invokeMythicLifecycleHook(String methodName, MinecraftServer server) {
+        try {
+            Class<?> integration = Class.forName(MYTHIC_INTEGRATION_CLASS);
+            integration.getMethod(methodName, MinecraftServer.class).invoke(null, server);
+        } catch (ClassNotFoundException ignored) {
+            // Expected in the regular public build.
+        } catch (ReflectiveOperationException exception) {
+            LOGGER.error("Failed to invoke optional Mythic lifecycle hook '{}'.", methodName, exception);
+        }
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
@@ -104,5 +127,4 @@ public final class ICreateOrderNetworking {
                     OrderTerminalDisplaySource.INSTANCE);
         });
     }
-
 }
