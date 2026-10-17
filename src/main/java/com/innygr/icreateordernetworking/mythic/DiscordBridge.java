@@ -111,4 +111,5 @@ public final class DiscordBridge {
                 .replace('\r', ' ')
                 .strip();
         return normalized.length() > maxLength ? normalized.substring(0, maxLength) : normalized;
-    }}
+    }
+}
