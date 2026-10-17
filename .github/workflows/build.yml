@@ -5,6 +5,12 @@ on:
     branches: [main, feature/logistics-foundation, feature/durable-shipment-journal]
   pull_request:
   workflow_dispatch:
+    inputs:
+      is_Mythic_version:
+        description: "Build the Mythic variant (true or false)"
+        required: true
+        type: boolean
+        default: false
 
 # Avoid duplicate runs for rapid pushes to the same branch/PR.
 concurrency:
@@ -36,12 +42,12 @@ jobs:
           validate-wrappers: false
 
       - name: Build mod
-        run: gradle --no-daemon build
+        run: gradle --no-daemon -Pis_Mythic_version=${{ github.event.inputs.is_Mythic_version || 'false' }} build
 
       - name: Upload mod JAR
         uses: actions/upload-artifact@v4
         with:
-          name: icreate-order-networking-${{ github.sha }}
+          name: icreate-order-networking-${{ github.sha }}-${{ github.event.inputs.is_Mythic_version || 'false' }}
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
