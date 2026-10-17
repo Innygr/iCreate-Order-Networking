@@ -94,11 +94,11 @@ public final class BotApiBridge {
         });
     }
 
-    private static String safe(String value, int maxLength) {
+    static String safe(String value, int maxLength) {
         if (value == null) return "unknown";
-        String clean = value.replace("@everyone", "@\\u200beveryone")
-                .replace("@here", "@\\u200bhere")
-                .replace("\\r", " ").strip();
+        String zeroWidthSpace = Character.toString(0x200B);
+        String clean = value.replace("@everyone", "@" + zeroWidthSpace + "everyone")
+                .replace("@here", "@" + zeroWidthSpace + "here")
+                .replace('\r', ' ').strip();
         return clean.length() > maxLength ? clean.substring(0, maxLength) : clean;
-    }
-}
+    }}
