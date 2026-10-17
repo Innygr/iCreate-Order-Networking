@@ -197,10 +197,10 @@ public final class FactorySourcedDeliveryService {
             // Recovery is still an authorized operation: a logger may have been
             // reconfigured or rebound since the original reservation. Never move
             // factory stock into a logger that no longer belongs to this claimant.
-            if (!shipment.claimantId().equals(logger.getOwnerId())) continue;
             com.innygr.icreateordernetworking.orders.Order order =
                     com.innygr.icreateordernetworking.orders.OrderData.get(level).find(shipment.orderId());
-            if (order == null || !logger.acceptsItem(order.itemId())) continue;
+            if (order == null || !mayResumeFactoryCollection(shipment.claimantId(), logger.getOwnerId(),
+                    logger.acceptsItem(order.itemId()))) continue;
             Item item = BuiltInRegistries.ITEM.get(order.itemId());
             if (item == null || BuiltInRegistries.ITEM.getKey(item)
                     .equals(BuiltInRegistries.ITEM.getDefaultKey())) continue;
@@ -270,6 +270,12 @@ public final class FactorySourcedDeliveryService {
             if (missing == 0) recovered++;
         }
         return recovered;
+    }
+
+    /** Recovery must still belong to the original claimant and satisfy the logger filter. */
+    static boolean mayResumeFactoryCollection(java.util.UUID claimantId, java.util.UUID loggerOwnerId,
+                                               boolean acceptsItem) {
+        return claimantId != null && claimantId.equals(loggerOwnerId) && acceptsItem;
     }
 
     /** Pure recovery guard: only partial, source-marked cargo with no existing package may be topped up. */
