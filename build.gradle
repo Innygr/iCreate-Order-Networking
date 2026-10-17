@@ -39,19 +39,22 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// Expose the selected variant in the built JAR so build artifacts can be identified.
-tasks.withType(Jar).configureEach {
-    manifest {
-        attributes('Is-Mythic-Version': isMythicVersion.toString())
-    }
-}
-
-// The NeoForge ModDev plugin adds Minecraft/NeoForge dependencies to the main
-// source set. Make that same compile/runtime classpath available to JUnit tests.
+// The public build contains no Mythic/Discord integration classes. The Mythic
+// profile compiles the optional server-only package into its JAR.
 sourceSets {
     test {
         compileClasspath += sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+if (!isMythicVersion) {
+    sourceSets.main.java.exclude 'com/innygr/icreateordernetworking/mythic/**'
+}
+
+// Expose the selected variant in the built JAR so build artifacts can be identified.
+tasks.withType(Jar).configureEach {
+    manifest {
+        attributes('Is-Mythic-Version': isMythicVersion.toString())
     }
 }
 
