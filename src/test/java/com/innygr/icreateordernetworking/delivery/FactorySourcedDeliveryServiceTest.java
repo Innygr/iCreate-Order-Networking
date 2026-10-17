@@ -7,6 +7,17 @@ import org.junit.jupiter.api.Test;
 
 class FactorySourcedDeliveryServiceTest {
     @Test
+    void recoveryRequiresOriginalLoggerOwnerAndMatchingFilter() {
+        java.util.UUID claimant = java.util.UUID.randomUUID();
+        java.util.UUID otherOwner = java.util.UUID.randomUUID();
+
+        assertTrue(FactorySourcedDeliveryService.mayResumeFactoryCollection(claimant, claimant, true));
+        assertFalse(FactorySourcedDeliveryService.mayResumeFactoryCollection(claimant, otherOwner, true));
+        assertFalse(FactorySourcedDeliveryService.mayResumeFactoryCollection(claimant, claimant, false));
+        assertFalse(FactorySourcedDeliveryService.mayResumeFactoryCollection(null, claimant, true));
+    }
+
+    @Test
     void recoveryOnlyTopsUpPartialMarkedSourceCargoWhenNoPackageExists() {
         assertTrue(FactorySourcedDeliveryService.shouldResumeFactoryCollection(1, 4, false));
         assertTrue(FactorySourcedDeliveryService.shouldResumeFactoryCollection(3, 4, false));
