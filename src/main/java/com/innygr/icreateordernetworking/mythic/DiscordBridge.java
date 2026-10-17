@@ -103,12 +103,12 @@ public final class DiscordBridge {
         }
     }
 
-    private static String sanitize(String value, int maxLength) {
+    static String sanitize(String value, int maxLength) {
         if (value == null) return "n/a";
-        String normalized = value.replace("@everyone", "@\\u200beveryone")
-                .replace("@here", "@\\u200bhere")
-                .replace("\\r", " ")
+        String zeroWidthSpace = Character.toString(0x200B);
+        String normalized = value.replace("@everyone", "@" + zeroWidthSpace + "everyone")
+                .replace("@here", "@" + zeroWidthSpace + "here")
+                .replace('\r', ' ')
                 .strip();
         return normalized.length() > maxLength ? normalized.substring(0, maxLength) : normalized;
-    }
-}
+    }}
